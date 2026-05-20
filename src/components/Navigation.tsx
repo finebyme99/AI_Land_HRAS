@@ -1,0 +1,211 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Menu, Drawer, Avatar, Dropdown } from 'antd';
+import {
+  HomeOutlined,
+  BookOutlined,
+  TrophyOutlined,
+  ReadOutlined,
+  CommentOutlined,
+  AppstoreOutlined,
+  UserOutlined,
+  MenuOutlined,
+  BellOutlined,
+  LogoutOutlined,
+} from '@ant-design/icons';
+import { useAuth } from '@/lib/auth-context';
+
+const navItems = [
+  { key: '/', label: '首页', icon: <HomeOutlined /> },
+  { key: '/cases', label: '案例库', icon: <BookOutlined /> },
+  { key: '/competitions', label: 'AI大赛', icon: <TrophyOutlined /> },
+  { key: '/courses', label: '公开课', icon: <ReadOutlined /> },
+  { key: '/topics', label: '话题', icon: <CommentOutlined /> },
+  { key: '/apps', label: '应用推荐', icon: <AppstoreOutlined /> },
+];
+
+const userMenuItems = [
+  { key: '/profile', label: '个人中心' },
+  { key: '/profile/contributions', label: '我的贡献' },
+  { key: '/profile/bookmarks', label: '我的收藏' },
+  { key: '/profile/notifications', label: '消息通知' },
+  { key: '/profile/settings', label: '个人设置' },
+];
+
+export default function Navigation() {
+  const pathname = usePathname();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const { user, loading, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    window.location.href = '/login';
+  };
+
+  return (
+    <>
+      {/* Desktop Navigation */}
+      <header className="hidden md:flex items-center justify-between px-8 h-16 sticky top-0 z-50"
+        style={{
+          background: 'rgba(250, 248, 245, 0.85)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid var(--border-light)',
+        }}
+      >
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <span className="text-lg font-bold tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--primary)' }}>
+              HRAS
+            </span>
+            <span className="text-lg font-bold tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--foreground)' }}>
+              AI岛
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: 'var(--primary)' }} />
+          </Link>
+          <Menu
+            mode="horizontal"
+            selectedKeys={[pathname]}
+            items={navItems.map((item) => ({
+              key: item.key,
+              icon: item.icon,
+              label: <Link href={item.key}>{item.label}</Link>,
+            }))}
+            className="border-none flex-1"
+            style={{ minWidth: 0, background: 'transparent' }}
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          {loading ? null : user ? (
+            <>
+              <Link href="/profile/notifications" className="p-2 rounded-lg hover:opacity-70 transition-opacity" style={{ color: 'var(--text-secondary)' }}>
+                <BellOutlined style={{ fontSize: 18 }} />
+              </Link>
+              <Dropdown
+                menu={{
+                  items: [
+                    ...userMenuItems.map((item) => ({
+                      key: item.key,
+                      label: <Link href={item.key}>{item.label}</Link>,
+                    })),
+                    { type: 'divider' as const },
+                    { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: handleLogout },
+                  ],
+                }}
+                placement="bottomRight"
+              >
+                <div className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:opacity-80 transition-opacity">
+                  <Avatar src={user.avatar} icon={<UserOutlined />} size="small" style={{ border: '2px solid var(--border)' }} />
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{user.name}</span>
+                </div>
+              </Dropdown>
+            </>
+          ) : (
+            <Link href="/login" className="text-sm font-medium px-4 py-1.5 rounded-lg transition-all"
+              style={{ color: 'var(--primary)', background: 'rgba(184, 92, 56, 0.06)' }}>
+              登录
+            </Link>
+          )}
+        </div>
+      </header>
+
+      {/* Mobile Navigation */}
+      <header className="flex md:hidden items-center justify-between px-4 h-12 sticky top-0 z-50"
+        style={{
+          background: 'rgba(250, 248, 245, 0.9)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid var(--border-light)',
+        }}
+      >
+        <button onClick={() => setDrawerOpen(true)} style={{ color: 'var(--text-secondary)' }}>
+          <MenuOutlined style={{ fontSize: 18 }} />
+        </button>
+        <Link href="/" className="flex items-center gap-1.5">
+          <span className="text-base font-bold tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--primary)' }}>HRAS</span>
+          <span className="text-base font-bold tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--foreground)' }}>AI岛</span>
+        </Link>
+        {user ? (
+          <Link href="/profile/notifications" style={{ color: 'var(--text-secondary)' }}>
+            <BellOutlined style={{ fontSize: 18 }} />
+          </Link>
+        ) : (
+          <Link href="/login" className="text-xs font-medium px-3 py-1 rounded-lg" style={{ color: 'var(--primary)' }}>登录</Link>
+        )}
+      </header>
+
+      {/* Mobile Drawer */}
+      <Drawer
+        title={
+          <span className="flex items-center gap-2">
+            <span style={{ fontFamily: 'var(--font-serif)', color: 'var(--primary)', fontWeight: 700 }}>HRAS</span>
+            <span style={{ fontFamily: 'var(--font-serif)', fontWeight: 700 }}>AI岛</span>
+          </span>
+        }
+        placement="left"
+        onClose={() => setDrawerOpen(false)}
+        open={drawerOpen}
+        styles={{ body: { padding: '12px 0' } }}
+      >
+        {user && (
+          <div className="flex items-center gap-3 mb-4 pb-4 px-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
+            <Avatar src={user.avatar} icon={<UserOutlined />} />
+            <div>
+              <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{user.name}</div>
+              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{user.department}</div>
+            </div>
+          </div>
+        )}
+        <Menu
+          mode="inline"
+          selectedKeys={[pathname]}
+          items={[
+            ...navItems.map((item) => ({
+              key: item.key,
+              icon: item.icon,
+              label: <Link href={item.key} onClick={() => setDrawerOpen(false)}>{item.label}</Link>,
+            })),
+            { type: 'divider' as const },
+            ...(user
+              ? [
+                  ...userMenuItems.map((item) => ({
+                    key: item.key,
+                    label: <Link href={item.key} onClick={() => setDrawerOpen(false)}>{item.label}</Link>,
+                  })),
+                  { type: 'divider' as const } as const,
+                  { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: handleLogout },
+                ]
+              : [{ key: 'login', label: <Link href="/login" onClick={() => setDrawerOpen(false)}>登录</Link> }]
+            ),
+          ]}
+        />
+      </Drawer>
+
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="flex md:hidden items-center justify-around fixed bottom-0 left-0 right-0 z-50"
+        style={{
+          height: 56,
+          background: 'rgba(250, 248, 245, 0.92)',
+          backdropFilter: 'blur(12px)',
+          borderTop: '1px solid var(--border-light)',
+        }}
+      >
+        {navItems.slice(0, 5).map((item) => {
+          const active = pathname === item.key;
+          return (
+            <Link
+              key={item.key}
+              href={item.key}
+              className="flex flex-col items-center gap-0.5 text-xs transition-colors"
+              style={{ color: active ? 'var(--primary)' : 'var(--text-muted)' }}
+            >
+              <span className="text-base">{item.icon}</span>
+              <span className="font-medium">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </>
+  );
+}

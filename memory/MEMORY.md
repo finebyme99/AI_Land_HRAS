@@ -1,0 +1,4 @@
+- [主动调用 skill](feedback_proactive_skills.md) — 长线项目，复杂功能需主动调用 planning-with-files 等 skill
+- [功能优先级风格](feedback_priority_style.md) — 先核心后辅助，审核轻量做，多语言/通知后置
+- [PRD 飞书文档](reference_prd_feishu.md) — PRD 云文档 token: CGIrd9GuAovjBWxSP6qcu8XJnSc，用户通过评论标注变动
+- [AI Land 项目进度](project_ai_land_status.md) — 唤醒词"继续做AI Land"，读取此文件恢复上下文

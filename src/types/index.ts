@@ -14,7 +14,7 @@ export interface User {
 
 // ============ 案例 ============
 export type CaseCategory = '招聘' | '培训' | '绩效' | '薪酬' | '员工关系' | '组织发展';
-export type DifficultyLevel = '入门' | '进阶' | '高阶';
+export type DifficultyLevel = '入门' | '基础' | '进阶';
 export type ContentStatus = 'draft' | 'pending' | 'published' | 'rejected';
 
 export interface Case {
@@ -32,6 +32,7 @@ export interface Case {
   like_count: number;
   bookmark_count: number;
   comment_count: number;
+  event_id: string | null; // 关联的 AI 大赛
   created_at: string;
   updated_at: string;
 }
@@ -49,13 +50,15 @@ export interface AppRecommendation {
   official_url: string;
   rating: number;
   user_count: number;
+  like_count: number;
+  dislike_count: number;
   created_at: string;
 }
 
 // ============ 课程 ============
-export type CourseCategory = 'AI基础认知' | 'Prompt Engineering' | 'HR场景实操' | '工具教程' | '前沿趋势';
-export type CourseDifficulty = '入门' | '进阶' | '高阶';
-export type ContentType = 'video' | 'doc' | 'live';
+export type CourseCategory = 'AI工具基础' | 'HR场景实操' | 'AI工具进阶';
+export type CourseDifficulty = '入门' | '基础' | '进阶';
+export type ContentType = 'video' | 'doc';
 
 export interface Course {
   id: string;
@@ -90,8 +93,7 @@ export interface LearningRecord {
   completed_at: string | null;
 }
 
-// ============ 活动 ============
-export type EventType = 'competition' | 'workshop' | 'hackathon';
+// ============ 活动（AI 大赛） ============
 export type EventStatus = 'upcoming' | 'ongoing' | 'ended';
 
 export interface Event {
@@ -99,7 +101,6 @@ export interface Event {
   title: string;
   description: string;
   cover_image: string;
-  type: EventType;
   rules: string;
   prizes: string;
   start_time: string;
@@ -130,8 +131,8 @@ export interface EventSubmission {
   submitted_at: string;
 }
 
-// ============ 问答 ============
-export interface Question {
+// ============ 话题 ============
+export interface Topic {
   id: string;
   title: string;
   content: string;
@@ -145,7 +146,7 @@ export interface Question {
 
 export interface Answer {
   id: string;
-  question_id: string;
+  topic_id: string;
   content: string;
   author: Pick<User, 'id' | 'name' | 'avatar' | 'department'>;
   vote_count: number;
