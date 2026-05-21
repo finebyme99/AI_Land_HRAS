@@ -6,7 +6,7 @@ type: project
 
 **项目名**：HRAS AI岛（英文名：HRAS AI Land）
 **仓库**：https://github.com/finebyme99/AI_Land_HRAS
-**本地路径**：/Users/apple/Q/AI/26AI在集团落地/hr-ai-platform
+**本地路径**：/Users/apple/Q/AI/26AI在集团落地/AILand
 
 ## 技术栈（已确认）
 
@@ -48,31 +48,31 @@ type: project
 - [x] 我的贡献 — 用 auth user_id 查 Supabase
 - [x] 个人设置 — 用 useAuth() 显示用户信息
 
-## 前端视觉重设计（已完成 — Editorial Refined 风格）
+## 前觉风格（已完成 — Glassmorphism 玻璃拟态风格）
 
-已全面重写所有页面，采用 **Editorial Refined（精致编辑风格）**：
+已全面重写所有页面（21个文件），采用 **Glassmorphism（玻璃拟态）** 风格：
 
 **设计语言：**
-- 字体：Source Serif 4（衬线标题）+ DM Sans（正文无衬线），通过 Google Fonts 加载
-- 色系：暖色调 — 赤陶棕 `#b85c38` 主色 + 森林绿 `#2d5a3d` 辅色 + 米白背景 `#faf8f5`
-- 纹理：SVG 噪点纹理叠加（body::before），营造纸媒质感
-- 卡片：圆角 12px + 暖色阴影 + hover 上浮动效
-- 排版：杂志风格层次，衬线标题 + 无衬线正文
+- 字体：Outfit（英文/标题）+ Noto Sans SC（中文正文）
+- 配色：HRAS logo 品牌色 — 深蓝 `#1a3a8a` + 暖橙 `#F27F22`
+- 背景：暖米白 `#f5f0eb` + 4 个浮动 blob 动画（深蓝/橙/深橙/浅蓝）
+- 卡片：`rgba(255,255,255,0.45)` 背景 + `backdrop-filter: blur(20px)` + 白色边框
+- 渐变：`linear-gradient(135deg, #1a3a8a, #F27F22)` 用于按钮、logo、hero 文字
+- 交互：卡片 hover 上浮 + 顶部渐变条显现、导航胶囊悬停效果
+- 特效：shimmer 渐变文字动画、CursorBot 鼠标跟随小机器人
 
-**已重写文件（19个页面）：**
-- `globals.css` — 全新设计 token、字体、纹理、Ant Design 覆盖
-- `layout.tsx` — 简化，字体通过 globals.css @import 加载
-- `antd-registry.tsx` — 暖色主题 token
-- `Navigation.tsx` — 毛玻璃效果、暖色交互
-- `page.tsx`（首页）— Hero banner、统计卡片、编辑风格 section header
-- `login/page.tsx` — 居中卡片、自定义按钮
-- 5 个列表页（cases/topics/competitions/courses/apps）
-- 5 个详情页（cases/topics/competitions/courses/apps [id]）
-- 2 个创建页（cases/topics create）
-- 4 个个人中心页（profile/contributions/settings/bookmarks/notifications）
+**风格参考文件：** `glassmorphism-preview.html`
 
-**修复的遗留问题：**
-- `cases/create/page.tsx` 原引用已删除的 `mock-data`，已改为 Supabase 查询 + constants
+**已重写文件：**
+- `globals.css` — 全新设计 token、glass 工具类、blob 动画、字体
+- `layout.tsx` — Outfit/Noto Sans SC 字体 + blob 背景注入 + CursorBot
+- `antd-registry.tsx` — navy/orange 主题 token
+- `Navigation.tsx` — 毛玻璃导航栏 + gradient logo + 胶囊悬停
+- `page.tsx`（首页）— 居中 Hero + shimmer 文字 + glass 统计卡片
+- 5 个列表页 — glass 卡片 + hover 渐变顶栏
+- 5 个详情页 — glass 内容块 + navy/orange 交互色
+- 5 个个人中心页 + login + 2 个创建页
+- `CursorBot.tsx` — 鼠标跟随小机器人组件
 
 ## 飞书 OAuth 登录（已完成）
 
