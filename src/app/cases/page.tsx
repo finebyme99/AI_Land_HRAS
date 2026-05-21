@@ -9,6 +9,7 @@ import {
   BookOutlined,
   AppstoreOutlined,
   UnorderedListOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
