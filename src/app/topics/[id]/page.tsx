@@ -8,12 +8,15 @@ import {
   CommentOutlined,
   ArrowLeftOutlined,
   UserOutlined,
+  StarFilled,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import type { Topic, Answer } from '@/types';
 
 export default function TopicDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { isAdmin } = useAuth();
   const { message } = App.useApp();
   const [topic, setTopic] = useState<Topic | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
@@ -78,6 +81,14 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
+  const handleToggleFeatured = async () => {
+    if (!topic) return;
+    const newVal = !topic.is_featured;
+    setTopic({ ...topic, is_featured: newVal });
+    await getSupabase().from('topics').update({ is_featured: newVal }).eq('id', id);
+    message.success(newVal ? '已设为精选' : '已取消精选');
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -109,6 +120,14 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
           ))}
           {topic.has_accepted_answer && (
             <Tag color="green" icon={<CheckCircleOutlined />}>已采纳</Tag>
+          )}
+          {topic.is_featured && <Tag color="orange">精选</Tag>}
+          {isAdmin && (
+            <button onClick={handleToggleFeatured}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{ color: topic.is_featured ? '#F27F22' : 'var(--text-muted)', background: topic.is_featured ? 'rgba(242, 127, 34, 0.08)' : 'rgba(0,0,0,0.04)' }}>
+              <StarFilled /> {topic.is_featured ? '取消精选' : '标精选'}
+            </button>
           )}
         </div>
 

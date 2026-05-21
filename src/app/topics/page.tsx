@@ -10,11 +10,13 @@ import {
   CheckCircleFilled,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import type { Topic } from '@/types';
 
 type SortType = 'latest' | 'hot' | 'unanswered' | 'accepted';
 
 export default function TopicsPage() {
+  const { isAdmin } = useAuth();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -144,6 +146,7 @@ export default function TopicsPage() {
                       )}
                       <h3 className="text-base font-semibold group-hover:opacity-80 transition-opacity">
                         {topic.title}
+                        {topic.is_featured && <Tag color="orange" className="ml-1.5 text-xs">精选</Tag>}
                       </h3>
                     </div>
                     <div className="flex items-center gap-1.5 mb-2 flex-wrap">

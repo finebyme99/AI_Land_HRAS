@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Tag, Select, Input, Spin } from 'antd';
-import { ReadOutlined, UserOutlined, StarFilled } from '@ant-design/icons';
+import { ReadOutlined, UserOutlined, StarFilled, PlusOutlined } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import { COURSE_DIFFICULTY_COLORS, COURSE_CATEGORY_OPTIONS, DIFFICULTY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/constants';
 import type { Course, CourseCategory, CourseDifficulty, ContentType } from '@/types';
 
 export default function CoursesPage() {
+  const { isAdmin } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -60,6 +62,14 @@ export default function CoursesPage() {
         </h1>
         <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-muted)' }}>系统化学习 AI 知识与技能</p>
       </div>
+      {isAdmin && (
+        <Link href="/courses/create">
+          <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+            style={{ background: 'var(--primary)' }}>
+            <PlusOutlined /> 发布课程
+          </button>
+        </Link>
+      )}
 
       {/* Filters */}
       <div className="glass rounded-xl p-4 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
@@ -119,6 +129,7 @@ export default function CoursesPage() {
                   </Tag>
                   <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
                   <Tag>{course.category}</Tag>
+                  {course.is_featured && <Tag color="orange">精选</Tag>}
                 </div>
                 <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity">
                   {course.title}

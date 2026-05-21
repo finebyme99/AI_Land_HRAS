@@ -11,10 +11,12 @@ import {
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import { CATEGORY_COLORS, CASE_CATEGORIES, CASE_CATEGORY_OPTIONS } from '@/lib/constants';
 import type { Case, CaseCategory } from '@/types';
 
 export default function CasesPage() {
+  const { isAdmin } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -65,6 +67,14 @@ export default function CasesPage() {
           </h1>
           <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-muted)' }}>来自 HR 实践者的 AI 应用案例</p>
         </div>
+        {isAdmin && (
+          <Link href="/cases/create">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+              style={{ background: 'var(--primary)' }}>
+              <PlusOutlined /> 提交案例
+            </button>
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -110,6 +120,7 @@ export default function CasesPage() {
                 <div className="flex items-start gap-2 mb-3">
                   <Tag color={CATEGORY_COLORS[c.category]}>{c.category}</Tag>
                   {c.event_id && <Tag color="red">大赛作品</Tag>}
+                  {c.is_featured && <Tag color="orange">精选</Tag>}
                 </div>
                 <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity">
                   {c.title}
@@ -141,6 +152,7 @@ export default function CasesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <Tag color={CATEGORY_COLORS[c.category]}>{c.category}</Tag>
+                      {c.is_featured && <Tag color="orange">精选</Tag>}
                     </div>
                     <h3 className="text-sm font-semibold truncate group-hover:opacity-80 transition-opacity">{c.title}</h3>
                     <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>{c.summary}</p>

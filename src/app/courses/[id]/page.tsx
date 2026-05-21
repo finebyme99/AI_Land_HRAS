@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Tag, Spin } from 'antd';
+import { Tag, Spin, App } from 'antd';
 import {
   ReadOutlined,
   ArrowLeftOutlined,
@@ -13,11 +13,14 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import { COURSE_DIFFICULTY_COLORS } from '@/lib/constants';
 import type { Course } from '@/types';
 
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { isAdmin } = useAuth();
+  const { message } = App.useApp();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +43,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     }
     fetchCourse();
   }, [id]);
+
+  const handleToggleFeatured = async () => {
+    if (!course) return;
+    const newVal = !course.is_featured;
+    setCourse({ ...course, is_featured: newVal });
+    await getSupabase().from('courses').update({ is_featured: newVal }).eq('id', id);
+    message.success(newVal ? '已设为精选' : '已取消精选');
+  };
 
   if (loading) {
     return (
@@ -74,6 +85,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </Tag>
           <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
           <Tag>{course.category}</Tag>
+          {course.is_featured && <Tag color="orange">精选</Tag>}
+          {isAdmin && (
+            <button onClick={handleToggleFeatured}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{ color: course.is_featured ? '#F27F22' : 'var(--text-muted)', background: course.is_featured ? 'rgba(242, 127, 34, 0.08)' : 'rgba(0,0,0,0.04)' }}>
+              <StarFilled /> {course.is_featured ? '取消精选' : '标精选'}
+            </button>
+          )}
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight">

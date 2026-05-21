@@ -59,6 +59,7 @@ export default function Navigation() {
         <div className="max-w-[1100px] mx-auto px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 group">
+            <img src="/hras-logo.png" alt="HRAS" className="h-8 w-auto" />
             <span className="text-xl font-extrabold tracking-tight">
               <span className="gradient-text">HRAS</span>
               <span style={{ color: 'var(--foreground)' }}> AI岛</span>
@@ -148,6 +149,7 @@ export default function Navigation() {
           <MenuOutlined style={{ fontSize: 18 }} />
         </button>
         <Link href="/" className="flex items-center gap-1.5">
+          <img src="/hras-logo.png" alt="HRAS" className="h-6 w-auto" />
           <span className="text-base font-extrabold tracking-tight">
             <span className="gradient-text">HRAS</span>
             <span style={{ color: 'var(--foreground)' }}> AI岛</span>
@@ -165,7 +167,8 @@ export default function Navigation() {
       {/* Mobile Drawer */}
       <Drawer
         title={
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-2">
+            <img src="/hras-logo.png" alt="HRAS" className="h-6 w-auto" />
             <span style={{ fontWeight: 700 }}>
               <span className="gradient-text">HRAS</span>
               <span style={{ color: 'var(--foreground)' }}> AI岛</span>

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: user } = await getSupabaseAdmin()
       .from('users')
-      .select('*')
+      .select('id, feishu_open_id, name, avatar, department, role, bio, points, level, created_at')
       .eq('id', userId.value)
       .single();
 

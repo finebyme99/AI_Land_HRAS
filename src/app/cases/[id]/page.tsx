@@ -6,6 +6,7 @@ import { Tag, Avatar, Input, Spin, App } from 'antd';
 import {
   LikeOutlined,
   StarOutlined,
+  StarFilled,
   ShareAltOutlined,
   EyeOutlined,
   ArrowLeftOutlined,
@@ -14,11 +15,13 @@ import {
   PaperClipOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import { CATEGORY_COLORS } from '@/lib/constants';
 import type { Case } from '@/types';
 
 export default function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { isAdmin } = useAuth();
   const { message } = App.useApp();
   const [caseItem, setCaseItem] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,6 +85,14 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
     message.success('链接已复制，可以分享到飞书');
   };
 
+  const handleToggleFeatured = async () => {
+    if (!caseItem) return;
+    const newVal = !caseItem.is_featured;
+    setCaseItem({ ...caseItem, is_featured: newVal });
+    await getSupabase().from('cases').update({ is_featured: newVal }).eq('id', id);
+    message.success(newVal ? '已设为精选' : '已取消精选');
+  };
+
   const handleComment = async () => {
     if (!commentText.trim()) return;
     try {
@@ -143,6 +154,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
             <Tag key={tool}>{tool}</Tag>
           ))}
           {caseItem.event_id && <Tag color="red">大赛作品</Tag>}
+          {caseItem.is_featured && <Tag color="orange">精选</Tag>}
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight">
@@ -203,6 +215,13 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
             style={{ color: 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'var(--surface)' }}>
             <ShareAltOutlined /> 分享
           </button>
+          {isAdmin && (
+            <button onClick={handleToggleFeatured}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+              style={{ color: caseItem.is_featured ? '#F27F22' : 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: caseItem.is_featured ? 'rgba(242, 127, 34, 0.08)' : 'var(--surface)' }}>
+              <StarFilled /> {caseItem.is_featured ? '取消精选' : '标为精选'}
+            </button>
+          )}
         </div>
       </article>
 

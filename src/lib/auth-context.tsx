@@ -6,6 +6,7 @@ import type { User } from '@/types';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isAdmin: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -13,6 +14,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  isAdmin: false,
   signOut: async () => {},
   refreshUser: async () => {},
 });
@@ -44,8 +46,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetchUser();
   };
 
+  const isAdmin = user?.role === 'admin' || user?.role === 'moderator';
+
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

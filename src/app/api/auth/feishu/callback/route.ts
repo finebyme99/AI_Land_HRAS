@@ -52,7 +52,20 @@ export async function GET(request: NextRequest) {
       userId = newUser.id;
     }
 
-    // 4. 设置 cookie-based session
+    // 4. 自动提升：如果没有 admin，第一个登录用户自动成为 admin
+    const { count } = await getSupabaseAdmin()
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('role', 'admin');
+
+    if ((count || 0) === 0) {
+      await getSupabaseAdmin()
+        .from('users')
+        .update({ role: 'admin' })
+        .eq('id', userId);
+    }
+
+    // 5. 设置 cookie-based session
     const response = NextResponse.redirect(new URL('/', request.url));
 
     response.cookies.set('feishu_user_id', userId, {
@@ -62,10 +75,19 @@ export async function GET(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 7, // 7 天
     });
 
+    // 获取用户完整信息（含 role）
+    const { data: fullUser } = await getSupabaseAdmin()
+      .from('users')
+      .select('id, name, avatar, role, department')
+      .eq('id', userId)
+      .single();
+
     response.cookies.set('feishu_user_info', JSON.stringify({
       id: userId,
       name: feishuUser.name,
       avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
+      role: fullUser?.role || 'user',
+      department: fullUser?.department || '',
     }), {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',

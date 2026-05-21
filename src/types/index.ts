@@ -43,6 +43,7 @@ export interface Case {
   bookmark_count: number;
   comment_count: number;
   event_id: string | null;
+  is_featured?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -62,6 +63,7 @@ export interface AppRecommendation {
   user_count: number;
   like_count: number;
   dislike_count: number;
+  is_featured?: boolean;
   created_at: string;
 }
 
@@ -83,6 +85,7 @@ export interface Course {
   chapters: CourseChapter[];
   student_count: number;
   rating: number;
+  is_featured?: boolean;
   created_at: string;
 }
 
@@ -151,6 +154,7 @@ export interface Topic {
   view_count: number;
   answer_count: number;
   has_accepted_answer: boolean;
+  is_featured?: boolean;
   created_at: string;
 }
 

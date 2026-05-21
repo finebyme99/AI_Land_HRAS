@@ -15,6 +15,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import { CATEGORY_COLORS, COURSE_DIFFICULTY_COLORS } from '@/lib/constants';
 import type { Case, Topic, Event, Course } from '@/types';
 
@@ -27,6 +28,7 @@ function CaseCard({ data }: { data: Case }) {
           style={{ background: 'var(--gradient-primary)' }} />
         <div className="flex items-start gap-2 mb-3">
           <Tag color={CATEGORY_COLORS[data.category]}>{data.category}</Tag>
+          {data.is_featured && <Tag color="orange">精选</Tag>}
         </div>
         <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity">
           {data.title}
@@ -51,7 +53,10 @@ function TopicCard({ topic }: { topic: Topic }) {
         style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-medium mb-1.5 truncate group-hover:opacity-80 transition-opacity">{topic.title}</h4>
+            <h4 className="text-sm font-medium mb-1.5 truncate group-hover:opacity-80 transition-opacity">
+              {topic.title}
+              {topic.is_featured && <Tag color="orange" className="ml-1.5 text-xs">精选</Tag>}
+            </h4>
             <div className="flex items-center gap-1.5 flex-wrap">
               {topic.tags.slice(0, 3).map((tag) => (
                 <Tag key={tag} className="text-xs">{tag}</Tag>
@@ -84,6 +89,7 @@ function SectionHeader({ icon, title, href, iconBg, iconColor, linkText = '查�
 }
 
 export default function Home() {
+  const { isAdmin } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -164,6 +170,13 @@ export default function Home() {
               <PlusOutlined /> 发起话题
             </button>
           </Link>
+          {isAdmin && (
+            <Link href="/cases?create=1">
+              <button className="btn-gradient">
+                <PlusOutlined /> 提交案例
+              </button>
+            </Link>
+          )}
           <Link href="/cases">
             <button className="pill-btn">案例库</button>
           </Link>
@@ -257,6 +270,7 @@ export default function Home() {
                       {course.content_type === 'video' ? '视频' : '文档'}
                     </Tag>
                     <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
+                    {course.is_featured && <Tag color="orange">精选</Tag>}
                   </div>
                   <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity">
                     {course.title}
