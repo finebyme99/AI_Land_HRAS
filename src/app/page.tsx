@@ -16,7 +16,7 @@ import {
   AppstoreOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
-import { CATEGORY_COLORS, DIFFICULTY_COLORS } from '@/lib/constants';
+import { CATEGORY_COLORS, COURSE_DIFFICULTY_COLORS } from '@/lib/constants';
 import type { Case, Topic, Event, Course } from '@/types';
 
 function CaseCard({ data }: { data: Case }) {
@@ -26,7 +26,6 @@ function CaseCard({ data }: { data: Case }) {
         style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
         <div className="flex items-start gap-2 mb-3">
           <Tag color={CATEGORY_COLORS[data.category]}>{data.category}</Tag>
-          <Tag color={DIFFICULTY_COLORS[data.difficulty]}>{data.difficulty}</Tag>
         </div>
         <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-serif)' }}>
           {data.title}
@@ -95,7 +94,7 @@ export default function Home() {
       try {
         const [casesRes, topicsRes, eventsRes, coursesRes, caseCount, topicCount, userCount, courseCount] = await Promise.all([
           getSupabase().from('cases').select('*, author:users!author_id(id, name, avatar, department)').eq('status', 'published').order('view_count', { ascending: false }).limit(6),
-          getSupabase().from('topics').select('*, author:users!author_id(id, name, avatar, department)').order('created_at', { ascending: false }).limit(4),
+          getSupabase().from('topics').select('*, author:users!author_id(id, name, avatar, department)').order('created_at', { ascending: false }).limit(6),
           getSupabase().from('events').select('*').in('status', ['ongoing', 'upcoming']).order('start_time', { ascending: false }),
           getSupabase().from('courses').select('*, chapters:course_chapters(*)').order('created_at', { ascending: false }).limit(6),
           getSupabase().from('cases').select('id', { count: 'exact', head: true }).eq('status', 'published'),
@@ -158,25 +157,43 @@ export default function Home() {
 
           <div className="relative z-10">
             <p className="text-xs font-medium tracking-widest uppercase mb-3" style={{ color: 'var(--primary-light)', letterSpacing: '0.15em' }}>
-              HRAS AI Community
+              HRAS AI Land
             </p>
             <h1 className="text-2xl sm:text-4xl font-bold text-white mb-3 leading-tight" style={{ fontFamily: 'var(--font-serif)' }}>
-              HR 圈的 AI 社区
+              HRAS 全员的 AI 园地
             </h1>
             <p className="text-sm sm:text-base mb-6 max-w-lg" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              案例沉淀、知识学习、活动运营、话题互助 — 连接每一位 HR 的 AI 实践
+              案例沉淀、知识学习、活动运营、话题互助 — 让 AI 在 HR 圈真正用起来
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2.5">
               <Link href="/cases">
-                <button className="px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+                <button className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
                   style={{ background: 'var(--primary)' }}>
-                  浏览案例
+                  案例库
                 </button>
               </Link>
-              <Link href="/topics/create">
-                <button className="px-5 py-2.5 rounded-lg text-sm font-medium transition-all"
+              <Link href="/competitions">
+                <button className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
                   style={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)' }}>
-                  发起话题
+                  AI 大赛
+                </button>
+              </Link>
+              <Link href="/courses">
+                <button className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                  style={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)' }}>
+                  公开课
+                </button>
+              </Link>
+              <Link href="/topics">
+                <button className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                  style={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)' }}>
+                  问答话题
+                </button>
+              </Link>
+              <Link href="/apps">
+                <button className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                  style={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)' }}>
+                  应用推荐
                 </button>
               </Link>
             </div>
@@ -204,28 +221,22 @@ export default function Home() {
       {/* Quick Actions */}
       <section className="mb-10">
         <div className="flex gap-3 overflow-x-auto pb-2">
-          <Link href="/cases/create">
+          <Link href="/topics/create">
             <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white whitespace-nowrap transition-all hover:opacity-90"
               style={{ background: 'var(--primary)' }}>
-              <PlusOutlined /> 我要投稿
+              <PlusOutlined /> 发起话题
             </button>
           </Link>
-          <Link href="/topics/create">
+          <Link href="/cases">
             <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all hover:-translate-y-0.5"
               style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
-              <PlusOutlined /> 发起话题
+              <BookOutlined /> 案例库
             </button>
           </Link>
           <Link href="/competitions">
             <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all hover:-translate-y-0.5"
               style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
-              <TrophyOutlined /> 查看活动
-            </button>
-          </Link>
-          <Link href="/apps">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all hover:-translate-y-0.5"
-              style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
-              <AppstoreOutlined /> AI 应用
+              <TrophyOutlined /> AI 大赛
             </button>
           </Link>
         </div>
@@ -293,7 +304,7 @@ export default function Home() {
                     <Tag color={course.content_type === 'video' ? 'red' : 'blue'}>
                       {course.content_type === 'video' ? '视频' : '文档'}
                     </Tag>
-                    <Tag color={DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
+                    <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
                   </div>
                   <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-serif)' }}>
                     {course.title}
@@ -318,13 +329,7 @@ export default function Home() {
             <BookOutlined />
           </div>
           <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: 'var(--font-serif)' }}>社区正在建设中</h3>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>成为第一个分享 AI 实践的 HR</p>
-          <Link href="/cases/create">
-            <button className="px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
-              style={{ background: 'var(--primary)' }}>
-              <PlusOutlined /> 我要投稿
-            </button>
-          </Link>
+          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>内容即将上线，敬请期待</p>
         </div>
       )}
     </div>

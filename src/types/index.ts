@@ -13,8 +13,18 @@ export interface User {
 }
 
 // ============ 案例 ============
-export type CaseCategory = '招聘' | '培训' | '绩效' | '薪酬' | '员工关系' | '组织发展';
-export type DifficultyLevel = '入门' | '基础' | '进阶';
+export type CaseCategory =
+  | 'HRAS_人力数据看板'
+  | 'HSSC_招聘'
+  | 'HCOE/HSSC_薪酬绩效'
+  | 'HCOE_培训'
+  | 'HCOE/HSSC_组织与人才发展'
+  | 'HCOE_文化氛围'
+  | 'HSSC_核算与报账'
+  | 'HSSC_基础人事支持'
+  | 'ASSC_行政管理'
+  | '其他';
+
 export type ContentStatus = 'draft' | 'pending' | 'published' | 'rejected';
 
 export interface Case {
@@ -25,14 +35,14 @@ export interface Case {
   cover_image: string;
   category: CaseCategory;
   ai_tools: string[];
-  difficulty: DifficultyLevel;
+  attachments: string[];
   author: Pick<User, 'id' | 'name' | 'avatar' | 'department'>;
   status: ContentStatus;
   view_count: number;
   like_count: number;
   bookmark_count: number;
   comment_count: number;
-  event_id: string | null; // 关联的 AI 大赛
+  event_id: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useServerInsertedHTML } from 'next/navigation';
 import { createCache, extractStyle, StyleProvider } from '@ant-design/cssinjs';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 
 const theme = {
@@ -70,7 +70,7 @@ export default function AntdProvider({ children }: { children: React.ReactNode }
   return (
     <StyleProvider cache={cache}>
       <ConfigProvider locale={zhCN} theme={theme}>
-        {children}
+        <App>{children}</App>
       </ConfigProvider>
     </StyleProvider>
   );

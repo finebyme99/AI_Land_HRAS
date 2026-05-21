@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Tag, Select, Input, Spin } from 'antd';
 import { ReadOutlined, UserOutlined, StarFilled } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
-import { DIFFICULTY_COLORS, COURSE_CATEGORY_OPTIONS, DIFFICULTY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/constants';
+import { COURSE_DIFFICULTY_COLORS, COURSE_CATEGORY_OPTIONS, DIFFICULTY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/constants';
 import type { Course, CourseCategory, CourseDifficulty, ContentType } from '@/types';
 
 export default function CoursesPage() {
@@ -116,7 +116,7 @@ export default function CoursesPage() {
                   <Tag color={course.content_type === 'video' ? 'red' : 'blue'}>
                     {course.content_type === 'video' ? '视频' : '文档'}
                   </Tag>
-                  <Tag color={DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
+                  <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
                   <Tag>{course.category}</Tag>
                 </div>
                 <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-serif)' }}>

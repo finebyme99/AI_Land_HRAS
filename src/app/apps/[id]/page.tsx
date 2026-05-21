@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Tag, Rate, Spin, message } from 'antd';
+import { Tag, Rate, Spin, App } from 'antd';
 import {
   ArrowLeftOutlined,
   LikeOutlined,
@@ -17,6 +17,7 @@ import type { AppRecommendation } from '@/types';
 
 export default function AppDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { message } = App.useApp();
   const [app, setApp] = useState<AppRecommendation | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,6 +40,27 @@ export default function AppDetailPage({ params }: { params: Promise<{ id: string
     }
     fetchApp();
   }, [id]);
+
+  const handleLike = async () => {
+    if (!app) return;
+    const newCount = app.like_count + 1;
+    setApp({ ...app, like_count: newCount });
+    await getSupabase().from('apps').update({ like_count: newCount }).eq('id', id);
+    message.success('已点赞');
+  };
+
+  const handleDislike = async () => {
+    if (!app) return;
+    const newCount = app.dislike_count + 1;
+    setApp({ ...app, dislike_count: newCount });
+    await getSupabase().from('apps').update({ dislike_count: newCount }).eq('id', id);
+    message.success('已点踩');
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    message.success('链接已复制');
+  };
 
   if (loading) {
     return (
@@ -101,19 +123,19 @@ export default function AppDetailPage({ params }: { params: Promise<{ id: string
             style={{ background: 'var(--primary)' }}>
             <LinkOutlined /> 访问官网
           </a>
-          <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}
-            onClick={() => message.success('已点赞')}>
+          <button onClick={handleLike}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
             <LikeOutlined /> 点赞 ({app.like_count})
           </button>
-          <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}
-            onClick={() => message.success('已点踩')}>
+          <button onClick={handleDislike}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
             <DislikeOutlined /> 点踩 ({app.dislike_count})
           </button>
-          <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}
-            onClick={() => message.success('已复制链接')}>
+          <button onClick={handleShare}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
             <ShareAltOutlined /> 分享
           </button>
         </div>

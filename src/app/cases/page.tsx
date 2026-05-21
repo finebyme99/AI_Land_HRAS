@@ -9,11 +9,10 @@ import {
   BookOutlined,
   AppstoreOutlined,
   UnorderedListOutlined,
-  PlusOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
-import { CATEGORY_COLORS, DIFFICULTY_COLORS, CASE_CATEGORIES, DIFFICULTY_OPTIONS } from '@/lib/constants';
-import type { Case, CaseCategory, DifficultyLevel } from '@/types';
+import { CATEGORY_COLORS, CASE_CATEGORIES, CASE_CATEGORY_OPTIONS } from '@/lib/constants';
+import type { Case, CaseCategory } from '@/types';
 
 export default function CasesPage() {
   const [cases, setCases] = useState<Case[]>([]);
@@ -21,7 +20,6 @@ export default function CasesPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState<CaseCategory | ''>('');
-  const [difficulty, setDifficulty] = useState<DifficultyLevel | ''>('');
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
 
   useEffect(() => {
@@ -39,7 +37,6 @@ export default function CasesPage() {
         .order('created_at', { ascending: false });
 
       if (category) query = query.eq('category', category);
-      if (difficulty) query = query.eq('difficulty', difficulty);
       if (debouncedSearch) query = query.or(`title.ilike.%${debouncedSearch}%,summary.ilike.%${debouncedSearch}%`);
 
       const { data, error } = await query;
@@ -51,7 +48,7 @@ export default function CasesPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, difficulty, debouncedSearch]);
+  }, [category, debouncedSearch]);
 
   useEffect(() => { fetchCases(); }, [fetchCases]);
 
@@ -64,16 +61,10 @@ export default function CasesPage() {
             <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(184, 92, 56, 0.08)', color: 'var(--primary)' }}>
               <BookOutlined />
             </span>
-            AI 案例库
+            案例库
           </h1>
           <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-muted)' }}>来自 HR 实践者的 AI 应用案例</p>
         </div>
-        <Link href="/cases/create">
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
-            style={{ background: 'var(--primary)' }}>
-            <PlusOutlined /> 我要投稿
-          </button>
-        </Link>
       </div>
 
       {/* Filters */}
@@ -88,19 +79,11 @@ export default function CasesPage() {
           />
           <Select
             placeholder="HR 模块"
-            className="w-full sm:w-32"
+            className="w-full sm:w-48"
             value={category || undefined}
             onChange={(v) => setCategory(v || '')}
             allowClear
-            options={CASE_CATEGORIES.map((c) => ({ label: c, value: c }))}
-          />
-          <Select
-            placeholder="难度"
-            className="w-full sm:w-28"
-            value={difficulty || undefined}
-            onChange={(v) => setDifficulty(v || '')}
-            allowClear
-            options={DIFFICULTY_OPTIONS}
+            options={CASE_CATEGORY_OPTIONS}
           />
           <Radio.Group value={viewMode} onChange={(e) => setViewMode(e.target.value)} size="small">
             <Radio.Button value="card"><AppstoreOutlined /></Radio.Button>
@@ -125,7 +108,6 @@ export default function CasesPage() {
                 style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
                 <div className="flex items-start gap-2 mb-3">
                   <Tag color={CATEGORY_COLORS[c.category]}>{c.category}</Tag>
-                  <Tag color={DIFFICULTY_COLORS[c.difficulty]}>{c.difficulty}</Tag>
                   {c.event_id && <Tag color="red">大赛作品</Tag>}
                 </div>
                 <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-serif)' }}>
@@ -158,7 +140,6 @@ export default function CasesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <Tag color={CATEGORY_COLORS[c.category]}>{c.category}</Tag>
-                      <Tag color={DIFFICULTY_COLORS[c.difficulty]}>{c.difficulty}</Tag>
                     </div>
                     <h3 className="text-sm font-semibold truncate group-hover:opacity-80 transition-opacity">{c.title}</h3>
                     <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>{c.summary}</p>

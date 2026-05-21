@@ -65,10 +65,12 @@ export default function AppsPage() {
           </h1>
           <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-muted)' }}>发现好用的 AI 工具</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-          style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
-          <PlusOutlined /> 分享应用
-        </button>
+        <Link href="/apps/create">
+          <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
+            <PlusOutlined /> 分享应用
+          </button>
+        </Link>
       </div>
 
       {/* Filters */}

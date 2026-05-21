@@ -93,7 +93,7 @@ export default function CompetitionsPage() {
                           {status !== 'ended' && (
                             <button className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 ml-4 flex-shrink-0"
                               style={{ background: 'var(--primary)' }}>
-                              立即参加
+                              查看详情
                             </button>
                           )}
                         </div>

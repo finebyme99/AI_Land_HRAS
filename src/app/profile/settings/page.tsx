@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { Form, Input, Avatar, Tag, message, Spin } from 'antd';
+import { Form, Input, Avatar, Tag, App, Spin } from 'antd';
 import { ArrowLeftOutlined, UserOutlined, SettingOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
+import { getSupabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
   const { user, loading } = useAuth();
+  const { message } = App.useApp();
   const [form] = Form.useForm();
 
   if (loading) {
@@ -26,6 +28,19 @@ export default function SettingsPage() {
       </div>
     );
   }
+
+  const handleSave = async (values: Record<string, unknown>) => {
+    try {
+      const { error } = await getSupabase()
+        .from('users')
+        .update({ bio: values.bio as string })
+        .eq('id', user.id);
+      if (error) throw error;
+      message.success('设置已保存');
+    } catch {
+      message.error('保存失败，请重试');
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -53,7 +68,7 @@ export default function SettingsPage() {
         <Form
           form={form}
           layout="vertical"
-          onFinish={() => message.success('设置已保存')}
+          onFinish={handleSave}
           initialValues={{
             name: user.name,
             department: user.department,
@@ -74,7 +89,8 @@ export default function SettingsPage() {
 
           <Form.Item>
             <button className="px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
-              style={{ background: 'var(--primary)' }}>
+              style={{ background: 'var(--primary)' }}
+              type="submit">
               保存设置
             </button>
           </Form.Item>

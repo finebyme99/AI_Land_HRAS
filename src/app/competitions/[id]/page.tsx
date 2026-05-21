@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Tag, Spin, message } from 'antd';
+import { Tag, Spin, App } from 'antd';
 import {
   TrophyOutlined,
   ArrowLeftOutlined,
@@ -16,8 +16,10 @@ import type { Event } from '@/types';
 
 export default function CompetitionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { message } = App.useApp();
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
+  const [registering, setRegistering] = useState(false);
 
   useEffect(() => {
     async function fetchEvent() {
@@ -38,6 +40,23 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     }
     fetchEvent();
   }, [id]);
+
+  const handleRegister = async () => {
+    if (!event) return;
+    setRegistering(true);
+    try {
+      const { error } = await getSupabase().from('event_registrations').insert({ event_id: id });
+      if (error) throw error;
+      const newCount = event.registration_count + 1;
+      await getSupabase().from('events').update({ registration_count: newCount }).eq('id', id);
+      setEvent({ ...event, registration_count: newCount });
+      message.success('报名成功！');
+    } catch {
+      message.error('报名失败，可能已报名或名额已满');
+    } finally {
+      setRegistering(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -106,11 +125,12 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
 
         {(event.status === 'ongoing' || event.status === 'upcoming') && (
           <button
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-60"
             style={{ background: 'var(--primary)' }}
-            onClick={() => message.success('报名成功！')}
+            onClick={handleRegister}
+            disabled={registering}
           >
-            <TrophyOutlined /> 立即报名
+            <TrophyOutlined /> {registering ? '报名中...' : '立即报名'}
           </button>
         )}
       </div>

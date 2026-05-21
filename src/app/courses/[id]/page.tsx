@@ -13,7 +13,7 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
-import { DIFFICULTY_COLORS } from '@/lib/constants';
+import { COURSE_DIFFICULTY_COLORS } from '@/lib/constants';
 import type { Course } from '@/types';
 
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -72,7 +72,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           <Tag color={course.content_type === 'video' ? 'red' : 'blue'}>
             {course.content_type === 'video' ? '视频' : '文档'}
           </Tag>
-          <Tag color={DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
+          <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
           <Tag>{course.category}</Tag>
         </div>
 
@@ -100,14 +100,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         </div>
 
         <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
-          style={{ background: 'var(--primary)' }}>
+          style={{ background: 'var(--primary)' }}
+          onClick={() => document.getElementById('course-chapters')?.scrollIntoView({ behavior: 'smooth' })}>
           <PlayCircleOutlined /> 开始学习
         </button>
       </div>
 
       {/* Chapters */}
       {chapters.length > 0 && (
-        <div className="rounded-2xl p-6 sm:p-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+        <div id="course-chapters" className="rounded-2xl p-6 sm:p-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
           <h2 className="text-lg font-semibold mb-5" style={{ fontFamily: 'var(--font-serif)' }}>
             课程目录 ({chapters.length} 章)
           </h2>

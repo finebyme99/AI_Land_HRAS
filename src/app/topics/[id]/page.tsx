@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Tag, Avatar, Input, Spin, message } from 'antd';
+import { Tag, Avatar, Input, Spin, App } from 'antd';
 import {
   CheckCircleOutlined,
   CommentOutlined,
@@ -14,6 +14,7 @@ import type { Topic, Answer } from '@/types';
 
 export default function TopicDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { message } = App.useApp();
   const [topic, setTopic] = useState<Topic | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +39,7 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
         ]);
         if (topicRes.data) setTopic(topicRes.data as Topic);
         if (answersRes.data) setAnswers(answersRes.data as Answer[]);
-        getSupabase().rpc('increment_view_count', { table_name: 'topics', row_id: id });
+        getSupabase().rpc('increment_view_count', { table_name: 'topics', row_id: id }).catch(console.error);
       } catch (err) {
         console.error('Failed to fetch topic:', err);
       } finally {
@@ -47,6 +48,35 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
     }
     fetchData();
   }, [id]);
+
+  const handleSubmitAnswer = async () => {
+    if (!answerContent.trim()) return;
+    try {
+      const { error } = await getSupabase().from('answers').insert({
+        topic_id: id,
+        content: answerContent.trim(),
+      });
+      if (error) throw error;
+      setAnswerContent('');
+      message.success('回答已提交');
+      // Refresh answers
+      const { data } = await getSupabase()
+        .from('answers')
+        .select('*, author:users!author_id(id, name, avatar, department)')
+        .eq('topic_id', id)
+        .order('is_accepted', { ascending: false })
+        .order('vote_count', { ascending: false });
+      setAnswers((data ?? []) as Answer[]);
+      // Update answer count
+      if (topic) {
+        const newCount = topic.answer_count + 1;
+        setTopic({ ...topic, answer_count: newCount });
+        await getSupabase().from('topics').update({ answer_count: newCount }).eq('id', id);
+      }
+    } catch {
+      message.error('提交失败，请重试');
+    }
+  };
 
   if (loading) {
     return (
@@ -138,15 +168,16 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
           placeholder="分享你的经验和见解..."
           value={answerContent}
           onChange={(e) => setAnswerContent(e.target.value)}
-          className="mb-3"
         />
-        <button
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
-          style={{ background: 'var(--primary)' }}
-          onClick={() => { setAnswerContent(''); message.success('回答已提交'); }}
-        >
-          <CommentOutlined /> 提交回答
-        </button>
+        <div className="flex justify-end mt-3">
+          <button
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+            style={{ background: 'var(--primary)' }}
+            onClick={handleSubmitAnswer}
+          >
+            <CommentOutlined /> 提交回答
+          </button>
+        </div>
       </div>
     </div>
   );
