@@ -69,7 +69,7 @@ export default function TopicsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-3" style={{ fontFamily: 'var(--font-serif)' }}>
+          <h1 className="text-2xl font-semibold flex items-center gap-3">
             <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(45, 90, 61, 0.08)', color: 'var(--accent)' }}>
               <CommentOutlined />
             </span>
@@ -86,7 +86,7 @@ export default function TopicsPage() {
       </div>
 
       {/* Filters */}
-      <div className="rounded-xl p-4 mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border-light)' }}>
+      <div className="glass rounded-xl p-4 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex flex-wrap gap-3 items-center">
           <Input.Search
             placeholder="搜索话题..."
@@ -122,7 +122,7 @@ export default function TopicsPage() {
       {loading ? (
         <div className="flex justify-center py-20"><Spin size="large" /></div>
       ) : topics.length === 0 ? (
-        <div className="text-center py-16 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border-light)' }}>
+        <div className="text-center py-16 glass rounded-[20px]" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <CommentOutlined className="text-3xl mb-3" style={{ color: 'var(--text-muted)' }} />
           <p style={{ color: 'var(--text-muted)' }}>暂无话题</p>
         </div>
@@ -130,8 +130,9 @@ export default function TopicsPage() {
         <div className="flex flex-col gap-3">
           {topics.map((topic) => (
             <Link key={topic.id} href={`/topics/${topic.id}`} className="block group">
-              <div className="rounded-xl px-5 py-4 transition-all duration-300 hover:-translate-y-0.5"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+              <div className="glass relative overflow-hidden rounded-[20px] px-5 py-4 transition-all duration-300 hover:-translate-y-0.5"
+                style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+                <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'var(--gradient-primary)' }} />
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
@@ -141,7 +142,7 @@ export default function TopicsPage() {
                           offset={[0, 0]}
                         />
                       )}
-                      <h3 className="text-base font-semibold group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-serif)' }}>
+                      <h3 className="text-base font-semibold group-hover:opacity-80 transition-opacity">
                         {topic.title}
                       </h3>
                     </div>
@@ -157,7 +158,7 @@ export default function TopicsPage() {
                     </div>
                   </div>
                   <div className="flex-shrink-0 ml-6 text-center">
-                    <div className="text-2xl font-bold" style={{ fontFamily: 'var(--font-serif)', color: topic.answer_count > 0 ? 'var(--primary)' : 'var(--border)' }}>
+                    <div className="text-2xl font-bold" style={{ color: topic.answer_count > 0 ? 'var(--primary)' : 'var(--border)' }}>
                       {topic.answer_count}
                     </div>
                     <div className="text-xs" style={{ color: 'var(--text-muted)' }}>回答</div>

@@ -36,7 +36,7 @@ export default function ContributionsPage() {
   if (!user) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="text-center py-16 glass rounded-2xl" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <p style={{ color: 'var(--text-muted)' }}>请先登录</p>
         </div>
       </div>
@@ -49,8 +49,8 @@ export default function ContributionsPage() {
         <ArrowLeftOutlined /> 返回个人中心
       </Link>
 
-      <h1 className="text-2xl font-semibold flex items-center gap-3 mb-6" style={{ fontFamily: 'var(--font-serif)' }}>
-        <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(184, 92, 56, 0.08)', color: 'var(--primary)' }}>
+      <h1 className="text-2xl font-semibold flex items-center gap-3 mb-6">
+        <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(26, 58, 138, 0.1)', color: 'var(--primary)' }}>
           <BookOutlined />
         </span>
         我的贡献
@@ -59,7 +59,7 @@ export default function ContributionsPage() {
       {loading ? (
         <div className="flex justify-center py-20"><Spin size="large" /></div>
       ) : cases.length === 0 ? (
-        <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="text-center py-16 glass rounded-2xl" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <BookOutlined className="text-3xl mb-3" style={{ color: 'var(--text-muted)' }} />
           <p style={{ color: 'var(--text-muted)' }}>还没有发布过案例</p>
         </div>
@@ -67,14 +67,14 @@ export default function ContributionsPage() {
         <div className="flex flex-col gap-3">
           {cases.map((item) => (
             <Link key={item.id} href={`/cases/${item.id}`} className="block group">
-              <div className="rounded-xl px-5 py-4 transition-all duration-300 hover:-translate-y-0.5"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+              <div className="glass rounded-xl px-5 py-4 transition-all duration-300 hover:-translate-y-0.5"
+                style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <Tag color={item.status === 'published' ? 'green' : 'orange'}>
                       {item.status === 'published' ? '已发布' : '审核中'}
                     </Tag>
-                    <h3 className="text-base font-semibold mt-2 group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-serif)' }}>
+                    <h3 className="text-base font-semibold mt-2 group-hover:opacity-80 transition-opacity">
                       {item.title}
                     </h3>
                     <p className="text-sm mt-1 truncate" style={{ color: 'var(--text-secondary)' }}>{item.summary}</p>

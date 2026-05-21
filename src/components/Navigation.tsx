@@ -48,39 +48,62 @@ export default function Navigation() {
   return (
     <>
       {/* Desktop Navigation */}
-      <header className="hidden md:flex items-center justify-between px-8 h-16 sticky top-0 z-50"
+      <header className="hidden md:block sticky top-0 z-50"
         style={{
-          background: 'rgba(250, 248, 245, 0.85)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid var(--border-light)',
+          background: 'rgba(255, 255, 255, 0.5)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.7)',
         }}
       >
+        <div className="max-w-[1100px] mx-auto px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <span className="text-lg font-bold tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--primary)' }}>
-              HRAS
+          <Link href="/" className="flex items-center gap-2 group">
+            <span className="text-xl font-extrabold tracking-tight">
+              <span className="gradient-text">HRAS</span>
+              <span style={{ color: 'var(--foreground)' }}> AI岛</span>
             </span>
-            <span className="text-lg font-bold tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--foreground)' }}>
-              AI岛
-            </span>
-            <span className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: 'var(--primary)' }} />
           </Link>
-          <Menu
-            mode="horizontal"
-            selectedKeys={[pathname]}
-            items={navItems.map((item) => ({
-              key: item.key,
-              icon: item.icon,
-              label: <Link href={item.key}>{item.label}</Link>,
-            }))}
-            className="border-none flex-1"
-            style={{ minWidth: 0, background: 'transparent' }}
-          />
+          <nav className="flex items-center gap-1">
+            {navItems.map((item) => {
+              const active = pathname === item.key || (item.key !== '/' && pathname.startsWith(item.key));
+              return (
+                <Link
+                  key={item.key}
+                  href={item.key}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-all duration-200"
+                  style={{
+                    borderRadius: 'var(--radius-pill)',
+                    color: active ? 'var(--primary)' : 'var(--text-secondary)',
+                    background: active ? 'rgba(26, 58, 138, 0.08)' : 'transparent',
+                    border: active ? '1px solid rgba(26, 58, 138, 0.15)' : '1px solid transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.color = 'var(--primary)';
+                      e.currentTarget.style.background = 'rgba(26, 58, 138, 0.08)';
+                      e.currentTarget.style.borderColor = 'rgba(26, 58, 138, 0.15)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.borderColor = 'transparent';
+                    }
+                  }}
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {loading ? null : user ? (
             <>
-              <Link href="/profile/notifications" className="p-2 rounded-lg hover:opacity-70 transition-opacity" style={{ color: 'var(--text-secondary)' }}>
+              <Link href="/profile/notifications" className="p-2 rounded-full hover:opacity-70 transition-opacity" style={{ color: 'var(--text-secondary)' }}>
                 <BellOutlined style={{ fontSize: 18 }} />
               </Link>
               <Dropdown
@@ -96,51 +119,57 @@ export default function Navigation() {
                 }}
                 placement="bottomRight"
               >
-                <div className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:opacity-80 transition-opacity">
-                  <Avatar src={user.avatar} icon={<UserOutlined />} size="small" style={{ border: '2px solid var(--border)' }} />
+                <div className="flex items-center gap-2 cursor-pointer py-1.5 px-2.5 transition-all"
+                  style={{ borderRadius: 'var(--radius-pill)', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'rgba(255, 255, 255, 0.4)' }}>
+                  <Avatar src={user.avatar} icon={<UserOutlined />} size="small" />
                   <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{user.name}</span>
                 </div>
               </Dropdown>
             </>
           ) : (
-            <Link href="/login" className="text-sm font-medium px-4 py-1.5 rounded-lg transition-all"
-              style={{ color: 'var(--primary)', background: 'rgba(184, 92, 56, 0.06)' }}>
+            <Link href="/login" className="btn-gradient text-sm">
               登录
             </Link>
           )}
+        </div>
         </div>
       </header>
 
       {/* Mobile Navigation */}
       <header className="flex md:hidden items-center justify-between px-4 h-12 sticky top-0 z-50"
         style={{
-          background: 'rgba(250, 248, 245, 0.9)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid var(--border-light)',
+          background: 'rgba(255, 255, 255, 0.55)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.7)',
         }}
       >
         <button onClick={() => setDrawerOpen(true)} style={{ color: 'var(--text-secondary)' }}>
           <MenuOutlined style={{ fontSize: 18 }} />
         </button>
         <Link href="/" className="flex items-center gap-1.5">
-          <span className="text-base font-bold tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--primary)' }}>HRAS</span>
-          <span className="text-base font-bold tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--foreground)' }}>AI岛</span>
+          <span className="text-base font-extrabold tracking-tight">
+            <span className="gradient-text">HRAS</span>
+            <span style={{ color: 'var(--foreground)' }}> AI岛</span>
+          </span>
         </Link>
         {user ? (
           <Link href="/profile/notifications" style={{ color: 'var(--text-secondary)' }}>
             <BellOutlined style={{ fontSize: 18 }} />
           </Link>
         ) : (
-          <Link href="/login" className="text-xs font-medium px-3 py-1 rounded-lg" style={{ color: 'var(--primary)' }}>登录</Link>
+          <Link href="/login" className="text-xs font-medium px-3 py-1" style={{ color: '#fff', background: 'var(--gradient-primary)', borderRadius: 'var(--radius-pill)' }}>登录</Link>
         )}
       </header>
 
       {/* Mobile Drawer */}
       <Drawer
         title={
-          <span className="flex items-center gap-2">
-            <span style={{ fontFamily: 'var(--font-serif)', color: 'var(--primary)', fontWeight: 700 }}>HRAS</span>
-            <span style={{ fontFamily: 'var(--font-serif)', fontWeight: 700 }}>AI岛</span>
+          <span className="flex items-center gap-1.5">
+            <span style={{ fontWeight: 700 }}>
+              <span className="gradient-text">HRAS</span>
+              <span style={{ color: 'var(--foreground)' }}> AI岛</span>
+            </span>
           </span>
         }
         placement="left"
@@ -149,7 +178,7 @@ export default function Navigation() {
         styles={{ body: { padding: '12px 0' } }}
       >
         {user && (
-          <div className="flex items-center gap-3 mb-4 pb-4 px-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
+          <div className="flex items-center gap-3 mb-4 pb-4 px-4" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
             <Avatar src={user.avatar} icon={<UserOutlined />} />
             <div>
               <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{user.name}</div>
@@ -186,9 +215,10 @@ export default function Navigation() {
       <nav className="flex md:hidden items-center justify-around fixed bottom-0 left-0 right-0 z-50"
         style={{
           height: 56,
-          background: 'rgba(250, 248, 245, 0.92)',
-          backdropFilter: 'blur(12px)',
-          borderTop: '1px solid var(--border-light)',
+          background: 'rgba(255, 255, 255, 0.55)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.7)',
         }}
       >
         {navItems.slice(0, 5).map((item) => {

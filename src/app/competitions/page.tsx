@@ -48,8 +48,8 @@ export default function CompetitionsPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold flex items-center gap-3" style={{ fontFamily: 'var(--font-serif)' }}>
-          <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(184, 92, 56, 0.08)', color: 'var(--primary)' }}>
+        <h1 className="text-2xl font-semibold flex items-center gap-3">
+          <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(26, 58, 138, 0.1)', color: 'var(--primary)' }}>
             <TrophyOutlined />
           </span>
           AI 大赛
@@ -76,12 +76,13 @@ export default function CompetitionsPage() {
                 <div className="flex flex-col gap-4">
                   {items.map((event) => (
                     <Link key={event.id} href={`/competitions/${event.id}`} className="block group">
-                      <div className="rounded-xl p-5 transition-all duration-300 hover:-translate-y-0.5"
-                        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                      <div className="glass relative overflow-hidden rounded-[20px] p-5 transition-all duration-300 hover:-translate-y-0.5"
+                        style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+                        <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'var(--gradient-primary)' }} />
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <Tag color={config.color}>{config.label}</Tag>
-                            <h3 className="text-lg font-semibold mt-3 mb-2 group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-serif)' }}>
+                            <h3 className="text-lg font-semibold mt-3 mb-2 group-hover:opacity-80 transition-opacity">
                               {event.title}
                             </h3>
                             <p className="text-sm mb-4 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{event.description}</p>
@@ -106,7 +107,7 @@ export default function CompetitionsPage() {
           })}
 
           {events.length === 0 && (
-            <div className="text-center py-16 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border-light)' }}>
+            <div className="text-center py-16 glass rounded-[20px]" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
               <TrophyOutlined className="text-3xl mb-3" style={{ color: 'var(--text-muted)' }} />
               <p style={{ color: 'var(--text-muted)' }}>暂无大赛活动</p>
             </div>

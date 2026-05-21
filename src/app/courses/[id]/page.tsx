@@ -67,7 +67,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       </Link>
 
       {/* Course info */}
-      <div className="rounded-2xl p-6 sm:p-8 mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+      <div className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <Tag color={course.content_type === 'video' ? 'red' : 'blue'}>
             {course.content_type === 'video' ? '视频' : '文档'}
@@ -76,7 +76,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           <Tag>{course.category}</Tag>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight" style={{ fontFamily: 'var(--font-serif)' }}>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight">
           {course.title}
         </h1>
 
@@ -89,7 +89,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
         <p className="mb-6 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
 
-        <div className="mb-6 p-4 rounded-lg" style={{ background: 'var(--background)' }}>
+        <div className="mb-6 p-4 rounded-lg" style={{ background: 'rgba(255, 255, 255, 0.3)' }}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">学习进度</span>
             <span className="text-sm" style={{ color: 'var(--text-muted)' }}>0%</span>
@@ -108,8 +108,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
       {/* Chapters */}
       {chapters.length > 0 && (
-        <div id="course-chapters" className="rounded-2xl p-6 sm:p-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 className="text-lg font-semibold mb-5" style={{ fontFamily: 'var(--font-serif)' }}>
+        <div id="course-chapters" className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          <h2 className="text-lg font-semibold mb-5">
             课程目录 ({chapters.length} 章)
           </h2>
           <div className="flex flex-col gap-3">
@@ -117,7 +117,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               <div key={chapter.id} className="flex items-center gap-4 p-3 rounded-lg transition-all hover:-translate-y-0.5 cursor-pointer"
                 style={{ border: '1px solid var(--border-light)', background: 'var(--surface-warm)' }}>
                 <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
-                  style={{ background: 'rgba(184, 92, 56, 0.08)', color: 'var(--primary)' }}>
+                  style={{ background: 'rgba(26, 58, 138, 0.1)', color: 'var(--primary)' }}>
                   {index + 1}
                 </span>
                 <div className="flex-1 min-w-0">

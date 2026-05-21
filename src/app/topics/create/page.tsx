@@ -31,14 +31,14 @@ export default function CreateTopicPage() {
         <ArrowLeftOutlined /> 返回话题列表
       </Link>
 
-      <h1 className="text-2xl font-semibold flex items-center gap-3 mb-6" style={{ fontFamily: 'var(--font-serif)' }}>
+      <h1 className="text-2xl font-semibold flex items-center gap-3 mb-6">
         <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(45, 90, 61, 0.08)', color: 'var(--accent)' }}>
           <CommentOutlined />
         </span>
         发起话题或提问
       </h1>
 
-      <div className="rounded-2xl p-6 sm:p-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+      <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
             <Input placeholder="用一句话描述你的问题或话题" maxLength={100} showCount />

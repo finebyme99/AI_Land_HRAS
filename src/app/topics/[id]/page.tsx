@@ -39,7 +39,7 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
         ]);
         if (topicRes.data) setTopic(topicRes.data as Topic);
         if (answersRes.data) setAnswers(answersRes.data as Answer[]);
-        getSupabase().rpc('increment_view_count', { table_name: 'topics', row_id: id }).catch(console.error);
+        getSupabase().rpc('increment_view_count', { table_name: 'topics', row_id: id }).then(() => {}, () => {});
       } catch (err) {
         console.error('Failed to fetch topic:', err);
       } finally {
@@ -102,7 +102,7 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
       </Link>
 
       {/* Topic */}
-      <article className="rounded-2xl p-6 sm:p-8 mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+      <article className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           {topic.tags.map((tag) => (
             <Tag key={tag}>{tag}</Tag>
@@ -112,7 +112,7 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight" style={{ fontFamily: 'var(--font-serif)' }}>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight">
           {topic.title}
         </h1>
 
@@ -130,8 +130,8 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
       </article>
 
       {/* Answers */}
-      <div className="rounded-2xl p-6 sm:p-8 mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2" style={{ fontFamily: 'var(--font-serif)' }}>
+      <div className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">
           <CommentOutlined style={{ color: 'var(--accent)' }} />
           {answers.length} 个回答
         </h2>
@@ -161,8 +161,8 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Write answer */}
-      <div className="rounded-2xl p-6 sm:p-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-        <h2 className="text-lg font-semibold mb-4" style={{ fontFamily: 'var(--font-serif)' }}>写回答</h2>
+      <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+        <h2 className="text-lg font-semibold mb-4">写回答</h2>
         <Input.TextArea
           rows={5}
           placeholder="分享你的经验和见解..."

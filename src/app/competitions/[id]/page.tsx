@@ -84,37 +84,37 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
       </Link>
 
       {/* Event header */}
-      <div className="rounded-2xl p-6 sm:p-8 mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+      <div className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <Tag color={status.color}>{status.label}</Tag>
-        <h1 className="text-2xl sm:text-3xl font-bold mt-3 mb-4 leading-tight" style={{ fontFamily: 'var(--font-serif)' }}>
+        <h1 className="text-2xl sm:text-3xl font-bold mt-3 mb-4 leading-tight">
           {event.title}
         </h1>
         <p className="text-base mb-6 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{event.description}</p>
 
         {/* Info grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--background)' }}>
+          <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'rgba(255, 255, 255, 0.3)' }}>
             <CalendarOutlined style={{ color: 'var(--primary)' }} />
             <div>
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>开始时间</div>
               <div className="text-sm font-medium">{new Date(event.start_time).toLocaleDateString('zh-CN')}</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--background)' }}>
+          <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'rgba(255, 255, 255, 0.3)' }}>
             <CalendarOutlined style={{ color: 'var(--primary)' }} />
             <div>
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>结束时间</div>
               <div className="text-sm font-medium">{new Date(event.end_time).toLocaleDateString('zh-CN')}</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--background)' }}>
+          <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'rgba(255, 255, 255, 0.3)' }}>
             <ClockCircleOutlined style={{ color: 'var(--primary)' }} />
             <div>
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>报名截止</div>
               <div className="text-sm font-medium">{new Date(event.registration_deadline).toLocaleDateString('zh-CN')}</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--background)' }}>
+          <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'rgba(255, 255, 255, 0.3)' }}>
             <TeamOutlined style={{ color: 'var(--primary)' }} />
             <div>
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>已报名</div>
@@ -137,16 +137,16 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
 
       {/* Rules */}
       {event.rules && (
-        <div className="rounded-2xl p-6 sm:p-8 mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 className="text-lg font-semibold mb-4" style={{ fontFamily: 'var(--font-serif)' }}>活动规则</h2>
+        <div className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          <h2 className="text-lg font-semibold mb-4">活动规则</h2>
           <div className="whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{event.rules}</div>
         </div>
       )}
 
       {/* Prizes */}
       {event.prizes && (
-        <div className="rounded-2xl p-6 sm:p-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 className="text-lg font-semibold mb-4" style={{ fontFamily: 'var(--font-serif)' }}>奖项设置</h2>
+        <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          <h2 className="text-lg font-semibold mb-4">奖项设置</h2>
           <div className="whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{event.prizes}</div>
         </div>
       )}

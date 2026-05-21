@@ -1,10 +1,9 @@
 import { getSupabase } from '../supabase';
-import type { Case, CaseCategory, DifficultyLevel, ContentStatus } from '@/types';
+import type { Case, CaseCategory, ContentStatus } from '@/types';
 
 // 获取案例列表
 export async function getCases(options?: {
   category?: CaseCategory;
-  difficulty?: DifficultyLevel;
   status?: ContentStatus;
   search?: string;
   limit?: number;
@@ -19,7 +18,6 @@ export async function getCases(options?: {
     .order('created_at', { ascending: false });
 
   if (options?.category) query = query.eq('category', options.category);
-  if (options?.difficulty) query = query.eq('difficulty', options.difficulty);
   if (options?.status) query = query.eq('status', options.status);
   if (options?.search) query = query.or(`title.ilike.%${options.search}%,summary.ilike.%${options.search}%`);
   if (options?.limit) query = query.limit(options.limit);
@@ -43,7 +41,6 @@ export async function getCase(id: string) {
 
   if (error) throw error;
 
-  // 增加浏览量
   await getSupabase().rpc('increment_view_count', { table_name: 'cases', row_id: id });
 
   return data as Case;
@@ -56,7 +53,6 @@ export async function createCase(caseData: {
   content: string;
   category: CaseCategory;
   ai_tools: string[];
-  difficulty: DifficultyLevel;
   author_id: string;
   event_id?: string;
 }) {

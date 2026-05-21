@@ -57,7 +57,7 @@ export default function AppsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-3" style={{ fontFamily: 'var(--font-serif)' }}>
+          <h1 className="text-2xl font-semibold flex items-center gap-3">
             <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(120, 80, 160, 0.08)', color: '#7850a0' }}>
               <AppstoreOutlined />
             </span>
@@ -74,7 +74,7 @@ export default function AppsPage() {
       </div>
 
       {/* Filters */}
-      <div className="rounded-xl p-4 mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border-light)' }}>
+      <div className="glass rounded-xl p-4 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex flex-wrap gap-3 items-center">
           <Input.Search
             placeholder="搜索应用..."
@@ -98,7 +98,7 @@ export default function AppsPage() {
       {loading ? (
         <div className="flex justify-center py-20"><Spin size="large" /></div>
       ) : apps.length === 0 ? (
-        <div className="text-center py-16 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border-light)' }}>
+        <div className="text-center py-16 glass rounded-[20px]" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <AppstoreOutlined className="text-3xl mb-3" style={{ color: 'var(--text-muted)' }} />
           <p style={{ color: 'var(--text-muted)' }}>暂无应用</p>
         </div>
@@ -106,11 +106,12 @@ export default function AppsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {apps.map((app) => (
             <Link key={app.id} href={`/apps/${app.id}`} className="block group">
-              <div className="rounded-xl p-5 h-full transition-all duration-300 hover:-translate-y-1"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+              <div className="glass relative overflow-hidden rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1"
+                style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+                <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'var(--gradient-primary)' }} />
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold"
-                    style={{ background: 'rgba(184, 92, 56, 0.06)', color: 'var(--primary)', fontFamily: 'var(--font-serif)' }}>
+                    style={{ background: 'rgba(26, 58, 138, 0.06)', color: 'var(--primary)' }}>
                     {app.name[0]}
                   </div>
                   <div>

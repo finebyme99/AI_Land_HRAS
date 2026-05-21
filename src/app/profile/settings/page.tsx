@@ -22,7 +22,7 @@ export default function SettingsPage() {
   if (!user) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="text-center py-16 glass rounded-2xl" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <p style={{ color: 'var(--text-muted)' }}>请先登录</p>
         </div>
       </div>
@@ -48,15 +48,15 @@ export default function SettingsPage() {
         <ArrowLeftOutlined /> 返回个人中心
       </Link>
 
-      <h1 className="text-2xl font-semibold flex items-center gap-3 mb-6" style={{ fontFamily: 'var(--font-serif)' }}>
-        <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(184, 92, 56, 0.08)', color: 'var(--primary)' }}>
+      <h1 className="text-2xl font-semibold flex items-center gap-3 mb-6">
+        <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(26, 58, 138, 0.1)', color: 'var(--primary)' }}>
           <SettingOutlined />
         </span>
         个人设置
       </h1>
 
-      <div className="rounded-2xl p-6 sm:p-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-        <div className="flex items-center gap-4 mb-6 pb-6" style={{ borderBottom: '1px solid var(--border-light)' }}>
+      <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+        <div className="flex items-center gap-4 mb-6 pb-6" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
           <Avatar size={64} src={user.avatar} icon={<UserOutlined />}
             style={{ border: '3px solid var(--border-light)' }} />
           <div>

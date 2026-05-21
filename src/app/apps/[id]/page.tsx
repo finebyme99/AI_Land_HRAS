@@ -85,14 +85,14 @@ export default function AppDetailPage({ params }: { params: Promise<{ id: string
         <ArrowLeftOutlined /> 返回应用列表
       </Link>
 
-      <div className="rounded-2xl p-6 sm:p-8 mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+      <div className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold"
-            style={{ background: 'rgba(184, 92, 56, 0.06)', color: 'var(--primary)', fontFamily: 'var(--font-serif)' }}>
+            style={{ background: 'rgba(26, 58, 138, 0.06)', color: 'var(--primary)' }}>
             {app.name[0]}
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: 'var(--font-serif)' }}>{app.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">{app.name}</h1>
             <Tag color={APP_CATEGORY_COLORS[app.category]}>{app.category}</Tag>
           </div>
         </div>
@@ -105,7 +105,7 @@ export default function AppDetailPage({ params }: { params: Promise<{ id: string
           ))}
         </div>
 
-        <div className="flex items-center gap-6 mb-6 p-4 rounded-lg" style={{ background: 'var(--background)' }}>
+        <div className="flex items-center gap-6 mb-6 p-4 rounded-lg" style={{ background: 'rgba(255, 255, 255, 0.3)' }}>
           <div>
             <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>评分</div>
             <Rate disabled defaultValue={Number(app.rating)} allowHalf />
@@ -125,25 +125,25 @@ export default function AppDetailPage({ params }: { params: Promise<{ id: string
           </a>
           <button onClick={handleLike}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
+            style={{ color: 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'var(--surface)' }}>
             <LikeOutlined /> 点赞 ({app.like_count})
           </button>
           <button onClick={handleDislike}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
+            style={{ color: 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'var(--surface)' }}>
             <DislikeOutlined /> 点踩 ({app.dislike_count})
           </button>
           <button onClick={handleShare}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
+            style={{ color: 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'var(--surface)' }}>
             <ShareAltOutlined /> 分享
           </button>
         </div>
       </div>
 
       {/* Reviews */}
-      <div className="rounded-2xl p-6 sm:p-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-        <h2 className="text-lg font-semibold mb-4" style={{ fontFamily: 'var(--font-serif)' }}>用户评价</h2>
+      <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+        <h2 className="text-lg font-semibold mb-4">用户评价</h2>
         <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
           <p className="text-sm">暂无评价，快来第一个评价吧！</p>
         </div>

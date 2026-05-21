@@ -20,16 +20,16 @@ function LoginForm() {
         {/* Logo / Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-6">
-            <span className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--primary)' }}>HRAS</span>
-            <span className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--foreground)' }}>AI岛</span>
+            <span className="text-2xl font-bold tracking-tight gradient-text">HRAS</span>
+            <span className="text-2xl font-bold tracking-tight" style={{ color: 'var(--foreground)' }}>AI岛</span>
           </div>
-          <h1 className="text-xl font-semibold mb-2" style={{ fontFamily: 'var(--font-serif)' }}>欢迎回来</h1>
+          <h1 className="text-xl font-semibold mb-2">欢迎回来</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>HR 的 AI 社区 — 登录后开始探索</p>
         </div>
 
         {/* Login Card */}
-        <div className="rounded-2xl p-8"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-md)' }}>
+        <div className="glass rounded-[20px] p-8"
+          style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
 
           {error && (
             <div className="mb-5 p-3 rounded-lg text-sm" style={{ background: 'rgba(184, 58, 58, 0.06)', border: '1px solid rgba(184, 58, 58, 0.15)', color: '#b83a3a' }}>
@@ -41,7 +41,7 @@ function LoginForm() {
             onClick={handleLogin}
             disabled={loading}
             className="w-full h-12 rounded-xl text-base font-medium text-white transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-            style={{ background: 'var(--primary)' }}
+            style={{ background: 'var(--gradient-primary)' }}
           >
             {loading ? (
               <>
@@ -58,7 +58,7 @@ function LoginForm() {
             )}
           </button>
 
-          <div className="mt-6 pt-5 text-center" style={{ borderTop: '1px solid var(--border-light)' }}>
+          <div className="mt-6 pt-5 text-center" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               使用飞书账号免登，无需注册
             </p>

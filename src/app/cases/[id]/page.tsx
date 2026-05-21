@@ -136,7 +136,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
       </Link>
 
       {/* Main content */}
-      <article className="rounded-2xl p-6 sm:p-8 mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+      <article className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <Tag color={CATEGORY_COLORS[caseItem.category]}>{caseItem.category}</Tag>
           {caseItem.ai_tools.map((tool) => (
@@ -145,7 +145,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
           {caseItem.event_id && <Tag color="red">大赛作品</Tag>}
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight" style={{ fontFamily: 'var(--font-serif)' }}>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight">
           {caseItem.title}
         </h1>
 
@@ -171,7 +171,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
 
         {/* Attachments */}
         {caseItem.attachments && caseItem.attachments.length > 0 && (
-          <div className="mb-6 p-4 rounded-xl" style={{ background: 'var(--background)', border: '1px solid var(--border-light)' }}>
+          <div className="mb-6 p-4 rounded-xl" style={{ background: 'rgba(255, 255, 255, 0.3)', border: '1px solid var(--border-light)' }}>
             <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
               <PaperClipOutlined /> 附件
             </h3>
@@ -179,7 +179,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
               {caseItem.attachments.map((url, i) => (
                 <a key={i} href={url} target="_blank" rel="noopener noreferrer"
                   className="text-sm px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
-                  style={{ color: 'var(--primary)', background: 'rgba(184, 92, 56, 0.06)' }}>
+                  style={{ color: 'var(--primary)', background: 'rgba(26, 58, 138, 0.06)' }}>
                   附件 {i + 1}
                 </a>
               ))}
@@ -190,25 +190,25 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
         <div className="flex items-center gap-3 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
           <button onClick={handleLike}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-            style={{ color: liked ? 'var(--primary)' : 'var(--text-secondary)', border: '1px solid var(--border)', background: liked ? 'rgba(184, 92, 56, 0.06)' : 'var(--surface)' }}>
+            style={{ color: liked ? 'var(--primary)' : 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: liked ? 'rgba(26, 58, 138, 0.06)' : 'var(--surface)' }}>
             <LikeOutlined /> 点赞 ({caseItem.like_count})
           </button>
           <button onClick={handleBookmark}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-            style={{ color: bookmarked ? 'var(--primary)' : 'var(--text-secondary)', border: '1px solid var(--border)', background: bookmarked ? 'rgba(184, 92, 56, 0.06)' : 'var(--surface)' }}>
+            style={{ color: bookmarked ? 'var(--primary)' : 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: bookmarked ? 'rgba(26, 58, 138, 0.06)' : 'var(--surface)' }}>
             <StarOutlined /> 收藏 ({caseItem.bookmark_count})
           </button>
           <button onClick={handleShare}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
+            style={{ color: 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'var(--surface)' }}>
             <ShareAltOutlined /> 分享
           </button>
         </div>
       </article>
 
       {/* Comments */}
-      <div className="rounded-2xl p-6 sm:p-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2" style={{ fontFamily: 'var(--font-serif)' }}>
+      <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">
           <BookOutlined style={{ color: 'var(--primary)' }} />
           评论 ({comments.length})
         </h2>
