@@ -86,14 +86,14 @@ export default function AdminSettingsPage() {
 
           <Form.Item
             name="participant_count"
-            label="参与人数"
-            rules={[{ required: true, message: '请输入参与人数' }]}
+            label="参与人次"
+            rules={[{ required: true, message: '请输入参与人次' }]}
           >
             <InputNumber
               min={0}
               max={999999}
               style={{ width: '100%' }}
-              placeholder="输入平台参与人数"
+              placeholder="输入平台参与人次"
             />
           </Form.Item>
 

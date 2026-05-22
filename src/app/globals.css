@@ -172,6 +172,16 @@ h1, h2, h3 {
   100% { transform: translateY(-300px) scale(0.3); opacity: 0; }
 }
 
+@keyframes breath {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(1.05); }
+}
+
+@keyframes orb-float {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(-8px, 12px) rotate(15deg); }
+}
+
 .animate-fade-up {
   animation: fadeUp 0.6s ease-out both;
 }

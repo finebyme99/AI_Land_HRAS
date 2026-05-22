@@ -56,7 +56,7 @@ function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: 
 }
 
 /* ─── Floating Particle ─── */
-function FloatingParticle({ delay, x, size }: { delay: number; x: number; size: number }) {
+function FloatingParticle({ delay, x, size, color }: { delay: number; x: number; size: number; color?: string }) {
   return (
     <span
       className="absolute rounded-full pointer-events-none"
@@ -65,38 +65,58 @@ function FloatingParticle({ delay, x, size }: { delay: number; x: number; size: 
         height: size,
         left: `${x}%`,
         bottom: '-10%',
-        background: 'rgba(26, 58, 138, 0.15)',
-        animation: `float-up 6s ${delay}s ease-in infinite`,
+        background: color || 'rgba(26, 58, 138, 0.18)',
+        animation: `float-up 7s ${delay}s ease-in infinite`,
       }}
     />
+  );
+}
+
+/* ─── 3D Orb (shader gradient sphere) ─── */
+function Orb3D() {
+  return (
+    <div className="absolute -top-10 -right-10 w-40 h-40 pointer-events-none opacity-30"
+      style={{
+        background: 'radial-gradient(circle at 35% 35%, rgba(26,58,138,0.5), rgba(242,127,34,0.3) 50%, transparent 70%)',
+        borderRadius: '50%',
+        filter: 'blur(1px)',
+        animation: 'orb-float 8s ease-in-out infinite alternate',
+      }} />
   );
 }
 
 /* ─── Data Dashboard Panel ─── */
 function DataDashboard({ savedHours, participantCount }: { savedHours: number; participantCount: number }) {
   return (
-    <div className="relative">
-      {/* Animated glow */}
-      <div className="absolute -inset-6 rounded-3xl opacity-20 blur-3xl animate-pulse"
-        style={{ background: 'linear-gradient(135deg, rgba(26,58,138,0.3), rgba(242,127,34,0.2))', animationDuration: '4s' }} />
+    <div className="relative group/dashboard">
+      {/* Breathing glow behind card */}
+      <div className="absolute -inset-8 rounded-3xl pointer-events-none"
+        style={{
+          background: 'linear-gradient(135deg, rgba(26,58,138,0.25), rgba(242,127,34,0.15))',
+          filter: 'blur(40px)',
+          animation: 'breath 4s ease-in-out infinite',
+        }} />
 
-      <div className="relative glass-strong rounded-2xl p-6 sm:p-7 border overflow-hidden"
+      <div className="relative glass-strong rounded-2xl p-6 sm:p-7 border overflow-hidden transition-all duration-500 group-hover/dashboard:shadow-2xl"
         style={{ borderColor: 'rgba(255,255,255,0.5)' }}>
+
+        {/* 3D Orb */}
+        <Orb3D />
 
         {/* Floating particles */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <FloatingParticle delay={0} x={15} size={4} />
-          <FloatingParticle delay={1.5} x={45} size={3} />
-          <FloatingParticle delay={3} x={75} size={5} />
-          <FloatingParticle delay={4.5} x={90} size={3} />
+          <FloatingParticle delay={0} x={12} size={4} color="rgba(26,58,138,0.2)" />
+          <FloatingParticle delay={1.2} x={35} size={3} color="rgba(242,127,34,0.18)" />
+          <FloatingParticle delay={2.5} x={58} size={5} color="rgba(26,58,138,0.15)" />
+          <FloatingParticle delay={3.8} x={80} size={3} color="rgba(242,127,34,0.2)" />
+          <FloatingParticle delay={5} x={92} size={4} color="rgba(34,197,94,0.15)" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center gap-2.5 mb-6 relative z-10">
+        <div className="flex items-center gap-2.5 mb-7 relative z-10">
           <span className="w-8 h-8 rounded-lg flex items-center justify-center relative overflow-hidden"
             style={{ background: 'var(--gradient-primary)' }}>
             <RocketOutlined style={{ color: '#fff', fontSize: 14 }} />
-            <span className="absolute inset-0 bg-white/20 animate-pulse" style={{ animationDuration: '3s' }} />
           </span>
           <div>
             <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>HRAS AI 提效总览</div>
@@ -107,64 +127,55 @@ function DataDashboard({ savedHours, participantCount }: { savedHours: number; p
           </div>
         </div>
 
-        {/* Metrics */}
-        <div className="space-y-4 relative z-10">
+        {/* Metrics — big number cards */}
+        <div className="space-y-5 relative z-10">
           {/* Saved Hours */}
-          <div className="group p-4 rounded-xl transition-all duration-500 hover:scale-[1.02] hover:shadow-lg cursor-default"
-            style={{ background: 'rgba(255,255,255,0.5)' }}>
-            <div className="flex items-center gap-3.5">
-              <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
-                style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 4px 15px rgba(26,58,138,0.3)' }}>
+          <div className="relative group rounded-xl p-5 transition-all duration-500 hover:scale-[1.03] hover:shadow-xl cursor-default"
+            style={{ background: 'linear-gradient(135deg, rgba(26,58,138,0.06), rgba(26,58,138,0.02))' }}>
+            {/* Hover gradient reveal */}
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{ background: 'linear-gradient(135deg, rgba(26,58,138,0.08), transparent)' }} />
+            <div className="relative flex items-center gap-4">
+              <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3"
+                style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 4px 20px rgba(26,58,138,0.35)' }}>
                 <ClockCircleOutlined />
               </span>
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-medium mb-1" style={{ color: 'var(--text-muted)' }}>累计节省工时</div>
-                <div className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--foreground)' }}>
-                  <AnimatedCounter target={savedHours} />
-                  <span className="text-xs font-medium ml-1" style={{ color: 'var(--text-secondary)' }}>小时</span>
+                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>累计节省工时</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[32px] font-extrabold tracking-tight leading-none" style={{ color: 'var(--foreground)' }}>
+                    <AnimatedCounter target={savedHours} duration={2.5} />
+                  </span>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--primary)', opacity: 0.7 }}>小时</span>
                 </div>
               </div>
-            </div>
-            {/* Progress bar decoration */}
-            <div className="mt-3 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(26,58,138,0.08)' }}>
-              <div className="h-full rounded-full transition-all duration-1000"
-                style={{
-                  background: 'linear-gradient(90deg, #1a3a8a, #4a6fc7)',
-                  width: `${Math.min((savedHours / 1000) * 100, 100)}%`,
-                  boxShadow: '0 0 8px rgba(26,58,138,0.4)',
-                }} />
             </div>
           </div>
 
-          {/* Participants */}
-          <div className="group p-4 rounded-xl transition-all duration-500 hover:scale-[1.02] hover:shadow-lg cursor-default"
-            style={{ background: 'rgba(255,255,255,0.5)' }}>
-            <div className="flex items-center gap-3.5">
-              <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
-                style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 4px 15px rgba(242,127,34,0.3)' }}>
+          {/* Participants — "参与人次" */}
+          <div className="relative group rounded-xl p-5 transition-all duration-500 hover:scale-[1.03] hover:shadow-xl cursor-default"
+            style={{ background: 'linear-gradient(135deg, rgba(242,127,34,0.06), rgba(242,127,34,0.02))' }}>
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{ background: 'linear-gradient(135deg, rgba(242,127,34,0.08), transparent)' }} />
+            <div className="relative flex items-center gap-4">
+              <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-3"
+                style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 4px 20px rgba(242,127,34,0.35)' }}>
                 <TeamOutlined />
               </span>
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-medium mb-1" style={{ color: 'var(--text-muted)' }}>参与人数</div>
-                <div className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--foreground)' }}>
-                  <AnimatedCounter target={participantCount} />
-                  <span className="text-xs font-medium ml-1" style={{ color: 'var(--text-secondary)' }}>人</span>
+                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>参与人次</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[32px] font-extrabold tracking-tight leading-none" style={{ color: 'var(--foreground)' }}>
+                    <AnimatedCounter target={participantCount} duration={2.5} />
+                  </span>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--accent)', opacity: 0.7 }}>人次</span>
                 </div>
               </div>
-            </div>
-            {/* Progress bar decoration */}
-            <div className="mt-3 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(242,127,34,0.08)' }}>
-              <div className="h-full rounded-full transition-all duration-1000"
-                style={{
-                  background: 'linear-gradient(90deg, #F27F22, #e8650a)',
-                  width: `${Math.min((participantCount / 100) * 100, 100)}%`,
-                  boxShadow: '0 0 8px rgba(242,127,34,0.4)',
-                }} />
             </div>
           </div>
         </div>
 
-        {/* Decorative footer */}
+        {/* Footer */}
         <div className="mt-5 pt-4 flex items-center justify-between relative z-10"
           style={{ borderTop: '1px solid rgba(255,255,255,0.4)' }}>
           <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
