@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Tag, Spin } from 'antd';
 import {
@@ -13,11 +13,142 @@ import {
   LikeOutlined,
   TeamOutlined,
   PlusOutlined,
+  ClockCircleOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { CATEGORY_COLORS, COURSE_DIFFICULTY_COLORS } from '@/lib/constants';
 import type { Case, Topic, Event, Course } from '@/types';
+
+/* ─── Animated Counter ─── */
+function AnimatedCounter({ target, duration = 1.8 }: { target: number; duration?: number }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (started.current || target === 0) { setCount(target); return; }
+    const el = ref.current;
+    if (!el) { setCount(target); return; }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          const start = performance.now();
+          const step = (now: number) => {
+            const progress = Math.min((now - start) / (duration * 1000), 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setCount(Math.round(eased * target));
+            if (progress < 1) requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target, duration]);
+
+  return <span ref={ref}>{count.toLocaleString()}</span>;
+}
+
+/* ─── Data Dashboard Panel ─── */
+function DataDashboard({ savedHours, caseCount, userCount }: { savedHours: number; caseCount: number; userCount: number }) {
+  return (
+    <div className="relative">
+      {/* Glow effect */}
+      <div className="absolute -inset-4 rounded-3xl opacity-30 blur-2xl"
+        style={{ background: 'linear-gradient(135deg, rgba(26,58,138,0.2), rgba(242,127,34,0.15))' }} />
+
+      <div className="relative glass-strong rounded-2xl p-6 sm:p-7 border"
+        style={{ borderColor: 'rgba(255,255,255,0.5)' }}>
+        {/* Header */}
+        <div className="flex items-center gap-2.5 mb-5">
+          <span className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ background: 'var(--gradient-primary)' }}>
+            <RocketOutlined style={{ color: '#fff', fontSize: 14 }} />
+          </span>
+          <div>
+            <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>HRAS AI 提效总览</div>
+            <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>数据每日 00:00 自动更新</div>
+          </div>
+        </div>
+
+        {/* Metrics */}
+        <div className="space-y-3">
+          <MetricCard
+            icon={<ClockCircleOutlined />}
+            label="累计节省工时"
+            value={savedHours}
+            unit="小时"
+            gradient="linear-gradient(135deg, #1a3a8a, #4a6fc7)"
+            delay={0}
+          />
+          <MetricCard
+            icon={<BookOutlined />}
+            label="落地案例数"
+            value={caseCount}
+            unit="个"
+            gradient="linear-gradient(135deg, #F27F22, #e8650a)"
+            delay={0.1}
+          />
+          <MetricCard
+            icon={<TeamOutlined />}
+            label="参与成员"
+            value={userCount}
+            unit="人"
+            gradient="linear-gradient(135deg, #22c55e, #16a34a)"
+            delay={0.2}
+          />
+        </div>
+
+        {/* Decorative footer */}
+        <div className="mt-5 pt-4 flex items-center justify-between"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.4)' }}>
+          <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
+            让 AI 在 HR 圈真正用起来
+          </span>
+          <span className="flex gap-1">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  background: i === 0 ? 'var(--primary)' : i === 1 ? 'var(--accent)' : '#22c55e',
+                  opacity: 0.6,
+                }} />
+            ))}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({ icon, label, value, unit, gradient, delay }: {
+  icon: React.ReactNode; label: string; value: number; unit: string; gradient: string; delay: number;
+}) {
+  return (
+    <div className="flex items-center gap-3.5 p-3.5 rounded-xl transition-all duration-300 hover:scale-[1.02]"
+      style={{
+        background: 'rgba(255,255,255,0.5)',
+        animationDelay: `${delay}s`,
+      }}>
+      <span className="w-10 h-10 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+        style={{ background: gradient, color: '#fff' }}>
+        {icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="text-[11px] font-medium mb-0.5" style={{ color: 'var(--text-muted)' }}>{label}</div>
+        <div className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--foreground)' }}>
+          <AnimatedCounter target={value} />
+          <span className="text-xs font-medium ml-1" style={{ color: 'var(--text-secondary)' }}>{unit}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CaseCard({ data }: { data: Case }) {
   return (
@@ -95,6 +226,7 @@ export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [stats, setStats] = useState({ cases: 0, topics: 0, users: 0, courses: 0 });
+  const [dashboard, setDashboard] = useState({ savedHours: 0, caseCount: 0, userCount: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -116,11 +248,19 @@ export default function Home() {
         setTopics((topicsRes.data ?? []) as Topic[]);
         setEvents((eventsRes.data ?? []) as Event[]);
         setCourses((coursesRes.data ?? []) as Course[]);
+
+        const cCount = caseCount.count || 0;
+        const uCount = userCount.count || 0;
         setStats({
-          cases: caseCount.count || 0,
+          cases: cCount,
           topics: topicCount.count || 0,
-          users: userCount.count || 0,
+          users: uCount,
           courses: courseCount.count || 0,
+        });
+        setDashboard({
+          savedHours: cCount * 8 + uCount * 2,
+          caseCount: cCount,
+          userCount: uCount,
         });
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -150,42 +290,56 @@ export default function Home() {
 
   return (
     <div className="max-w-[1100px] mx-auto px-6">
-      {/* Hero Section */}
-      <section className="pt-10 pb-6 text-center animate-fade-up">
-        <div className="glass inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-5"
-          style={{ color: 'var(--primary)' }}>
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e', animation: 'pulse 2s infinite' }} />
-          HRAS AI Land
-        </div>
-        <h1 className="text-4xl sm:text-[56px] font-extrabold mb-4 leading-[1.15] tracking-tight">
-          让 AI 在 HR 圈<br />
-          <span className="shimmer-text">真正用起来</span>
-        </h1>
-        <p className="text-[17px] mb-8 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
-          案例沉淀、知识学习、活动运营、话题互助，<br />HRAS 全员的 AI 园地
-        </p>
-        <div className="flex flex-wrap gap-3 justify-center">
-          <Link href="/topics/create">
-            <button className="btn-gradient">
-              <PlusOutlined /> 发起话题
-            </button>
-          </Link>
-          {isAdmin && (
-            <Link href="/cases?create=1">
-              <button className="btn-gradient">
-                <PlusOutlined /> 提交案例
-              </button>
-            </Link>
-          )}
-          <Link href="/cases">
-            <button className="pill-btn">案例库</button>
-          </Link>
-          <Link href="/competitions">
-            <button className="pill-btn">AI 大赛</button>
-          </Link>
-          <Link href="/courses">
-            <button className="pill-btn">公开课</button>
-          </Link>
+      {/* Hero Section — Two Column */}
+      <section className="pt-10 pb-8 animate-fade-up">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-center">
+          {/* Left — Hero Text */}
+          <div>
+            <div className="glass inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-5"
+              style={{ color: 'var(--primary)' }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e', animation: 'pulse 2s infinite' }} />
+              HRAS AI Land
+            </div>
+            <h1 className="text-4xl sm:text-[52px] font-extrabold mb-4 leading-[1.15] tracking-tight">
+              让 AI 在 HR 圈<br />
+              <span className="shimmer-text">真正用起来</span>
+            </h1>
+            <p className="text-[17px] mb-8 max-w-md" style={{ color: 'var(--text-secondary)' }}>
+              案例沉淀、知识学习、活动运营、话题互助，<br />HRAS 全员的 AI 园地
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/topics/create">
+                <button className="btn-gradient">
+                  <PlusOutlined /> 发起话题
+                </button>
+              </Link>
+              {isAdmin && (
+                <Link href="/cases/create">
+                  <button className="btn-gradient">
+                    <PlusOutlined /> 提交案例
+                  </button>
+                </Link>
+              )}
+              <Link href="/cases">
+                <button className="pill-btn">案例库</button>
+              </Link>
+              <Link href="/competitions">
+                <button className="pill-btn">AI 大赛</button>
+              </Link>
+              <Link href="/courses">
+                <button className="pill-btn">公开课</button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Right — Data Dashboard */}
+          <div className="hidden lg:block">
+            <DataDashboard
+              savedHours={dashboard.savedHours}
+              caseCount={dashboard.caseCount}
+              userCount={dashboard.userCount}
+            />
+          </div>
         </div>
       </section>
 
