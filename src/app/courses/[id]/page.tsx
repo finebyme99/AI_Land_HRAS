@@ -31,6 +31,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [comments, setComments] = useState<{ id: string; content: string; author: { name: string; avatar: string }; created_at: string }[]>([]);
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchCourse() {
@@ -248,19 +249,42 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </h2>
           <div className="flex flex-col gap-3">
             {chapters.map((chapter, index) => (
-              <div key={chapter.id} className="flex items-center gap-4 p-3 rounded-lg transition-all hover:-translate-y-0.5 cursor-pointer"
-                style={{ border: '1px solid var(--border-light)', background: 'var(--surface-warm)' }}>
-                <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
-                  style={{ background: 'rgba(26, 58, 138, 0.1)', color: 'var(--primary)' }}>
-                  {index + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{chapter.title}</div>
-                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{chapter.duration}</div>
+              <div key={chapter.id}>
+                <div
+                  className="flex items-center gap-4 p-3 rounded-lg transition-all hover:-translate-y-0.5 cursor-pointer"
+                  style={{ border: '1px solid var(--border-light)', background: selectedChapter === chapter.id ? 'rgba(26, 58, 138, 0.04)' : 'var(--surface-warm)' }}
+                  onClick={() => setSelectedChapter(selectedChapter === chapter.id ? null : chapter.id)}
+                >
+                  <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
+                    style={{ background: 'rgba(26, 58, 138, 0.1)', color: 'var(--primary)' }}>
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{chapter.title}</div>
+                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{chapter.duration}</div>
+                  </div>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {course.content_type === 'video' ? <PlayCircleOutlined /> : <FileTextOutlined />}
+                  </span>
                 </div>
-                <span style={{ color: 'var(--text-muted)' }}>
-                  {course.content_type === 'video' ? <PlayCircleOutlined /> : <FileTextOutlined />}
-                </span>
+                {selectedChapter === chapter.id && (
+                  <div className="mt-2 ml-11 mr-3 mb-2 p-4 rounded-lg text-sm leading-relaxed"
+                    style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
+                    {course.content_type === 'video' && chapter.content_url ? (
+                      <div>
+                        <p className="mb-2" style={{ color: 'var(--text-secondary)' }}>视频链接：</p>
+                        <a href={chapter.content_url} target="_blank" rel="noopener noreferrer"
+                          className="underline transition-opacity hover:opacity-70" style={{ color: 'var(--primary)' }}>
+                          {chapter.content_url}
+                        </a>
+                      </div>
+                    ) : chapter.content ? (
+                      <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: chapter.content }} />
+                    ) : (
+                      <p style={{ color: 'var(--text-muted)' }}>暂无内容</p>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
