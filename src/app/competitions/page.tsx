@@ -54,7 +54,7 @@ export default function CompetitionsPage() {
           </span>
           AI 大赛
         </h1>
-        <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-muted)' }}>展示你的 AI 实践成果</p>
+        <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-secondary)' }}>展示你的 AI 实践成果</p>
       </div>
 
       {loading ? (

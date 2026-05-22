@@ -60,7 +60,7 @@ export default function CoursesPage() {
           </span>
           AI 公开课
         </h1>
-        <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-muted)' }}>系统化学习 AI 知识与技能</p>
+        <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-secondary)' }}>系统化学习 AI 知识与技能</p>
       </div>
       {isAdmin && (
         <Link href="/courses/create">

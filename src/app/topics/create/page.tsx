@@ -5,17 +5,21 @@ import Link from 'next/link';
 import { Form, Input, Select, App } from 'antd';
 import { ArrowLeftOutlined, CommentOutlined } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 
 export default function CreateTopicPage() {
+  const { user } = useAuth();
   const { message } = App.useApp();
   const [form] = Form.useForm();
 
   const handleSubmit = async (values: Record<string, unknown>) => {
+    if (!user) { message.warning('请先登录'); return; }
     try {
       const { error } = await getSupabase().from('topics').insert({
         title: values.title as string,
         content: values.content as string,
         tags: (values.tags as string[]) || [],
+        author_id: user.id,
       });
       if (error) throw error;
       message.success('话题发布成功！');

@@ -77,7 +77,7 @@ export default function TopicsPage() {
             </span>
             AI 话题社区
           </h1>
-          <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-muted)' }}>提出问题，分享见解</p>
+          <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-secondary)' }}>提出问题，分享见解</p>
         </div>
         <Link href="/topics/create">
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"

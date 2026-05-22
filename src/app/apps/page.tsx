@@ -63,7 +63,7 @@ export default function AppsPage() {
             </span>
             AI 应用推荐
           </h1>
-          <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-muted)' }}>发现好用的 AI 工具</p>
+          <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-secondary)' }}>发现好用的 AI 工具</p>
         </div>
         <Link href="/apps/create">
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
