@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Form, Input, Select, Upload, App } from 'antd';
+import { Form, Input, Select, App } from 'antd';
 import { ArrowLeftOutlined, BookOutlined, PlusOutlined } from '@ant-design/icons';
-import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { CASE_CATEGORY_OPTIONS, AI_TOOL_OPTIONS } from '@/lib/constants';
 
@@ -32,22 +31,27 @@ export default function CreateCasePage() {
     if (!user) return;
     setSubmitting(true);
     try {
-      const { error } = await getSupabase().from('cases').insert({
-        title: values.title as string,
-        summary: values.summary as string,
-        content: values.content as string,
-        category: values.category as string,
-        ai_tools: (values.ai_tools as string[]) || [],
-        difficulty: (values.difficulty as string) || '基础',
-        author_id: user.id,
-        status: 'published',
+      const res = await fetch('/api/cases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: values.title,
+          summary: values.summary,
+          content: values.content,
+          category: values.category,
+          ai_tools: values.ai_tools || [],
+          difficulty: values.difficulty || '基础',
+        }),
       });
-      if (error) throw error;
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || '发布失败');
+      }
       message.success('案例发布成功！');
       window.location.href = '/cases';
     } catch (err) {
       console.error('Failed to create case:', err);
-      message.error('发布失败，请重试');
+      message.error(err instanceof Error ? err.message : '发布失败，请重试');
     } finally {
       setSubmitting(false);
     }

@@ -55,11 +55,15 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
   const handleSubmitAnswer = async () => {
     if (!answerContent.trim()) return;
     try {
-      const { error } = await getSupabase().from('answers').insert({
-        topic_id: id,
-        content: answerContent.trim(),
+      const res = await fetch('/api/answers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic_id: id, content: answerContent.trim() }),
       });
-      if (error) throw error;
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || '提交失败');
+      }
       setAnswerContent('');
       message.success('回答已提交');
       // Refresh answers
@@ -74,10 +78,9 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
       if (topic) {
         const newCount = topic.answer_count + 1;
         setTopic({ ...topic, answer_count: newCount });
-        await getSupabase().from('topics').update({ answer_count: newCount }).eq('id', id);
       }
-    } catch {
-      message.error('提交失败，请重试');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '提交失败，请重试');
     }
   };
 
@@ -85,8 +88,18 @@ export default function TopicDetailPage({ params }: { params: Promise<{ id: stri
     if (!topic) return;
     const newVal = !topic.is_featured;
     setTopic({ ...topic, is_featured: newVal });
-    await getSupabase().from('topics').update({ is_featured: newVal }).eq('id', id);
-    message.success(newVal ? '已设为精选' : '已取消精选');
+    try {
+      const res = await fetch('/api/topics', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, is_featured: newVal }),
+      });
+      if (!res.ok) throw new Error('操作失败');
+      message.success(newVal ? '已设为精选' : '已取消精选');
+    } catch {
+      setTopic({ ...topic, is_featured: !newVal });
+      message.error('操作失败');
+    }
   };
 
   if (loading) {
