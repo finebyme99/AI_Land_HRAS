@@ -21,14 +21,16 @@ import type { Case } from '@/types';
 
 export default function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { message } = App.useApp();
   const [caseItem, setCaseItem] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
   const [comments, setComments] = useState<{ id: string; content: string; author: { name: string; avatar: string }; created_at: string }[]>([]);
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const [relatedCases, setRelatedCases] = useState<{ id: string; title: string; summary: string; category: string; view_count: number; like_count: number }[]>([]);
 
   useEffect(() => {
     async function fetchCase() {
@@ -53,6 +55,40 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
           .eq('target_id', id)
           .order('created_at', { ascending: false });
         setComments((commentData ?? []) as typeof comments);
+
+        // Check if current user liked/bookmarked
+        if (user) {
+          const { data: likeData } = await getSupabase()
+            .from('likes')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('target_type', 'case')
+            .eq('target_id', id)
+            .maybeSingle();
+          setLiked(!!likeData);
+
+          const { data: bookmarkData } = await getSupabase()
+            .from('bookmarks')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('target_type', 'case')
+            .eq('target_id', id)
+            .maybeSingle();
+          setBookmarked(!!bookmarkData);
+        }
+
+        // Fetch related cases (same category)
+        if (data?.category) {
+          const { data: related } = await getSupabase()
+            .from('cases')
+            .select('id, title, summary, category, view_count, like_count')
+            .eq('status', 'published')
+            .eq('category', data.category)
+            .neq('id', id)
+            .order('view_count', { ascending: false })
+            .limit(3);
+          setRelatedCases((related ?? []) as typeof relatedCases);
+        }
       } catch (err) {
         console.error('Failed to fetch case:', err);
       } finally {
@@ -60,24 +96,44 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
       }
     }
     fetchCase();
-  }, [id]);
+  }, [id, user]);
 
   const handleLike = async () => {
     if (!caseItem) return;
-    const newCount = liked ? caseItem.like_count - 1 : caseItem.like_count + 1;
-    setLiked(!liked);
-    setCaseItem({ ...caseItem, like_count: newCount });
-    await getSupabase().from('cases').update({ like_count: newCount }).eq('id', id);
-    message.success(liked ? '已取消点赞' : '点赞成功');
+    if (!user) { message.warning('请先登录'); return; }
+
+    if (liked) {
+      setLiked(false);
+      setCaseItem({ ...caseItem, like_count: caseItem.like_count - 1 });
+      await getSupabase().from('likes').delete().eq('user_id', user.id).eq('target_type', 'case').eq('target_id', id);
+      await getSupabase().from('cases').update({ like_count: caseItem.like_count - 1 }).eq('id', id);
+      message.success('已取消点赞');
+    } else {
+      setLiked(true);
+      setCaseItem({ ...caseItem, like_count: caseItem.like_count + 1 });
+      await getSupabase().from('likes').insert({ user_id: user.id, target_type: 'case', target_id: id });
+      await getSupabase().from('cases').update({ like_count: caseItem.like_count + 1 }).eq('id', id);
+      message.success('点赞成功');
+    }
   };
 
   const handleBookmark = async () => {
     if (!caseItem) return;
-    const newCount = bookmarked ? caseItem.bookmark_count - 1 : caseItem.bookmark_count + 1;
-    setBookmarked(!bookmarked);
-    setCaseItem({ ...caseItem, bookmark_count: newCount });
-    await getSupabase().from('cases').update({ bookmark_count: newCount }).eq('id', id);
-    message.success(bookmarked ? '已取消收藏' : '收藏成功');
+    if (!user) { message.warning('请先登录'); return; }
+
+    if (bookmarked) {
+      setBookmarked(false);
+      setCaseItem({ ...caseItem, bookmark_count: caseItem.bookmark_count - 1 });
+      await getSupabase().from('bookmarks').delete().eq('user_id', user.id).eq('target_type', 'case').eq('target_id', id);
+      await getSupabase().from('cases').update({ bookmark_count: caseItem.bookmark_count - 1 }).eq('id', id);
+      message.success('已取消收藏');
+    } else {
+      setBookmarked(true);
+      setCaseItem({ ...caseItem, bookmark_count: caseItem.bookmark_count + 1 });
+      await getSupabase().from('bookmarks').insert({ user_id: user.id, target_type: 'case', target_id: id });
+      await getSupabase().from('cases').update({ bookmark_count: caseItem.bookmark_count + 1 }).eq('id', id);
+      message.success('收藏成功');
+    }
   };
 
   const handleShare = () => {
@@ -95,11 +151,14 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
 
   const handleComment = async () => {
     if (!commentText.trim()) return;
+    if (!user) { message.warning('请先登录'); return; }
+    setSubmittingComment(true);
     try {
       const { error } = await getSupabase().from('comments').insert({
         target_type: 'case',
         target_id: id,
         content: commentText.trim(),
+        author_id: user.id,
       });
       if (error) throw error;
       setCommentText('');
@@ -120,6 +179,8 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
       }
     } catch {
       message.error('评论提交失败，请重试');
+    } finally {
+      setSubmittingComment(false);
     }
   };
 
@@ -232,19 +293,30 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
           评论 ({comments.length})
         </h2>
 
-        <Input.TextArea
-          rows={3}
-          placeholder="写下你的评论..."
-          value={commentText}
-          onChange={(e) => setCommentText(e.target.value)}
-        />
-        <div className="flex justify-end mt-3">
-          <button className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
-            style={{ background: 'var(--primary)' }}
-            onClick={handleComment}>
-            发表评论
-          </button>
-        </div>
+        {user ? (
+          <>
+            <Input.TextArea
+              rows={3}
+              placeholder="写下你的评论..."
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              maxLength={1000}
+              showCount
+            />
+            <div className="flex justify-end mt-3">
+              <button className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
+                style={{ background: 'var(--primary)' }}
+                onClick={handleComment}
+                disabled={submittingComment || !commentText.trim()}>
+                {submittingComment ? '提交中...' : '发表评论'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-4 text-sm" style={{ color: 'var(--text-muted)' }}>
+            <Link href="/login" style={{ color: 'var(--primary)' }}>登录</Link> 后即可评论
+          </div>
+        )}
 
         {comments.length === 0 ? (
           <div className="mt-5 pt-5 text-center" style={{ borderTop: '1px solid var(--border-light)', color: 'var(--text-muted)' }}>
@@ -269,6 +341,34 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
       </div>
+
+      {/* Related Cases */}
+      {relatedCases.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <BookOutlined style={{ color: 'var(--primary)' }} />
+            相关案例
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {relatedCases.map((rc) => (
+              <Link key={rc.id} href={`/cases/${rc.id}`} className="block group">
+                <div className="glass rounded-[20px] p-5 transition-all duration-300 hover:-translate-y-1"
+                  style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+                  <Tag color={CATEGORY_COLORS[rc.category as keyof typeof CATEGORY_COLORS]} className="mb-2">{rc.category}</Tag>
+                  <h3 className="text-sm font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity">
+                    {rc.title}
+                  </h3>
+                  <p className="text-xs line-clamp-2 mb-3" style={{ color: 'var(--text-secondary)' }}>{rc.summary}</p>
+                  <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span><EyeOutlined /> {rc.view_count}</span>
+                    <span><LikeOutlined /> {rc.like_count}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

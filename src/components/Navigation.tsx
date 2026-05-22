@@ -15,6 +15,7 @@ import {
   MenuOutlined,
   BellOutlined,
   LogoutOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 
@@ -38,7 +39,7 @@ const userMenuItems = [
 export default function Navigation() {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, isAdmin, signOut } = useAuth();
 
   const handleLogout = async () => {
     await signOut();
@@ -114,6 +115,7 @@ export default function Navigation() {
                       key: item.key,
                       label: <Link href={item.key}>{item.label}</Link>,
                     })),
+                    ...(isAdmin ? [{ key: '/admin/users', label: <Link href="/admin/users">用户管理</Link>, icon: <TeamOutlined /> }] : []),
                     { type: 'divider' as const },
                     { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: handleLogout },
                   ],
@@ -205,6 +207,7 @@ export default function Navigation() {
                     key: item.key,
                     label: <Link href={item.key} onClick={() => setDrawerOpen(false)}>{item.label}</Link>,
                   })),
+                  ...(isAdmin ? [{ key: '/admin/users', icon: <TeamOutlined />, label: <Link href="/admin/users" onClick={() => setDrawerOpen(false)}>用户管理</Link> }] : []),
                   { type: 'divider' as const } as const,
                   { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: handleLogout },
                 ]
