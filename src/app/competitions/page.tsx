@@ -53,72 +53,114 @@ export default function CompetitionsPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* ═══ 1. 当前进行中赛事 Banner ═══ */}
       <section className="mb-10 animate-fade-up">
-        <div className="relative overflow-hidden rounded-2xl p-6 sm:p-10"
+        <div className="relative overflow-hidden rounded-2xl"
           style={{
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #1a3a8a 70%, #F27F22 100%)',
-            boxShadow: '0 12px 40px rgba(26,58,138,0.35)',
+            background: 'linear-gradient(135deg, #0a0e27 0%, #0f1b3d 25%, #162654 50%, #1a3a8a 75%, #2a5298 100%)',
+            boxShadow: '0 16px 48px rgba(10,14,39,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
           }}>
-          {/* Decorative orbs */}
-          <div className="absolute top-0 right-0 w-80 h-80 rounded-full opacity-15"
-            style={{ background: 'radial-gradient(circle, rgba(242,127,34,0.6), transparent 70%)', transform: 'translate(20%, -30%)' }} />
-          <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full opacity-10"
-            style={{ background: 'radial-gradient(circle, rgba(100,200,255,0.5), transparent 70%)', transform: 'translate(-20%, 30%)' }} />
+          {/* Gradient mesh overlay */}
+          <div className="absolute inset-0 opacity-30"
+            style={{ background: 'radial-gradient(ellipse at 80% 20%, rgba(242,127,34,0.4), transparent 50%), radial-gradient(ellipse at 20% 80%, rgba(100,180,255,0.2), transparent 50%)' }} />
+          {/* Grid pattern */}
+          <div className="absolute inset-0 opacity-[0.03]"
+            style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="w-2 h-2 rounded-full bg-green-400" style={{ animation: 'pulse 2s infinite' }} />
-              <span className="px-3 py-1 rounded-full text-xs font-semibold text-white"
-                style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(4px)' }}>
-                <TrophyOutlined className="mr-1" />5 月大赛进行中
-              </span>
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 leading-tight">
-              HRAS · AI<span style={{ color: '#F27F22' }}>"智"</span>造赛
-            </h1>
-            <p className="text-lg sm:text-xl font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.9)' }}>
-              AI 重构效率，创意定义价值
-            </p>
-            <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              "AI 浪潮势不可挡，HRAS 全员乘势而上"
-            </p>
-
-            {/* Stats */}
-            <div className="flex flex-wrap gap-3 mb-6">
-              {[
-                { icon: <BulbOutlined />, label: '赛事目标', value: '提效降本 · 创新破局 · 共创共享' },
-                { icon: <TeamOutlined />, label: '覆盖人群', value: 'HRAS 全体（ZT + GF + WX）' },
-                { icon: <CalendarOutlined />, label: '提报时间', value: '每月 1-25 日滚动报名' },
-                { icon: <ClockCircleOutlined />, label: '赛事节奏', value: '每月 25 日截止 / 次月 1 日公布' },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-white/90 text-xs"
-                  style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(4px)' }}>
-                  <span className="text-white/70">{item.icon}</span>
-                  <span><span className="font-medium text-white/60">{item.label}：</span>{item.value}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* CTA buttons */}
-            <div className="flex flex-wrap gap-3">
+          <div className="relative z-10 p-6 sm:p-10">
+            {/* Top nav bar */}
+            <div className="flex items-center justify-between mb-8 pb-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="flex items-center gap-3">
+                <span className="text-lg font-extrabold tracking-tight" style={{ color: 'rgba(255,255,255,0.95)' }}>
+                  HRAS
+                </span>
+                <span className="w-px h-5" style={{ background: 'rgba(255,255,255,0.2)' }} />
+                <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                  AI<span style={{ color: '#F27F22' }}>"智"</span>造大赛
+                </span>
+              </div>
+              <div className="hidden sm:flex items-center gap-5 text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                <a href="#track-section" className="hover:text-white transition-colors cursor-pointer">参赛说明</a>
+                <a href="#timeline-section" className="hover:text-white transition-colors cursor-pointer">赛事时间</a>
+                <a href="#review-section" className="hover:text-white transition-colors cursor-pointer">评审机制</a>
+                <a href="#awards-section" className="hover:text-white transition-colors cursor-pointer">参赛激励</a>
+                <a href="#wish-section" className="hover:text-white transition-colors cursor-pointer">许愿池</a>
+                <a href="#toolkit-section" className="hover:text-white transition-colors cursor-pointer">工具包</a>
+              </div>
               {currentEvent ? (
                 <Link href={`/competitions/${currentEvent.id}`}>
-                  <button className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all hover:scale-105 hover:shadow-lg"
-                    style={{ background: '#fff', color: '#1a3a8a' }}>
-                    <RocketOutlined /> 立即提报
+                  <button className="px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:scale-105"
+                    style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', boxShadow: '0 4px 15px rgba(242,127,34,0.4)' }}>
+                    立即提报 →
                   </button>
                 </Link>
               ) : (
-                <button className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all hover:scale-105"
-                  style={{ background: '#fff', color: '#1a3a8a' }}>
-                  <RocketOutlined /> 立即提报
+                <button className="px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:scale-105"
+                  style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', boxShadow: '0 4px 15px rgba(242,127,34,0.4)' }}>
+                  立即提报 →
                 </button>
               )}
-              <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all hover:scale-105"
-                style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}
-                onClick={() => document.getElementById('track-section')?.scrollIntoView({ behavior: 'smooth' })}>
-                <ThunderboltOutlined /> 了解双赛道
-              </button>
+            </div>
+
+            {/* Hero content */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-center">
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="w-2 h-2 rounded-full bg-green-400" style={{ animation: 'pulse 2s infinite' }} />
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold"
+                    style={{ color: 'rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    HRAS · AI"智"造赛
+                  </span>
+                </div>
+
+                <h1 className="text-3xl sm:text-[40px] font-extrabold text-white mb-3 leading-[1.15] tracking-tight">
+                  AI 重构效率<br />
+                  <span style={{ background: 'linear-gradient(90deg, #F27F22, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    创意定义价值
+                  </span>
+                </h1>
+                <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  AI 浪潮势不可挡，HRAS 全员乘势而上
+                </p>
+
+                <div className="flex flex-wrap gap-3">
+                  {currentEvent ? (
+                    <Link href={`/competitions/${currentEvent.id}`}>
+                      <button className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all hover:scale-105 hover:shadow-lg"
+                        style={{ background: '#fff', color: '#1a3a8a', boxShadow: '0 4px 20px rgba(255,255,255,0.15)' }}>
+                        <RocketOutlined /> 立即参与
+                      </button>
+                    </Link>
+                  ) : (
+                    <button className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all hover:scale-105"
+                      style={{ background: '#fff', color: '#1a3a8a' }}>
+                      <RocketOutlined /> 立即参与
+                    </button>
+                  )}
+                  <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all hover:scale-105"
+                    style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
+                    onClick={() => document.getElementById('track-section')?.scrollIntoView({ behavior: 'smooth' })}>
+                    <ThunderboltOutlined /> 了解双赛道
+                  </button>
+                </div>
+              </div>
+
+              {/* Right info cards */}
+              <div className="hidden lg:block space-y-3">
+                {[
+                  { label: '赛事目标', value: '鼓励全员 AI 落地实际工作场景', sub: '实现提效降本 · 创新破局 · 共创共享' },
+                  { label: '覆盖人群', value: 'HRAS 全体', sub: 'ZT + GF + WX' },
+                  { label: '提报时间', value: '每月 1-25 日', sub: '滚动报名，不限月份' },
+                  { label: '赛事节奏', value: '每月 25 日截止提报', sub: '次月 1 日公布上月结果' },
+                ].map((item) => (
+                  <div key={item.label} className="p-3.5 rounded-xl transition-all duration-300 hover:translate-x-1"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      {item.label}
+                    </div>
+                    <div className="text-sm font-bold text-white mb-0.5">{item.value}</div>
+                    <div className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>{item.sub}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -199,7 +241,7 @@ export default function CompetitionsPage() {
       </section>
 
       {/* Timeline */}
-      <section className="mb-10">
+      <section id="timeline-section" className="mb-10">
         <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
           <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
             <CalendarOutlined style={{ color: 'var(--primary)' }} />
@@ -227,7 +269,7 @@ export default function CompetitionsPage() {
       {/* Review + Awards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
         {/* Review */}
-        <div className="glass rounded-2xl p-6 sm:p-7" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
+        <div id="review-section" className="glass rounded-2xl p-6 sm:p-7" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
           <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
             <StarOutlined style={{ color: 'var(--primary)' }} />
             评审机制
@@ -245,7 +287,7 @@ export default function CompetitionsPage() {
         </div>
 
         {/* Awards */}
-        <div className="glass rounded-2xl p-6 sm:p-7" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
+        <div id="awards-section" className="glass rounded-2xl p-6 sm:p-7" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
           <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
             <CrownOutlined style={{ color: 'var(--accent)' }} />
             参赛激励
@@ -275,7 +317,7 @@ export default function CompetitionsPage() {
       </div>
 
       {/* Wishing Pool */}
-      <section className="mb-10">
+      <section id="wish-section" className="mb-10">
         <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
           <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
             <HeartOutlined style={{ color: '#8b5cf6' }} />
@@ -311,7 +353,7 @@ export default function CompetitionsPage() {
       </section>
 
       {/* Toolkit */}
-      <section className="mb-10">
+      <section id="toolkit-section" className="mb-10">
         <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
           <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
             <ToolOutlined style={{ color: 'var(--primary)' }} />
