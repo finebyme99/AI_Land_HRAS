@@ -312,9 +312,9 @@ export default function Home() {
 
   const statItems = [
     { label: '案例总数', value: stats.cases, icon: <BookOutlined />, iconBg: 'rgba(26, 58, 138, 0.12)', iconColor: '#1a3a8a' },
+    { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a' },
     { label: '话题总数', value: stats.topics, icon: <CommentOutlined />, iconBg: 'rgba(242, 127, 34, 0.12)', iconColor: '#F27F22' },
     { label: '注册用户', value: stats.users, icon: <TeamOutlined />, iconBg: 'rgba(34, 197, 94, 0.12)', iconColor: '#22c55e' },
-    { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a' },
   ];
 
   return (
@@ -372,7 +372,7 @@ export default function Home() {
       </section>
 
       {/* Stats */}
-      <section className="mb-8">
+      <section className="mb-6 -mt-2">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {statItems.map((stat) => (
             <div key={stat.label} className="glass rounded-[20px] p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
