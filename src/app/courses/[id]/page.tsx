@@ -14,6 +14,8 @@ import {
   LikeOutlined,
   StarOutlined,
   ShareAltOutlined,
+  LinkOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
@@ -31,7 +33,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [comments, setComments] = useState<{ id: string; content: string; author: { name: string; avatar: string }; created_at: string }[]>([]);
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchCourse() {
@@ -39,7 +40,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       try {
         const { data, error } = await getSupabase()
           .from('courses')
-          .select('*, chapters:course_chapters(*)')
+          .select('*')
           .eq('id', id)
           .single();
         if (error) throw error;
@@ -185,7 +186,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  const chapters = (course.chapters || []).sort((a, b) => a.sort_order - b.sort_order);
+  // Normalize category and content_type to arrays
+  const categories = Array.isArray(course.category) ? course.category : [course.category];
+  const contentTypes = Array.isArray(course.content_type) ? course.content_type : [course.content_type];
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -196,11 +199,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       {/* Course info */}
       <div className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <Tag color={course.content_type === 'video' ? 'red' : 'blue'}>
-            {course.content_type === 'video' ? '视频' : '文档'}
-          </Tag>
+          {contentTypes.map((ct) => (
+            <Tag key={ct} color={ct === 'video' ? 'red' : 'blue'}>
+              {ct === 'video' ? '视频' : '文档'}
+            </Tag>
+          ))}
           <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
-          <Tag>{course.category}</Tag>
+          {categories.map((cat) => (
+            <Tag key={cat}>{cat}</Tag>
+          ))}
           {course.is_featured && <Tag color="orange">精选</Tag>}
           {isAdmin && (
             <button onClick={handleToggleFeatured}
@@ -223,76 +230,60 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         </div>
 
         <p className="mb-6 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
-
-        <div className="mb-6 p-4 rounded-lg" style={{ background: 'rgba(255, 255, 255, 0.3)' }}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">学习进度</span>
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>0%</span>
-          </div>
-          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--border-light)' }}>
-            <div className="h-full rounded-full" style={{ background: 'var(--primary)', width: '0%' }} />
-          </div>
-        </div>
-
-        <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
-          style={{ background: 'var(--primary)' }}
-          onClick={() => document.getElementById('course-chapters')?.scrollIntoView({ behavior: 'smooth' })}>
-          <PlayCircleOutlined /> 开始学习
-        </button>
       </div>
 
-      {/* Chapters */}
-      {chapters.length > 0 && (
-        <div id="course-chapters" className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-          <h2 className="text-lg font-semibold mb-5">
-            课程目录 ({chapters.length} 章)
+      {/* Course Links */}
+      {(course.courseware_url || course.video_url) && (
+        <div className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">
+            <LinkOutlined style={{ color: 'var(--primary)' }} />
+            课件与视频
           </h2>
-          <div className="flex flex-col gap-3">
-            {chapters.map((chapter, index) => (
-              <div key={chapter.id}>
-                <div
-                  className="flex items-center gap-4 p-3 rounded-lg transition-all hover:-translate-y-0.5 cursor-pointer"
-                  style={{ border: '1px solid var(--border-light)', background: selectedChapter === chapter.id ? 'rgba(26, 58, 138, 0.04)' : 'var(--surface-warm)' }}
-                  onClick={() => setSelectedChapter(selectedChapter === chapter.id ? null : chapter.id)}
-                >
-                  <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
-                    style={{ background: 'rgba(26, 58, 138, 0.1)', color: 'var(--primary)' }}>
-                    {index + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{chapter.title}</div>
-                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{chapter.duration}</div>
-                  </div>
-                  <span style={{ color: 'var(--text-muted)' }}>
-                    {course.content_type === 'video' ? <PlayCircleOutlined /> : <FileTextOutlined />}
-                  </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {course.courseware_url && (
+              <a
+                href={course.courseware_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-4 p-4 rounded-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                style={{ border: '1px solid var(--border-light)', background: 'rgba(255, 255, 255, 0.4)' }}
+              >
+                <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
+                  style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 4px 15px rgba(26,58,138,0.3)' }}>
+                  <BookOutlined />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold mb-0.5" style={{ color: 'var(--foreground)' }}>课件文档</div>
+                  <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>点击查看课件</div>
                 </div>
-                {selectedChapter === chapter.id && (
-                  <div className="mt-2 ml-11 mr-3 mb-2 p-4 rounded-lg text-sm leading-relaxed"
-                    style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
-                    {course.content_type === 'video' && chapter.content_url ? (
-                      <div>
-                        <p className="mb-2" style={{ color: 'var(--text-secondary)' }}>视频链接：</p>
-                        <a href={chapter.content_url} target="_blank" rel="noopener noreferrer"
-                          className="underline transition-opacity hover:opacity-70" style={{ color: 'var(--primary)' }}>
-                          {chapter.content_url}
-                        </a>
-                      </div>
-                    ) : chapter.content ? (
-                      <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: chapter.content }} />
-                    ) : (
-                      <p style={{ color: 'var(--text-muted)' }}>暂无内容</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+                <ArrowLeftOutlined className="rotate-180 transition-transform group-hover:translate-x-1" style={{ color: 'var(--text-muted)' }} />
+              </a>
+            )}
+            {course.video_url && (
+              <a
+                href={course.video_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-4 p-4 rounded-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                style={{ border: '1px solid var(--border-light)', background: 'rgba(255, 255, 255, 0.4)' }}
+              >
+                <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
+                  style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 4px 15px rgba(242,127,34,0.3)' }}>
+                  <PlayCircleOutlined />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold mb-0.5" style={{ color: 'var(--foreground)' }}>教学视频</div>
+                  <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>点击查看视频</div>
+                </div>
+                <ArrowLeftOutlined className="rotate-180 transition-transform group-hover:translate-x-1" style={{ color: 'var(--text-muted)' }} />
+              </a>
+            )}
           </div>
         </div>
       )}
 
       {/* Action buttons + Comments */}
-      <div className="glass rounded-2xl p-6 sm:p-8 mt-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+      <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex items-center gap-3 mb-6">
           <button onClick={handleLike}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"

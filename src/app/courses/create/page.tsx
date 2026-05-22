@@ -3,25 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Form, Input, Select, App } from 'antd';
-import { ArrowLeftOutlined, ReadOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import { getSupabase } from '@/lib/supabase';
+import { ArrowLeftOutlined, ReadOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
-import { COURSE_CATEGORY_OPTIONS, DIFFICULTY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/constants';
-import type { ContentType } from '@/types';
-
-interface ChapterForm {
-  title: string;
-  duration: string;
-  content_url: string;
-  content: string;
-}
+import { COURSE_CATEGORY_OPTIONS, DIFFICULTY_OPTIONS } from '@/lib/constants';
 
 export default function CreateCoursePage() {
   const { isAdmin } = useAuth();
   const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [chapters, setChapters] = useState<ChapterForm[]>([]);
-  const [contentType, setContentType] = useState<ContentType>('video');
   const [submitting, setSubmitting] = useState(false);
 
   if (!isAdmin) {
@@ -40,61 +29,34 @@ export default function CreateCoursePage() {
     );
   }
 
-  const addChapter = () => {
-    setChapters([...chapters, { title: '', duration: '', content_url: '', content: '' }]);
-  };
-
-  const removeChapter = (index: number) => {
-    setChapters(chapters.filter((_, i) => i !== index));
-  };
-
-  const updateChapter = (index: number, field: keyof ChapterForm, value: string) => {
-    const updated = [...chapters];
-    updated[index] = { ...updated[index], [field]: value };
-    setChapters(updated);
-  };
-
   const handleSubmit = async (values: Record<string, unknown>) => {
     setSubmitting(true);
     try {
-      const { data: course, error: courseError } = await getSupabase()
-        .from('courses')
-        .insert({
-          title: values.title as string,
-          description: values.description as string,
-          instructor: values.instructor as string,
-          duration: values.duration as string,
-          category: values.category as string,
-          difficulty: values.difficulty as string,
-          content_type: contentType,
-          cover_image: (values.cover_image as string) || '',
-        })
-        .select()
-        .single();
-
-      if (courseError) throw courseError;
-
-      if (chapters.length > 0 && course) {
-        const chaptersData = chapters.map((ch, idx) => ({
-          course_id: course.id,
-          title: ch.title,
-          duration: ch.duration,
-          content_url: contentType === 'video' ? ch.content_url : '',
-          content: contentType === 'doc' ? ch.content : '',
-          sort_order: idx + 1,
-        }));
-
-        const { error: chaptersError } = await getSupabase()
-          .from('course_chapters')
-          .insert(chaptersData);
-
-        if (chaptersError) throw chaptersError;
+      const res = await fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: values.title,
+          description: values.description,
+          instructor: values.instructor,
+          duration: values.duration,
+          category: values.category || [],
+          difficulty: values.difficulty,
+          content_type: values.content_type || [],
+          cover_image: values.cover_image || '',
+          courseware_url: values.courseware_url || '',
+          video_url: values.video_url || '',
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || '发布失败');
       }
-
       message.success('课程发布成功！');
       window.location.href = '/courses';
-    } catch {
-      message.error('发布失败，请重试');
+    } catch (err) {
+      console.error('Failed to create course:', err);
+      message.error(err instanceof Error ? err.message : '发布失败，请重试');
     } finally {
       setSubmitting(false);
     }
@@ -132,98 +94,49 @@ export default function CreateCoursePage() {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
-              <Select placeholder="选择分类" options={COURSE_CATEGORY_OPTIONS} />
+              <Select
+                mode="multiple"
+                placeholder="选择分类（可多选）"
+                options={COURSE_CATEGORY_OPTIONS}
+                maxTagCount={3}
+              />
             </Form.Item>
             <Form.Item name="difficulty" label="难度" rules={[{ required: true, message: '请选择难度' }]}>
               <Select placeholder="选择难度" options={DIFFICULTY_OPTIONS} />
             </Form.Item>
-            <Form.Item name="content_type" label="内容形式">
-              <Select
-                placeholder="选择形式"
-                options={CONTENT_TYPE_OPTIONS}
-                defaultValue="video"
-                onChange={(v: ContentType) => setContentType(v)}
-              />
-            </Form.Item>
           </div>
+
+          <Form.Item name="content_type" label="内容形式" rules={[{ required: true, message: '请选择内容形式' }]}>
+            <Select
+              mode="multiple"
+              placeholder="选择形式（可多选）"
+              options={[
+                { label: '视频', value: 'video' },
+                { label: '文档', value: 'doc' },
+              ]}
+              maxTagCount={3}
+            />
+          </Form.Item>
 
           <Form.Item name="cover_image" label="封面图 URL">
             <Input placeholder="输入封面图片地址（可选）" />
           </Form.Item>
 
-          {/* Chapter Editor */}
+          {/* Links */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                章节内容
-              </span>
-              <button
-                type="button"
-                onClick={addChapter}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
-                style={{ background: 'rgba(74, 111, 165, 0.08)', color: '#4a6fa5' }}
-              >
-                <PlusOutlined /> 添加章节
-              </button>
+            <div className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>
+              课件与视频链接
             </div>
-
-            {chapters.length === 0 && (
-              <div className="text-center py-8 rounded-xl" style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>
-                <p className="text-sm">暂无章节，点击上方按钮添加</p>
-              </div>
-            )}
-
-            {chapters.map((chapter, index) => (
-              <div
-                key={index}
-                className="mb-3 p-4 rounded-xl"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border-light)' }}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                    章节 {index + 1}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeChapter(index)}
-                    className="text-xs transition-opacity hover:opacity-70"
-                    style={{ color: '#ef4444' }}
-                  >
-                    <DeleteOutlined /> 删除
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                  <Input
-                    placeholder="章节标题"
-                    value={chapter.title}
-                    onChange={(e) => updateChapter(index, 'title', e.target.value)}
-                  />
-                  <Input
-                    placeholder="时长，如：30分钟"
-                    value={chapter.duration}
-                    onChange={(e) => updateChapter(index, 'duration', e.target.value)}
-                  />
-                </div>
-
-                {contentType === 'video' ? (
-                  <Input
-                    placeholder="视频链接"
-                    value={chapter.content_url}
-                    onChange={(e) => updateChapter(index, 'content_url', e.target.value)}
-                  />
-                ) : (
-                  <Input.TextArea
-                    rows={3}
-                    placeholder="文档内容"
-                    value={chapter.content}
-                    onChange={(e) => updateChapter(index, 'content', e.target.value)}
-                  />
-                )}
-              </div>
-            ))}
+            <div className="space-y-3">
+              <Form.Item name="courseware_url" label="课件链接" className="!mb-3">
+                <Input placeholder="输入课件文档链接（如飞书文档、Google Docs 等）" />
+              </Form.Item>
+              <Form.Item name="video_url" label="视频链接">
+                <Input placeholder="输入视频链接（如 B站、YouTube 等）" />
+              </Form.Item>
+            </div>
           </div>
 
           <Form.Item>

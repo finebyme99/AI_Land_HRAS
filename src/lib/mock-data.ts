@@ -187,6 +187,8 @@ export const mockCourses: Course[] = [
     difficulty: '入门',
     duration: '2小时',
     content_type: 'video',
+    courseware_url: '',
+    video_url: '',
     chapters: [
       { id: '1', title: '什么是大模型？', content_url: '', content: '', duration: '30分钟', sort_order: 1 },
       { id: '2', title: '常用 AI 工具介绍', content_url: '', content: '', duration: '30分钟', sort_order: 2 },
@@ -210,6 +212,8 @@ export const mockCourses: Course[] = [
     difficulty: '基础',
     duration: '3小时',
     content_type: 'doc',
+    courseware_url: '',
+    video_url: '',
     chapters: [
       { id: '1', title: 'AI 生成 JD', content_url: '', content: '', duration: '45分钟', sort_order: 1 },
       { id: '2', title: 'AI 筛选简历', content_url: '', content: '', duration: '45分钟', sort_order: 2 },
@@ -233,6 +237,8 @@ export const mockCourses: Course[] = [
     difficulty: '进阶',
     duration: '4小时',
     content_type: 'video',
+    courseware_url: '',
+    video_url: '',
     chapters: [
       { id: '1', title: 'Prompt 设计原则', content_url: '', content: '', duration: '60分钟', sort_order: 1 },
       { id: '2', title: 'Chain of Thought', content_url: '', content: '', duration: '60分钟', sort_order: 2 },

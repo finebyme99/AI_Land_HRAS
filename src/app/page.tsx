@@ -279,7 +279,7 @@ export default function Home() {
           getSupabase().from('cases').select('*, author:users!author_id(id, name, avatar, department)').eq('status', 'published').order('view_count', { ascending: false }).limit(6),
           getSupabase().from('topics').select('*, author:users!author_id(id, name, avatar, department)').order('created_at', { ascending: false }).limit(6),
           getSupabase().from('events').select('*').in('status', ['ongoing', 'upcoming']).order('start_time', { ascending: false }),
-          getSupabase().from('courses').select('*, chapters:course_chapters(*)').order('created_at', { ascending: false }).limit(6),
+          getSupabase().from('courses').select('*').order('created_at', { ascending: false }).limit(6),
           getSupabase().from('cases').select('id', { count: 'exact', head: true }).eq('status', 'published'),
           getSupabase().from('topics').select('id', { count: 'exact', head: true }),
           getSupabase().from('users').select('id', { count: 'exact', head: true }),
@@ -458,10 +458,12 @@ export default function Home() {
                 <div className="glass rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-md relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 group-hover:opacity-100 transition-opacity"
                     style={{ background: 'var(--gradient-primary)' }} />
-                  <div className="flex items-center gap-2 mb-3">
-                    <Tag color={course.content_type === 'video' ? 'red' : 'blue'}>
-                      {course.content_type === 'video' ? '视频' : '文档'}
-                    </Tag>
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    {(Array.isArray(course.content_type) ? course.content_type : [course.content_type]).map((ct) => (
+                      <Tag key={ct} color={ct === 'video' ? 'red' : 'blue'}>
+                        {ct === 'video' ? '视频' : '文档'}
+                      </Tag>
+                    ))}
                     <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
                     {course.is_featured && <Tag color="orange">精选</Tag>}
                   </div>

@@ -78,10 +78,12 @@ export interface Course {
   description: string;
   cover_image: string;
   instructor: string;
-  category: CourseCategory;
+  category: CourseCategory | CourseCategory[];
   difficulty: CourseDifficulty;
   duration: string;
-  content_type: ContentType;
+  content_type: ContentType | ContentType[];
+  courseware_url: string;
+  video_url: string;
   chapters: CourseChapter[];
   student_count: number;
   rating: number;
