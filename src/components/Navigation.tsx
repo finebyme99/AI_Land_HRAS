@@ -115,7 +115,7 @@ export default function Navigation() {
                       key: item.key,
                       label: <Link href={item.key}>{item.label}</Link>,
                     })),
-                    ...(isAdmin ? [{ key: '/admin/users', label: <Link href="/admin/users">用户管理</Link>, icon: <TeamOutlined /> }] : []),
+                    ...(isAdmin ? [{ key: '/admin/users', label: <Link href="/admin/users">用户管理</Link> }] : []),
                     { type: 'divider' as const },
                     { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: handleLogout },
                   ],
