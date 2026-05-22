@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Form, Input, Select, App } from 'antd';
 import { ArrowLeftOutlined, CommentOutlined } from '@ant-design/icons';
-import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 
 export default function CreateTopicPage() {
@@ -15,13 +14,16 @@ export default function CreateTopicPage() {
   const handleSubmit = async (values: Record<string, unknown>) => {
     if (!user) { message.warning('请先登录'); return; }
     try {
-      const { error } = await getSupabase().from('topics').insert({
-        title: values.title as string,
-        content: values.content as string,
-        tags: (values.tags as string[]) || [],
-        author_id: user.id,
+      const res = await fetch('/api/topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: values.title as string,
+          content: values.content as string,
+          tags: (values.tags as string[]) || [],
+        }),
       });
-      if (error) throw error;
+      if (!res.ok) throw new Error('发布失败');
       message.success('话题发布成功！');
       window.location.href = '/topics';
     } catch {

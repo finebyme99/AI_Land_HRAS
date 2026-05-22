@@ -102,18 +102,18 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
     if (!caseItem) return;
     if (!user) { message.warning('请先登录'); return; }
 
-    if (liked) {
-      setLiked(false);
-      setCaseItem({ ...caseItem, like_count: caseItem.like_count - 1 });
-      await getSupabase().from('likes').delete().eq('user_id', user.id).eq('target_type', 'case').eq('target_id', id);
-      await getSupabase().from('cases').update({ like_count: caseItem.like_count - 1 }).eq('id', id);
-      message.success('已取消点赞');
-    } else {
-      setLiked(true);
-      setCaseItem({ ...caseItem, like_count: caseItem.like_count + 1 });
-      await getSupabase().from('likes').insert({ user_id: user.id, target_type: 'case', target_id: id });
-      await getSupabase().from('cases').update({ like_count: caseItem.like_count + 1 }).eq('id', id);
-      message.success('点赞成功');
+    try {
+      const res = await fetch('/api/interactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggle', target_type: 'case', target_id: id }),
+      });
+      const data = await res.json();
+      setLiked(data.active);
+      setCaseItem({ ...caseItem, like_count: caseItem.like_count + (data.active ? 1 : -1) });
+      message.success(data.active ? '点赞成功' : '已取消点赞');
+    } catch {
+      message.error('操作失败');
     }
   };
 
@@ -121,18 +121,18 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
     if (!caseItem) return;
     if (!user) { message.warning('请先登录'); return; }
 
-    if (bookmarked) {
-      setBookmarked(false);
-      setCaseItem({ ...caseItem, bookmark_count: caseItem.bookmark_count - 1 });
-      await getSupabase().from('bookmarks').delete().eq('user_id', user.id).eq('target_type', 'case').eq('target_id', id);
-      await getSupabase().from('cases').update({ bookmark_count: caseItem.bookmark_count - 1 }).eq('id', id);
-      message.success('已取消收藏');
-    } else {
-      setBookmarked(true);
-      setCaseItem({ ...caseItem, bookmark_count: caseItem.bookmark_count + 1 });
-      await getSupabase().from('bookmarks').insert({ user_id: user.id, target_type: 'case', target_id: id });
-      await getSupabase().from('cases').update({ bookmark_count: caseItem.bookmark_count + 1 }).eq('id', id);
-      message.success('收藏成功');
+    try {
+      const res = await fetch('/api/interactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggle', target_type: 'case', target_id: id }),
+      });
+      const data = await res.json();
+      setBookmarked(data.active);
+      setCaseItem({ ...caseItem, bookmark_count: caseItem.bookmark_count + (data.active ? 1 : -1) });
+      message.success(data.active ? '收藏成功' : '已取消收藏');
+    } catch {
+      message.error('操作失败');
     }
   };
 
@@ -154,28 +154,24 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
     if (!user) { message.warning('请先登录'); return; }
     setSubmittingComment(true);
     try {
-      const { error } = await getSupabase().from('comments').insert({
-        target_type: 'case',
-        target_id: id,
-        content: commentText.trim(),
-        author_id: user.id,
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_type: 'case',
+          target_id: id,
+          content: commentText.trim(),
+        }),
       });
-      if (error) throw error;
+      if (!res.ok) throw new Error('评论失败');
+      const data = await res.json();
       setCommentText('');
       message.success('评论已提交');
-      // Refresh comments
-      const { data: commentData } = await getSupabase()
-        .from('comments')
-        .select('*, author:users!author_id(id, name, avatar)')
-        .eq('target_type', 'case')
-        .eq('target_id', id)
-        .order('created_at', { ascending: false });
-      setComments((commentData ?? []) as typeof comments);
+      // Add new comment to list
+      setComments([data.comment, ...comments]);
       // Update comment count
       if (caseItem) {
-        const newCount = caseItem.comment_count + 1;
-        setCaseItem({ ...caseItem, comment_count: newCount });
-        await getSupabase().from('cases').update({ comment_count: newCount }).eq('id', id);
+        setCaseItem({ ...caseItem, comment_count: caseItem.comment_count + 1 });
       }
     } catch {
       message.error('评论提交失败，请重试');
