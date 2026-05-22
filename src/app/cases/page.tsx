@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Tag, Input, Select, Radio, Empty, Spin } from 'antd';
+import { Tag, Input, Select, Radio, Empty, Spin, Pagination } from 'antd';
 import {
   EyeOutlined,
   LikeOutlined,
@@ -19,39 +19,53 @@ import type { Case, CaseCategory } from '@/types';
 export default function CasesPage() {
   const { isAdmin } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState<CaseCategory | ''>('');
+  const [sortBy, setSortBy] = useState<string>('created_at');
+  const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const pageSize = 12;
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [category, debouncedSearch, sortBy]);
+
   const fetchCases = useCallback(async () => {
     setLoading(true);
     try {
+      const ascending = sortBy === 'created_at' ? false : false;
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
       let query = getSupabase()
         .from('cases')
-        .select('*, author:users!author_id(id, name, avatar, department)')
+        .select('*, author:users!author_id(id, name, avatar, department)', { count: 'exact' })
         .eq('status', 'published')
-        .order('created_at', { ascending: false });
+        .order(sortBy, { ascending })
+        .range(from, to);
 
       if (category) query = query.eq('category', category);
       if (debouncedSearch) query = query.or(`title.ilike.%${debouncedSearch}%,summary.ilike.%${debouncedSearch}%`);
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       if (error) throw error;
       setCases((data ?? []) as Case[]);
+      setTotal(count ?? 0);
     } catch (err) {
       console.error('Failed to fetch cases:', err);
       setCases([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [category, debouncedSearch]);
+  }, [category, debouncedSearch, sortBy, page]);
 
   useEffect(() => { fetchCases(); }, [fetchCases]);
 
@@ -96,6 +110,18 @@ export default function CasesPage() {
             allowClear
             options={CASE_CATEGORY_OPTIONS}
           />
+          <Select
+            placeholder="排序"
+            className="w-full sm:w-36"
+            value={sortBy}
+            onChange={setSortBy}
+            options={[
+              { label: '最新发布', value: 'created_at' },
+              { label: '最多浏览', value: 'view_count' },
+              { label: '最多点赞', value: 'like_count' },
+              { label: '最多收藏', value: 'bookmark_count' },
+            ]}
+          />
           <Radio.Group value={viewMode} onChange={(e) => setViewMode(e.target.value)} size="small">
             <Radio.Button value="card"><AppstoreOutlined /></Radio.Button>
             <Radio.Button value="list"><UnorderedListOutlined /></Radio.Button>
@@ -104,6 +130,11 @@ export default function CasesPage() {
       </div>
 
       {/* Content */}
+      {!loading && total > 0 && (
+        <div className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+          共 {total} 个案例
+        </div>
+      )}
       {loading ? (
         <div className="flex justify-center py-20"><Spin size="large" /></div>
       ) : cases.length === 0 ? (
@@ -169,6 +200,20 @@ export default function CasesPage() {
               </div>
             </Link>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {total > pageSize && (
+        <div className="flex justify-center mt-6">
+          <Pagination
+            current={page}
+            total={total}
+            pageSize={pageSize}
+            onChange={setPage}
+            showSizeChanger={false}
+            showTotal={(t) => `共 ${t} 个案例`}
+          />
         </div>
       )}
     </div>
