@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Tag, Spin, App } from 'antd';
+import { Tag, Spin, App, Avatar, Input } from 'antd';
 import {
   ReadOutlined,
   ArrowLeftOutlined,
@@ -11,6 +11,9 @@ import {
   StarFilled,
   UserOutlined,
   ClockCircleOutlined,
+  LikeOutlined,
+  StarOutlined,
+  ShareAltOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
@@ -19,10 +22,16 @@ import type { Course } from '@/types';
 
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { message } = App.useApp();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
+  const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [comments, setComments] = useState<{ id: string; content: string; author: { name: string; avatar: string }; created_at: string }[]>([]);
+  const [liked, setLiked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchCourse() {
@@ -35,6 +44,39 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           .single();
         if (error) throw error;
         setCourse(data as Course);
+
+        // Increment view count
+        getSupabase().rpc('increment_view_count', { table_name: 'courses', row_id: id });
+
+        // Fetch comments
+        const { data: commentData } = await getSupabase()
+          .from('comments')
+          .select('*, author:users!author_id(id, name, avatar)')
+          .eq('target_type', 'course')
+          .eq('target_id', id)
+          .order('created_at', { ascending: false });
+        setComments((commentData ?? []) as typeof comments);
+
+        // Check if current user liked/bookmarked
+        if (user) {
+          const { data: likeData } = await getSupabase()
+            .from('likes')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('target_type', 'course')
+            .eq('target_id', id)
+            .maybeSingle();
+          setLiked(!!likeData);
+
+          const { data: bookmarkData } = await getSupabase()
+            .from('bookmarks')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('target_type', 'course')
+            .eq('target_id', id)
+            .maybeSingle();
+          setBookmarked(!!bookmarkData);
+        }
       } catch (err) {
         console.error('Failed to fetch course:', err);
       } finally {
@@ -42,7 +84,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       }
     }
     fetchCourse();
-  }, [id]);
+  }, [id, user]);
 
   const handleToggleFeatured = async () => {
     if (!course) return;
@@ -50,6 +92,80 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     setCourse({ ...course, is_featured: newVal });
     await getSupabase().from('courses').update({ is_featured: newVal }).eq('id', id);
     message.success(newVal ? '已设为精选' : '已取消精选');
+  };
+
+  const handleLike = async () => {
+    if (!course) return;
+    if (!user) { message.warning('请先登录'); return; }
+    if (liked) {
+      setLiked(false);
+      setCourse({ ...course, like_count: course.like_count - 1 });
+      await getSupabase().from('likes').delete().eq('user_id', user.id).eq('target_type', 'course').eq('target_id', id);
+      await getSupabase().from('courses').update({ like_count: course.like_count - 1 }).eq('id', id);
+      message.success('已取消点赞');
+    } else {
+      setLiked(true);
+      setCourse({ ...course, like_count: course.like_count + 1 });
+      await getSupabase().from('likes').insert({ user_id: user.id, target_type: 'course', target_id: id });
+      await getSupabase().from('courses').update({ like_count: course.like_count + 1 }).eq('id', id);
+      message.success('点赞成功');
+    }
+  };
+
+  const handleBookmark = async () => {
+    if (!course) return;
+    if (!user) { message.warning('请先登录'); return; }
+    if (bookmarked) {
+      setBookmarked(false);
+      setCourse({ ...course, bookmark_count: course.bookmark_count - 1 });
+      await getSupabase().from('bookmarks').delete().eq('user_id', user.id).eq('target_type', 'course').eq('target_id', id);
+      await getSupabase().from('courses').update({ bookmark_count: course.bookmark_count - 1 }).eq('id', id);
+      message.success('已取消收藏');
+    } else {
+      setBookmarked(true);
+      setCourse({ ...course, bookmark_count: course.bookmark_count + 1 });
+      await getSupabase().from('bookmarks').insert({ user_id: user.id, target_type: 'course', target_id: id });
+      await getSupabase().from('courses').update({ bookmark_count: course.bookmark_count + 1 }).eq('id', id);
+      message.success('收藏成功');
+    }
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    message.success('链接已复制');
+  };
+
+  const handleComment = async () => {
+    if (!commentText.trim()) return;
+    if (!user) { message.warning('请先登录'); return; }
+    setSubmittingComment(true);
+    try {
+      const { error } = await getSupabase().from('comments').insert({
+        target_type: 'course',
+        target_id: id,
+        content: commentText.trim(),
+        author_id: user.id,
+      });
+      if (error) throw error;
+      setCommentText('');
+      message.success('评论已提交');
+      const { data: commentData } = await getSupabase()
+        .from('comments')
+        .select('*, author:users!author_id(id, name, avatar)')
+        .eq('target_type', 'course')
+        .eq('target_id', id)
+        .order('created_at', { ascending: false });
+      setComments((commentData ?? []) as typeof comments);
+      if (course) {
+        const newCount = course.comment_count + 1;
+        setCourse({ ...course, comment_count: newCount });
+        await getSupabase().from('courses').update({ comment_count: newCount }).eq('id', id);
+      }
+    } catch {
+      message.error('评论提交失败，请重试');
+    } finally {
+      setSubmittingComment(false);
+    }
   };
 
   if (loading) {
@@ -133,24 +249,105 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </h2>
           <div className="flex flex-col gap-3">
             {chapters.map((chapter, index) => (
-              <div key={chapter.id} className="flex items-center gap-4 p-3 rounded-lg transition-all hover:-translate-y-0.5 cursor-pointer"
-                style={{ border: '1px solid var(--border-light)', background: 'var(--surface-warm)' }}>
-                <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
-                  style={{ background: 'rgba(26, 58, 138, 0.1)', color: 'var(--primary)' }}>
-                  {index + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{chapter.title}</div>
-                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{chapter.duration}</div>
+              <div key={chapter.id}>
+                <div
+                  className="flex items-center gap-4 p-3 rounded-lg transition-all hover:-translate-y-0.5 cursor-pointer"
+                  style={{ border: '1px solid var(--border-light)', background: selectedChapter === chapter.id ? 'rgba(26, 58, 138, 0.04)' : 'var(--surface-warm)' }}
+                  onClick={() => setSelectedChapter(selectedChapter === chapter.id ? null : chapter.id)}
+                >
+                  <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
+                    style={{ background: 'rgba(26, 58, 138, 0.1)', color: 'var(--primary)' }}>
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{chapter.title}</div>
+                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{chapter.duration}</div>
+                  </div>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {course.content_type === 'video' ? <PlayCircleOutlined /> : <FileTextOutlined />}
+                  </span>
                 </div>
-                <span style={{ color: 'var(--text-muted)' }}>
-                  {course.content_type === 'video' ? <PlayCircleOutlined /> : <FileTextOutlined />}
-                </span>
+                {selectedChapter === chapter.id && (
+                  <div className="mt-2 ml-11 mr-3 mb-2 p-4 rounded-lg text-sm leading-relaxed"
+                    style={{ background: 'rgba(255, 255, 255, 0.5)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
+                    {course.content_type === 'video' && chapter.content_url ? (
+                      <div>
+                        <p className="mb-2" style={{ color: 'var(--text-secondary)' }}>视频链接：</p>
+                        <a href={chapter.content_url} target="_blank" rel="noopener noreferrer"
+                          className="underline transition-opacity hover:opacity-70" style={{ color: 'var(--primary)' }}>
+                          {chapter.content_url}
+                        </a>
+                      </div>
+                    ) : chapter.content ? (
+                      <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: chapter.content }} />
+                    ) : (
+                      <p style={{ color: 'var(--text-muted)' }}>暂无内容</p>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* Action buttons + Comments */}
+      <div className="glass rounded-2xl p-6 sm:p-8 mt-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={handleLike}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+            style={{ color: liked ? 'var(--primary)' : 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: liked ? 'rgba(26, 58, 138, 0.06)' : 'var(--surface)' }}>
+            <LikeOutlined /> 点赞 ({course.like_count})
+          </button>
+          <button onClick={handleBookmark}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+            style={{ color: bookmarked ? 'var(--primary)' : 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: bookmarked ? 'rgba(26, 58, 138, 0.06)' : 'var(--surface)' }}>
+            <StarOutlined /> 收藏 ({course.bookmark_count})
+          </button>
+          <button onClick={handleShare}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+            style={{ color: 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'var(--surface)' }}>
+            <ShareAltOutlined /> 分享
+          </button>
+        </div>
+
+        <h2 className="text-lg font-semibold mb-5">评论 ({comments.length})</h2>
+
+        {user ? (
+          <>
+            <Input.TextArea rows={3} placeholder="写下你的评论..." value={commentText} onChange={(e) => setCommentText(e.target.value)} maxLength={1000} showCount />
+            <div className="flex justify-end mt-3">
+              <button className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
+                style={{ background: 'var(--primary)' }} onClick={handleComment} disabled={submittingComment || !commentText.trim()}>
+                {submittingComment ? '提交中...' : '发表评论'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-4 text-sm" style={{ color: 'var(--text-muted)' }}>登录后即可评论</div>
+        )}
+
+        {comments.length === 0 ? (
+          <div className="mt-5 pt-5 text-center" style={{ borderTop: '1px solid var(--border-light)', color: 'var(--text-muted)' }}>
+            <p className="text-sm">暂无评论</p>
+          </div>
+        ) : (
+          <div className="mt-5 pt-5 flex flex-col gap-4" style={{ borderTop: '1px solid var(--border-light)' }}>
+            {comments.map((c) => (
+              <div key={c.id} className="flex gap-3">
+                <Avatar size="small" src={c.author.avatar} icon={<UserOutlined />} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium">{c.author.name}</span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{new Date(c.created_at).toLocaleDateString('zh-CN')}</span>
+                  </div>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{c.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
