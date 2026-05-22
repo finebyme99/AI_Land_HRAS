@@ -53,23 +53,25 @@ export default function CoursesPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold flex items-center gap-3">
-          <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(74, 111, 165, 0.08)', color: '#4a6fa5' }}>
-            <ReadOutlined />
-          </span>
-          AI 公开课
-        </h1>
-        <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-secondary)' }}>系统化学习 AI 知识与技能</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold flex items-center gap-3">
+            <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(74, 111, 165, 0.08)', color: '#4a6fa5' }}>
+              <ReadOutlined />
+            </span>
+            AI 公开课
+          </h1>
+          <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-secondary)' }}>系统化学习 AI 知识与技能</p>
+        </div>
+        {isAdmin && (
+          <Link href="/courses/create">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+              style={{ background: 'var(--primary)' }}>
+              <PlusOutlined /> 发布课程
+            </button>
+          </Link>
+        )}
       </div>
-      {isAdmin && (
-        <Link href="/courses/create">
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
-            style={{ background: 'var(--primary)' }}>
-            <PlusOutlined /> 发布课程
-          </button>
-        </Link>
-      )}
 
       {/* Filters */}
       <div className="glass rounded-xl p-4 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>

@@ -22,13 +22,13 @@ import { CATEGORY_COLORS, COURSE_DIFFICULTY_COLORS } from '@/lib/constants';
 import type { Case, Topic, Event, Course } from '@/types';
 
 /* ─── Animated Counter ─── */
-function AnimatedCounter({ target, duration = 1.8 }: { target: number; duration?: number }) {
+function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: number }) {
   const [count, setCount] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
   const started = useRef(false);
 
   useEffect(() => {
-    if (started.current || target === 0) { setCount(target); return; }
+    if (target === 0) { setCount(0); return; }
     const el = ref.current;
     if (!el) { setCount(target); return; }
 
@@ -39,7 +39,7 @@ function AnimatedCounter({ target, duration = 1.8 }: { target: number; duration?
           const start = performance.now();
           const step = (now: number) => {
             const progress = Math.min((now - start) / (duration * 1000), 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
+            const eased = 1 - Math.pow(1 - progress, 4);
             setCount(Math.round(eased * target));
             if (progress < 1) requestAnimationFrame(step);
           };
@@ -55,95 +55,126 @@ function AnimatedCounter({ target, duration = 1.8 }: { target: number; duration?
   return <span ref={ref}>{count.toLocaleString()}</span>;
 }
 
+/* ─── Floating Particle ─── */
+function FloatingParticle({ delay, x, size }: { delay: number; x: number; size: number }) {
+  return (
+    <span
+      className="absolute rounded-full pointer-events-none"
+      style={{
+        width: size,
+        height: size,
+        left: `${x}%`,
+        bottom: '-10%',
+        background: 'rgba(26, 58, 138, 0.15)',
+        animation: `float-up 6s ${delay}s ease-in infinite`,
+      }}
+    />
+  );
+}
+
 /* ─── Data Dashboard Panel ─── */
-function DataDashboard({ savedHours, caseCount, userCount }: { savedHours: number; caseCount: number; userCount: number }) {
+function DataDashboard({ savedHours, participantCount }: { savedHours: number; participantCount: number }) {
   return (
     <div className="relative">
-      {/* Glow effect */}
-      <div className="absolute -inset-4 rounded-3xl opacity-30 blur-2xl"
-        style={{ background: 'linear-gradient(135deg, rgba(26,58,138,0.2), rgba(242,127,34,0.15))' }} />
+      {/* Animated glow */}
+      <div className="absolute -inset-6 rounded-3xl opacity-20 blur-3xl animate-pulse"
+        style={{ background: 'linear-gradient(135deg, rgba(26,58,138,0.3), rgba(242,127,34,0.2))', animationDuration: '4s' }} />
 
-      <div className="relative glass-strong rounded-2xl p-6 sm:p-7 border"
+      <div className="relative glass-strong rounded-2xl p-6 sm:p-7 border overflow-hidden"
         style={{ borderColor: 'rgba(255,255,255,0.5)' }}>
+
+        {/* Floating particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <FloatingParticle delay={0} x={15} size={4} />
+          <FloatingParticle delay={1.5} x={45} size={3} />
+          <FloatingParticle delay={3} x={75} size={5} />
+          <FloatingParticle delay={4.5} x={90} size={3} />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center gap-2.5 mb-5">
-          <span className="w-8 h-8 rounded-lg flex items-center justify-center"
+        <div className="flex items-center gap-2.5 mb-6 relative z-10">
+          <span className="w-8 h-8 rounded-lg flex items-center justify-center relative overflow-hidden"
             style={{ background: 'var(--gradient-primary)' }}>
             <RocketOutlined style={{ color: '#fff', fontSize: 14 }} />
+            <span className="absolute inset-0 bg-white/20 animate-pulse" style={{ animationDuration: '3s' }} />
           </span>
           <div>
             <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>HRAS AI 提效总览</div>
-            <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>数据每日 00:00 自动更新</div>
+            <div className="text-[11px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+              <span className="w-1 h-1 rounded-full bg-green-500 inline-block" style={{ animation: 'pulse 2s infinite' }} />
+              实时数据
+            </div>
           </div>
         </div>
 
         {/* Metrics */}
-        <div className="space-y-3">
-          <MetricCard
-            icon={<ClockCircleOutlined />}
-            label="累计节省工时"
-            value={savedHours}
-            unit="小时"
-            gradient="linear-gradient(135deg, #1a3a8a, #4a6fc7)"
-            delay={0}
-          />
-          <MetricCard
-            icon={<BookOutlined />}
-            label="落地案例数"
-            value={caseCount}
-            unit="个"
-            gradient="linear-gradient(135deg, #F27F22, #e8650a)"
-            delay={0.1}
-          />
-          <MetricCard
-            icon={<TeamOutlined />}
-            label="参与成员"
-            value={userCount}
-            unit="人"
-            gradient="linear-gradient(135deg, #22c55e, #16a34a)"
-            delay={0.2}
-          />
+        <div className="space-y-4 relative z-10">
+          {/* Saved Hours */}
+          <div className="group p-4 rounded-xl transition-all duration-500 hover:scale-[1.02] hover:shadow-lg cursor-default"
+            style={{ background: 'rgba(255,255,255,0.5)' }}>
+            <div className="flex items-center gap-3.5">
+              <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
+                style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 4px 15px rgba(26,58,138,0.3)' }}>
+                <ClockCircleOutlined />
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] font-medium mb-1" style={{ color: 'var(--text-muted)' }}>累计节省工时</div>
+                <div className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--foreground)' }}>
+                  <AnimatedCounter target={savedHours} />
+                  <span className="text-xs font-medium ml-1" style={{ color: 'var(--text-secondary)' }}>小时</span>
+                </div>
+              </div>
+            </div>
+            {/* Progress bar decoration */}
+            <div className="mt-3 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(26,58,138,0.08)' }}>
+              <div className="h-full rounded-full transition-all duration-1000"
+                style={{
+                  background: 'linear-gradient(90deg, #1a3a8a, #4a6fc7)',
+                  width: `${Math.min((savedHours / 1000) * 100, 100)}%`,
+                  boxShadow: '0 0 8px rgba(26,58,138,0.4)',
+                }} />
+            </div>
+          </div>
+
+          {/* Participants */}
+          <div className="group p-4 rounded-xl transition-all duration-500 hover:scale-[1.02] hover:shadow-lg cursor-default"
+            style={{ background: 'rgba(255,255,255,0.5)' }}>
+            <div className="flex items-center gap-3.5">
+              <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
+                style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 4px 15px rgba(242,127,34,0.3)' }}>
+                <TeamOutlined />
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] font-medium mb-1" style={{ color: 'var(--text-muted)' }}>参与人数</div>
+                <div className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--foreground)' }}>
+                  <AnimatedCounter target={participantCount} />
+                  <span className="text-xs font-medium ml-1" style={{ color: 'var(--text-secondary)' }}>人</span>
+                </div>
+              </div>
+            </div>
+            {/* Progress bar decoration */}
+            <div className="mt-3 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(242,127,34,0.08)' }}>
+              <div className="h-full rounded-full transition-all duration-1000"
+                style={{
+                  background: 'linear-gradient(90deg, #F27F22, #e8650a)',
+                  width: `${Math.min((participantCount / 100) * 100, 100)}%`,
+                  boxShadow: '0 0 8px rgba(242,127,34,0.4)',
+                }} />
+            </div>
+          </div>
         </div>
 
         {/* Decorative footer */}
-        <div className="mt-5 pt-4 flex items-center justify-between"
+        <div className="mt-5 pt-4 flex items-center justify-between relative z-10"
           style={{ borderTop: '1px solid rgba(255,255,255,0.4)' }}>
           <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
             让 AI 在 HR 圈真正用起来
           </span>
-          <span className="flex gap-1">
-            {[0, 1, 2].map((i) => (
-              <span key={i} className="w-1.5 h-1.5 rounded-full"
-                style={{
-                  background: i === 0 ? 'var(--primary)' : i === 1 ? 'var(--accent)' : '#22c55e',
-                  opacity: 0.6,
-                }} />
-            ))}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MetricCard({ icon, label, value, unit, gradient, delay }: {
-  icon: React.ReactNode; label: string; value: number; unit: string; gradient: string; delay: number;
-}) {
-  return (
-    <div className="flex items-center gap-3.5 p-3.5 rounded-xl transition-all duration-300 hover:scale-[1.02]"
-      style={{
-        background: 'rgba(255,255,255,0.5)',
-        animationDelay: `${delay}s`,
-      }}>
-      <span className="w-10 h-10 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-        style={{ background: gradient, color: '#fff' }}>
-        {icon}
-      </span>
-      <div className="flex-1 min-w-0">
-        <div className="text-[11px] font-medium mb-0.5" style={{ color: 'var(--text-muted)' }}>{label}</div>
-        <div className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--foreground)' }}>
-          <AnimatedCounter target={value} />
-          <span className="text-xs font-medium ml-1" style={{ color: 'var(--text-secondary)' }}>{unit}</span>
+          <div className="flex gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--primary)', opacity: 0.7 }} />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent)', opacity: 0.7 }} />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e', opacity: 0.7 }} />
+          </div>
         </div>
       </div>
     </div>
@@ -226,14 +257,14 @@ export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [stats, setStats] = useState({ cases: 0, topics: 0, users: 0, courses: 0 });
-  const [dashboard, setDashboard] = useState({ savedHours: 0, caseCount: 0, userCount: 0 });
+  const [dashboard, setDashboard] = useState({ savedHours: 0, participantCount: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       try {
-        const [casesRes, topicsRes, eventsRes, coursesRes, caseCount, topicCount, userCount, courseCount] = await Promise.all([
+        const [casesRes, topicsRes, eventsRes, coursesRes, caseCount, topicCount, userCount, courseCount, settingsRes] = await Promise.all([
           getSupabase().from('cases').select('*, author:users!author_id(id, name, avatar, department)').eq('status', 'published').order('view_count', { ascending: false }).limit(6),
           getSupabase().from('topics').select('*, author:users!author_id(id, name, avatar, department)').order('created_at', { ascending: false }).limit(6),
           getSupabase().from('events').select('*').in('status', ['ongoing', 'upcoming']).order('start_time', { ascending: false }),
@@ -242,6 +273,7 @@ export default function Home() {
           getSupabase().from('topics').select('id', { count: 'exact', head: true }),
           getSupabase().from('users').select('id', { count: 'exact', head: true }),
           getSupabase().from('courses').select('id', { count: 'exact', head: true }),
+          fetch('/api/admin/settings').then(r => r.json()).catch(() => ({ saved_hours: 0, participant_count: 0 })),
         ]);
 
         setCases((casesRes.data ?? []) as Case[]);
@@ -249,18 +281,15 @@ export default function Home() {
         setEvents((eventsRes.data ?? []) as Event[]);
         setCourses((coursesRes.data ?? []) as Course[]);
 
-        const cCount = caseCount.count || 0;
-        const uCount = userCount.count || 0;
         setStats({
-          cases: cCount,
+          cases: caseCount.count || 0,
           topics: topicCount.count || 0,
-          users: uCount,
+          users: userCount.count || 0,
           courses: courseCount.count || 0,
         });
         setDashboard({
-          savedHours: cCount * 8 + uCount * 2,
-          caseCount: cCount,
-          userCount: uCount,
+          savedHours: settingsRes.saved_hours || 0,
+          participantCount: settingsRes.participant_count || 0,
         });
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -336,8 +365,7 @@ export default function Home() {
           <div className="hidden lg:block">
             <DataDashboard
               savedHours={dashboard.savedHours}
-              caseCount={dashboard.caseCount}
-              userCount={dashboard.userCount}
+              participantCount={dashboard.participantCount}
             />
           </div>
         </div>
