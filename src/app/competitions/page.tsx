@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Tag, Spin } from 'antd';
+import { Spin } from 'antd';
 import {
   TrophyOutlined,
   RocketOutlined,
   HeartOutlined,
   CalendarOutlined,
-  TeamOutlined,
-  ClockCircleOutlined,
   CheckCircleOutlined,
   StarOutlined,
   BulbOutlined,
@@ -18,6 +16,8 @@ import {
   CrownOutlined,
   FireOutlined,
   ThunderboltOutlined,
+  ArrowUpOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import type { Event } from '@/types';
@@ -25,6 +25,7 @@ import type { Event } from '@/types';
 export default function CompetitionsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showTop, setShowTop] = useState(false);
 
   useEffect(() => {
     async function fetchEvents() {
@@ -46,116 +47,113 @@ export default function CompetitionsPage() {
     fetchEvents();
   }, []);
 
+  useEffect(() => {
+    const onScroll = () => setShowTop(window.scrollY > 400);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const ongoingEvents = events.filter((e) => e.status === 'ongoing');
   const currentEvent = ongoingEvents[0];
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      {/* ═══ 1. 当前进行中赛事 Banner ═══ */}
+      {/* ═══ 1. 顶部 Banner ═══ */}
       <section className="mb-10 animate-fade-up">
         <div className="relative overflow-hidden rounded-2xl"
           style={{
-            background: 'linear-gradient(135deg, #0a0e27 0%, #0f1b3d 25%, #162654 50%, #1a3a8a 75%, #2a5298 100%)',
-            boxShadow: '0 16px 48px rgba(10,14,39,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
+            background: 'linear-gradient(135deg, #12255a 0%, #1a3a8a 40%, #2a5298 70%, #3b6db5 100%)',
+            boxShadow: '0 16px 48px rgba(10,14,39,0.3), inset 0 1px 0 rgba(255,255,255,0.08)',
           }}>
-          {/* Gradient mesh overlay */}
-          <div className="absolute inset-0 opacity-30"
+          {/* Gradient mesh */}
+          <div className="absolute inset-0 opacity-25"
             style={{ background: 'radial-gradient(ellipse at 80% 20%, rgba(242,127,34,0.4), transparent 50%), radial-gradient(ellipse at 20% 80%, rgba(100,180,255,0.2), transparent 50%)' }} />
-          {/* Grid pattern */}
-          <div className="absolute inset-0 opacity-[0.03]"
+          {/* Grid */}
+          <div className="absolute inset-0 opacity-[0.04]"
             style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
           <div className="relative z-10 p-6 sm:p-10">
-            {/* Top nav bar */}
-            <div className="flex items-center justify-between mb-8 pb-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-extrabold tracking-tight" style={{ color: 'rgba(255,255,255,0.95)' }}>
-                  HRAS
-                </span>
-                <span className="w-px h-5" style={{ background: 'rgba(255,255,255,0.2)' }} />
-                <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                  AI<span style={{ color: '#F27F22' }}>"智"</span>造大赛
-                </span>
+            {/* 胶囊导航 — 居中 */}
+            <nav className="flex justify-center mb-8 sm:mb-10">
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-full"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                {[
+                  { label: '参赛说明', href: '#track-section' },
+                  { label: '赛事时间', href: '#timeline-section' },
+                  { label: '评审机制', href: '#review-section' },
+                  { label: '参赛激励', href: '#awards-section' },
+                  { label: '许愿池', href: '#wish-section' },
+                  { label: '工具包', href: '#toolkit-section' },
+                ].map((item) => (
+                  <a key={item.label} href={item.href}
+                    className="px-4 py-2 rounded-full text-sm font-medium transition-all hover:bg-white/10"
+                    style={{ color: 'rgba(255,255,255,0.65)' }}>
+                    {item.label}
+                  </a>
+                ))}
               </div>
-              <div className="hidden sm:flex items-center gap-5 text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                <a href="#track-section" className="hover:text-white transition-colors cursor-pointer">参赛说明</a>
-                <a href="#timeline-section" className="hover:text-white transition-colors cursor-pointer">赛事时间</a>
-                <a href="#review-section" className="hover:text-white transition-colors cursor-pointer">评审机制</a>
-                <a href="#awards-section" className="hover:text-white transition-colors cursor-pointer">参赛激励</a>
-                <a href="#wish-section" className="hover:text-white transition-colors cursor-pointer">许愿池</a>
-                <a href="#toolkit-section" className="hover:text-white transition-colors cursor-pointer">工具包</a>
-              </div>
-              {currentEvent ? (
-                <Link href={`/competitions/${currentEvent.id}`}>
-                  <button className="px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:scale-105"
-                    style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', boxShadow: '0 4px 15px rgba(242,127,34,0.4)' }}>
-                    立即提报 →
-                  </button>
-                </Link>
-              ) : (
-                <button className="px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:scale-105"
-                  style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', boxShadow: '0 4px 15px rgba(242,127,34,0.4)' }}>
-                  立即提报 →
-                </button>
-              )}
-            </div>
+            </nav>
 
-            {/* Hero content */}
+            {/* Hero */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-center">
               <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="w-2 h-2 rounded-full bg-green-400" style={{ animation: 'pulse 2s infinite' }} />
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold"
-                    style={{ color: 'rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    HRAS · AI"智"造赛
-                  </span>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5"
+                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.8)' }}>5月大赛进行中</span>
                 </div>
 
-                <h1 className="text-3xl sm:text-[40px] font-extrabold text-white mb-3 leading-[1.15] tracking-tight">
+                <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-4 leading-[1.1] tracking-tight">
                   AI 重构效率<br />
                   <span style={{ background: 'linear-gradient(90deg, #F27F22, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                     创意定义价值
                   </span>
                 </h1>
-                <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                  AI 浪潮势不可挡，HRAS 全员乘势而上
+                <p className="text-sm mb-8 max-w-md" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                  "我来执行，我创造 + 我定义如何执行 + AI 执行"——用 AI 解决 HR 实际场景问题
                 </p>
 
+                {/* 快捷按钮 */}
                 <div className="flex flex-wrap gap-3">
-                  {currentEvent ? (
-                    <Link href={`/competitions/${currentEvent.id}`}>
-                      <button className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all hover:scale-105 hover:shadow-lg"
-                        style={{ background: '#fff', color: '#1a3a8a', boxShadow: '0 4px 20px rgba(255,255,255,0.15)' }}>
-                        <RocketOutlined /> 立即参与
-                      </button>
-                    </Link>
-                  ) : (
-                    <button className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all hover:scale-105"
-                      style={{ background: '#fff', color: '#1a3a8a' }}>
-                      <RocketOutlined /> 立即参与
+                  <a href="https://ztn.feishu.cn/share/base/form/shrcn2OaxMFequUyz2E6VkJFvJg" target="_blank" rel="noopener noreferrer">
+                    <button className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all hover:scale-105 hover:shadow-xl"
+                      style={{ background: '#fff', color: '#1a3a8a', boxShadow: '0 4px 24px rgba(255,255,255,0.15)' }}>
+                      <RocketOutlined /> 参与提报
                     </button>
-                  )}
-                  <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all hover:scale-105"
-                    style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
+                  </a>
+                  <a href="https://ztn.feishu.cn/share/base/form/shrcnzQxxexe7eyuztTiCydTdz7" target="_blank" rel="noopener noreferrer">
+                    <button className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+                      style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+                      <HeartOutlined /> 许下心愿
+                    </button>
+                  </a>
+                  <button className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+                    style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.12)' }}
                     onClick={() => document.getElementById('track-section')?.scrollIntoView({ behavior: 'smooth' })}>
                     <ThunderboltOutlined /> 了解双赛道
                   </button>
                 </div>
               </div>
 
-              {/* Right info cards */}
-              <div className="hidden lg:block space-y-3">
+              {/* 右侧信息卡 */}
+              <div className="hidden lg:block space-y-2.5">
                 {[
-                  { label: '赛事目标', value: '鼓励全员 AI 落地实际工作场景', sub: '实现提效降本 · 创新破局 · 共创共享' },
+                  { label: '赛事目标', value: '鼓励全员 AI 落地实际工作场景', sub: '提效降本 · 创新破局 · 共创共享' },
                   { label: '覆盖人群', value: 'HRAS 全体', sub: 'ZT + GF + WX' },
                   { label: '提报时间', value: '每月 1-25 日', sub: '滚动报名，不限月份' },
-                  { label: '赛事节奏', value: '每月 25 日截止提报', sub: '次月 1 日公布上月结果' },
+                  { label: '赛事节奏', value: '每月 25 日截止', sub: '次月 1 日公布上月结果' },
                 ].map((item) => (
                   <div key={item.label} className="p-3.5 rounded-xl transition-all duration-300 hover:translate-x-1"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                      {item.label}
-                    </div>
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>{item.label}</div>
                     <div className="text-sm font-bold text-white mb-0.5">{item.value}</div>
                     <div className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>{item.sub}</div>
                   </div>
@@ -166,9 +164,7 @@ export default function CompetitionsPage() {
         </div>
       </section>
 
-      {/* ═══ 2. AI 赛事介绍 ═══ */}
-
-      {/* Dual Tracks */}
+      {/* ═══ 双赛道 ═══ */}
       <section id="track-section" className="mb-10">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold mb-2">
@@ -179,13 +175,11 @@ export default function CompetitionsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Track A */}
-          <div className="glass rounded-2xl p-6 sm:p-7 group hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+          <div className="glass rounded-2xl p-6 sm:p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
             style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
             <div className="flex items-center gap-3 mb-4">
               <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold"
-                style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 4px 15px rgba(26,58,138,0.3)' }}>
-                A
-              </span>
+                style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 4px 15px rgba(26,58,138,0.3)' }}>A</span>
               <div>
                 <div className="text-base font-bold" style={{ color: 'var(--foreground)' }}>降本提效赛道</div>
                 <div className="text-xs" style={{ color: 'var(--text-muted)' }}>已有场景 · 替代或简化已有流程</div>
@@ -209,13 +203,11 @@ export default function CompetitionsPage() {
           </div>
 
           {/* Track B */}
-          <div className="glass rounded-2xl p-6 sm:p-7 group hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+          <div className="glass rounded-2xl p-6 sm:p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
             style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
             <div className="flex items-center gap-3 mb-4">
               <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold"
-                style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 4px 15px rgba(242,127,34,0.3)' }}>
-                B
-              </span>
+                style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 4px 15px rgba(242,127,34,0.3)' }}>B</span>
               <div>
                 <div className="text-base font-bold" style={{ color: 'var(--foreground)' }}>增值创新赛道</div>
                 <div className="text-xs" style={{ color: 'var(--text-muted)' }}>新场景 · 创造新体验、新关怀、新能力</div>
@@ -240,7 +232,7 @@ export default function CompetitionsPage() {
         </div>
       </section>
 
-      {/* Timeline */}
+      {/* ═══ 赛事时间 ═══ */}
       <section id="timeline-section" className="mb-10">
         <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
           <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
@@ -266,13 +258,11 @@ export default function CompetitionsPage() {
         </div>
       </section>
 
-      {/* Review + Awards */}
+      {/* ═══ 评审 + 激励 ═══ */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
-        {/* Review */}
         <div id="review-section" className="glass rounded-2xl p-6 sm:p-7" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
           <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <StarOutlined style={{ color: 'var(--primary)' }} />
-            评审机制
+            <StarOutlined style={{ color: 'var(--primary)' }} /> 评审机制
           </h2>
           <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>组委会每月集中评审</p>
           <div className="space-y-3">
@@ -286,11 +276,9 @@ export default function CompetitionsPage() {
           </div>
         </div>
 
-        {/* Awards */}
         <div id="awards-section" className="glass rounded-2xl p-6 sm:p-7" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
           <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <CrownOutlined style={{ color: 'var(--accent)' }} />
-            参赛激励
+            <CrownOutlined style={{ color: 'var(--accent)' }} /> 参赛激励
           </h2>
           <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>现金奖励 + 小红花荣誉体系</p>
           <div className="space-y-3">
@@ -303,9 +291,7 @@ export default function CompetitionsPage() {
               <div key={item.name} className="flex items-center gap-3 p-2.5 rounded-lg transition-all hover:shadow-sm"
                 style={{ background: `${item.color}06` }}>
                 <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: `${item.color}12`, color: item.color }}>
-                  {item.icon}
-                </span>
+                  style={{ background: `${item.color}12`, color: item.color }}>{item.icon}</span>
                 <div>
                   <div className="text-xs font-bold" style={{ color: 'var(--foreground)' }}>{item.name}</div>
                   <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{item.desc}</div>
@@ -316,12 +302,11 @@ export default function CompetitionsPage() {
         </div>
       </div>
 
-      {/* Wishing Pool */}
+      {/* ═══ AI 许愿池 ═══ */}
       <section id="wish-section" className="mb-10">
         <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
           <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
-            <HeartOutlined style={{ color: '#8b5cf6' }} />
-            AI 许愿池
+            <HeartOutlined style={{ color: '#8b5cf6' }} /> AI 许愿池
           </h2>
           <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>你来许愿，AI 来实现</p>
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-start">
@@ -335,13 +320,19 @@ export default function CompetitionsPage() {
                   「我每次做 XX 要花 X 小时，如果 AI 能帮我 XX 就好了」
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-5">
                 {['重复劳动多', '流程耗时长', '数据易出错', '跨部门协作难', '信息查找慢'].map((tag) => (
                   <span key={tag} className="px-2.5 py-1 rounded-full text-xs" style={{ background: 'rgba(139,92,246,0.08)', color: '#8b5cf6' }}>
                     {tag}
                   </span>
                 ))}
               </div>
+              <a href="https://ztn.feishu.cn/share/base/form/shrcnzQxxexe7eyuztTiCydTdz7" target="_blank" rel="noopener noreferrer">
+                <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105"
+                  style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 4px 20px rgba(124,58,237,0.25)' }}>
+                  <SendOutlined /> 写下你的愿望
+                </button>
+              </a>
             </div>
             <div className="p-5 rounded-xl text-center" style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.12)' }}>
               <div className="text-3xl mb-2">✨</div>
@@ -352,12 +343,11 @@ export default function CompetitionsPage() {
         </div>
       </section>
 
-      {/* Toolkit */}
+      {/* ═══ 参赛工具包 ═══ */}
       <section id="toolkit-section" className="mb-10">
         <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
           <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
-            <ToolOutlined style={{ color: 'var(--primary)' }} />
-            参赛工具包
+            <ToolOutlined style={{ color: 'var(--primary)' }} /> 参赛工具包
           </h2>
           <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>不知道从哪里开始？先看看 HSSC AI 公开课系列</p>
           <div className="flex flex-wrap gap-2 mb-5">
@@ -376,6 +366,20 @@ export default function CompetitionsPage() {
           </Link>
         </div>
       </section>
+
+      {/* ═══ 回到顶部 ═══ */}
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="fixed bottom-6 right-6 w-11 h-11 rounded-full flex items-center justify-center text-white transition-all duration-300 z-50"
+        style={{
+          background: 'var(--gradient-primary)',
+          boxShadow: 'var(--shadow-md)',
+          opacity: showTop ? 1 : 0,
+          transform: showTop ? 'translateY(0)' : 'translateY(20px)',
+          pointerEvents: showTop ? 'auto' : 'none',
+        }}>
+        <ArrowUpOutlined />
+      </button>
     </div>
   );
 }
