@@ -85,6 +85,9 @@ export interface Course {
   chapters: CourseChapter[];
   student_count: number;
   rating: number;
+  like_count: number;
+  bookmark_count: number;
+  comment_count: number;
   is_featured?: boolean;
   created_at: string;
 }
@@ -93,6 +96,7 @@ export interface CourseChapter {
   id: string;
   title: string;
   content_url: string;
+  content: string;
   duration: string;
   sort_order: number;
 }
