@@ -7,90 +7,84 @@ type: project
 **项目名**：HRAS AI岛（英文名：HRAS AI Land）
 **仓库**：https://github.com/finebyme99/AI_Land_HRAS
 **本地路径**：/Users/apple/Q/AI/26AI在集团落地/AILand
+**生产地址**：https://hras-ai-land.vercel.app
 
-## 技术栈（已确认）
+## 技术栈
 
-- 前端：Next.js 16 + React 19 + TypeScript + Tailwind 4
-- UI：Ant Design 6（需配置 transpilePackages）
-- 后端：Supabase BaaS（认证 + PostgreSQL + 存储 + 实时订阅）
-- AI：国产大模型（OpenAI 协议接入）
-- 多语言：中英双语
+- 前端：Next.js 16.2.6 + React 19.2.4 + TypeScript 5 + Tailwind CSS 4
+- UI：Ant Design 6.4.3（App.useApp() 获取 message/notification）
+- 后端：Supabase BaaS（PostgreSQL + RLS）
+- 认证：飞书 OAuth（cookie-based，非 Supabase Auth）
+- 部署：Vercel（auto-deploy from main）
 
-## 环境变量（已配置）
+## 关键架构洞察
 
-`.env.local` 已填入：
-- Supabase URL / Anon Key / Service Role Key
-- NEXT_PUBLIC_APP_URL=http://localhost:3000
-- FEISHU_APP_ID / FEISHU_APP_SECRET — **注意：当前填的是「test节假日日历」应用的凭证，用户需要换成「HSSC集成助手」的凭证**
+**RLS 与认证不匹配**：Supabase RLS 使用 `auth.uid()`，但项目用飞书 cookie 认证。导致 `auth.uid()` 永远为 null，所有客户端写入都被 RLS 阻止。
 
-## 数据库（已部署）
+**解决方案**：所有写入操作必须通过 API routes（`src/app/api/`），使用 `getSupabaseAdmin()`（service role key）绕过 RLS。
 
-- Schema 已成功部署到 Supabase（16 张表 + RLS + 函数）
-- 种子数据已插入（5 用户、1 活动、5 案例、4 话题、3 课程+12 章节、3 应用）
-- 迁移文件：`supabase/migrations/full_migration.sql`（含 DROP 清理）
-- 种子数据：`supabase/migrations/003_seed_data.sql`
+## 页面状态（全部已接入 Supabase）
 
-## 页面状态（已接入真实数据）
+- [x] 首页 — Hero 双栏（文字 + 动态数据看板）+ 统计卡片
+- [x] 案例库 — 列表/详情/创建
+- [x] 公开课 — 列表/详情/创建
+- [x] 问答话题 — 列表/详情/创建
+- [x] 应用推荐 — 列表/详情
+- [x] AI大赛 — 列表/详情
+- [x] 个人中心 — 个人资料/收藏/贡献/通知/设置
+- [x] 登录 — 飞书 OAuth 流程
+- [x] 管理员 — 用户管理（/admin/users）+ 平台设置（/admin/settings）
 
-所有页面已从 mock-data 切换到 Supabase 查询：
-- [x] 首页 Dashboard — 统计用 count 查询，内容用 limit 截取
-- [x] AI 案例库列表 — 支持搜索/分类/难度筛选，有 debounce
-- [x] AI 案例详情 — Supabase 查询 + 浏览量自增
-- [x] AI 话题列表 — 支持排序/标签筛选，有 debounce
-- [x] AI 话题详情 — Supabase 查询 + 回答列表
-- [x] AI 大赛列表 — 按状态分组显示
-- [x] AI 大赛详情 — Supabase 查询
-- [x] AI 公开课列表 — 支持搜索/分类/难度/形式筛选
-- [x] AI 课程详情 — Supabase 查询 + 章节列表
-- [x] AI 应用推荐列表 — 支持搜索/分类筛选
-- [x] AI 应用详情 — Supabase 查询
-- [x] 个人中心 — 用 useAuth() 真实用户数据
-- [x] 我的贡献 — 用 auth user_id 查 Supabase
-- [x] 个人设置 — 用 useAuth() 显示用户信息
+## API 路由（写入操作）
 
-## 前觉风格（已完成 — Glassmorphism 玻璃拟态风格）
+| 路由 | 功能 |
+|------|------|
+| `/api/auth/feishu` | 飞书 OAuth 发起 |
+| `/api/auth/feishu/callback` | OAuth 回调 + cookie 设置 |
+| `/api/auth/me` | 获取当前用户 |
+| `/api/auth/logout` | 登出 |
+| `/api/topics` | 创建话题 |
+| `/api/comments` | 创建评论 |
+| `/api/answers` | 创建回答 |
+| `/api/interactions` | 点赞/收藏/取消 |
+| `/api/admin/users` | 用户管理（GET 列表/PATCH 改角色）|
+| `/api/admin/settings` | 平台设置（GET/PUT）|
 
-已全面重写所有页面（21个文件），采用 **Glassmorphism（玻璃拟态）** 风格：
+## 已完成功能
 
-**设计语言：**
-- 字体：Outfit（英文/标题）+ Noto Sans SC（中文正文）
-- 配色：HRAS logo 品牌色 — 深蓝 `#1a3a8a` + 暖橙 `#F27F22`
-- 背景：暖米白 `#f5f0eb` + 4 个浮动 blob 动画（深蓝/橙/深橙/浅蓝）
-- 卡片：`rgba(255,255,255,0.45)` 背景 + `backdrop-filter: blur(20px)` + 白色边框
-- 渐变：`linear-gradient(135deg, #1a3a8a, #F27F22)` 用于按钮、logo、hero 文字
-- 交互：卡片 hover 上浮 + 顶部渐变条显现、导航胶囊悬停效果
-- 特效：shimmer 渐变文字动画、CursorBot 鼠标跟随小机器人
+- Glassmorphism 全站风格（21 个页面重写）
+- 飞书 OAuth 登录（cookie session）
+- 角色权限控制（user/contributor/moderator/admin）
+- 精选标记功能（admin/moderator）
+- 动态数据看板（IntersectionObserver 动画计数器）
+- 管理员后台（用户管理 + 平台设置）
+- 导航栏响应式（桌面胶囊 + 移动端抽屉 + 底部 tab）
+- HRAS Logo 集成
+- 评论/点赞/收藏 API
+- 话题/回答创建 API
 
-**风格参考文件：** `glassmorphism-preview.html`
+## 待完成
 
-**已重写文件：**
-- `globals.css` — 全新设计 token、glass 工具类、blob 动画、字体
-- `layout.tsx` — Outfit/Noto Sans SC 字体 + blob 背景注入 + CursorBot
-- `antd-registry.tsx` — navy/orange 主题 token
-- `Navigation.tsx` — 毛玻璃导航栏 + gradient logo + 胶囊悬停
-- `page.tsx`（首页）— 居中 Hero + shimmer 文字 + glass 统计卡片
-- 5 个列表页 — glass 卡片 + hover 渐变顶栏
-- 5 个详情页 — glass 内容块 + navy/orange 交互色
-- 5 个个人中心页 + login + 2 个创建页
-- `CursorBot.tsx` — 鼠标跟随小机器人组件
+- [ ] 运行 `006_platform_settings.sql` 迁移（Supabase Dashboard）
+- [ ] 模块 feat 分支可能与 main 有分歧，需要检查/合并
+- [ ] 内容审核后台（轻量实现）
+- [ ] 多语言支持
+- [ ] 飞书消息通知
+- [ ] mock-data.ts 清理（仍存在于 src/lib/）
 
-## 飞书 OAuth 登录（已完成）
+## 设计系统
 
-- 流程：login 页 → /api/auth/feishu → 飞书授权 → /api/auth/feishu/callback → cookie session
-- auth-context.tsx 已改为 cookie-based session（不依赖 Supabase Auth）
-- 已修复 double logout bug
-- 登录链接：`http://localhost:3000/login`
-
-## 下一步（按优先级）
-
-- [ ] 内容审核后台 — 轻量实现
-- [ ] 多语言支持 — 待整体搭完后再做，先记待办
-- [ ] 飞书消息通知 — 后续再做，先记待办
-- [ ] Vercel 部署 — 本地跑通后再部署，需配置环境变量
+- **风格**：Glassmorphism 玻璃拟态
+- **配色**：深蓝 `#1a3a8a` + 暖橙 `#F27F22`
+- **字体**：Outfit（标题）+ Noto Sans SC（正文）
+- **背景**：暖米白 `#f5f0eb` + 浮动 blob 动画
+- **卡片**：`rgba(255,255,255,0.45)` + `backdrop-filter: blur(20px)`
+- **详细规范**：见 CONTRIBUTING.md
 
 ## 唤醒词
 
 用户说"继续做AI Land"时：
 1. 读取此文件了解进度
-2. 读 PRD.md 或飞书评论确认最新需求
-3. 接着上次的进度继续开发
+2. 读 CONTRIBUTING.md 了解技术约束
+3. 读 PRD.md 或飞书评论确认最新需求
+4. 接着上次的进度继续开发
