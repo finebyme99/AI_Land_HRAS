@@ -156,13 +156,12 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
     if (!caseItem) return;
     modal.confirm({
       title: '确认删除',
-      content: `确定要删除「${caseItem.title}」吗？删除后不可恢复。`,
+      content: `确定要删除「${caseItem.title}」吗？`,
       okText: '删除',
       okButtonProps: { danger: true },
       cancelText: '取消',
       onOk: async () => {
-        const res = await fetch(`/api/cases?id=${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error('删除失败');
+        await getSupabase().from('cases').update({ status: 'rejected' }).eq('id', id);
         message.success('案例已删除');
         router.push('/cases');
       },

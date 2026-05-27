@@ -348,11 +348,6 @@ export default function Home() {
               案例沉淀、知识学习、活动运营、话题互助，<br />HRAS 全员的 AI 园地
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link href="/topics/create">
-                <button className="btn-gradient">
-                  <PlusOutlined /> 发起话题
-                </button>
-              </Link>
               {isAdmin && (
                 <Link href="/cases/create">
                   <button className="btn-gradient">
@@ -360,6 +355,11 @@ export default function Home() {
                   </button>
                 </Link>
               )}
+              <Link href="/topics/create">
+                <button className="btn-gradient">
+                  <PlusOutlined /> 发起话题
+                </button>
+              </Link>
               <Link href="/cases">
                 <button className="pill-btn">案例库</button>
               </Link>
