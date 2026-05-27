@@ -15,7 +15,6 @@ import {
   BookOutlined,
   PaperClipOutlined,
   StopOutlined,
-  UndoOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
@@ -153,27 +152,21 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
     message.success(newVal ? '已设为精选' : '已取消精选');
   };
 
-  const handleTakedown = () => {
+  const handleDelete = () => {
     if (!caseItem) return;
     modal.confirm({
-      title: '确认下架',
-      content: `确定要下架「${caseItem.title}」吗？下架后将不再展示在前台。`,
-      okText: '下架',
+      title: '确认删除',
+      content: `确定要删除「${caseItem.title}」吗？删除后不可恢复。`,
+      okText: '删除',
       okButtonProps: { danger: true },
       cancelText: '取消',
       onOk: async () => {
-        await getSupabase().from('cases').update({ status: 'rejected' }).eq('id', id);
-        message.success('案例已下架');
+        const res = await fetch(`/api/cases?id=${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('删除失败');
+        message.success('案例已删除');
         router.push('/cases');
       },
     });
-  };
-
-  const handleRestore = async () => {
-    if (!caseItem) return;
-    setCaseItem({ ...caseItem, status: 'published' });
-    await getSupabase().from('cases').update({ status: 'published' }).eq('id', id);
-    message.success('案例已恢复上架');
   };
 
   const handleComment = async () => {
@@ -241,7 +234,6 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
           ))}
           {caseItem.event_id && <Tag color="red">大赛作品</Tag>}
           {caseItem.is_featured && <Tag color="orange">精选</Tag>}
-          {caseItem.status === 'rejected' && <Tag color="volcano">已下架</Tag>}
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight">
@@ -309,19 +301,11 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                 style={{ color: caseItem.is_featured ? '#F27F22' : 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: caseItem.is_featured ? 'rgba(242, 127, 34, 0.08)' : 'var(--surface)' }}>
                 <StarFilled /> {caseItem.is_featured ? '取消精选' : '标为精选'}
               </button>
-              {caseItem.status === 'rejected' ? (
-                <button onClick={handleRestore}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-                  style={{ color: '#52c41a', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'rgba(82, 196, 26, 0.08)' }}>
-                  <UndoOutlined /> 恢复上架
-                </button>
-              ) : (
-                <button onClick={handleTakedown}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-                  style={{ color: '#ff4d4f', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'rgba(255, 77, 79, 0.08)' }}>
-                  <StopOutlined /> 下架
-                </button>
-              )}
+              <button onClick={handleDelete}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+                style={{ color: '#ff4d4f', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'rgba(255, 77, 79, 0.08)' }}>
+                <StopOutlined /> 删除
+              </button>
             </>
           )}
         </div>

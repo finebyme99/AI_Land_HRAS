@@ -1,6 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
+// DELETE /api/cases?id=xxx — 删除案例（admin only）
+export async function DELETE(request: NextRequest) {
+  const userId = request.cookies.get('feishu_user_id')?.value;
+  if (!userId) {
+    return NextResponse.json({ error: '请先登录' }, { status: 401 });
+  }
+
+  const { data: user } = await getSupabaseAdmin()
+    .from('users').select('id, role').eq('id', userId).single();
+  if (!user || (user.role !== 'admin' && user.role !== 'moderator')) {
+    return NextResponse.json({ error: '仅管理员可删除案例' }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const caseId = searchParams.get('id');
+  if (!caseId) {
+    return NextResponse.json({ error: '缺少案例 ID' }, { status: 400 });
+  }
+
+  try {
+    const { error } = await getSupabaseAdmin().from('cases').delete().eq('id', caseId);
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (err: unknown) {
+    console.error('Case deletion error:', err);
+    return NextResponse.json({ error: '删除失败' }, { status: 500 });
+  }
+}
+
 // POST /api/cases — 创建案例（admin only）
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
