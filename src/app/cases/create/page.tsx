@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Form, Input, Select, App } from 'antd';
 import { ArrowLeftOutlined, BookOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
-import { CASE_CATEGORY_OPTIONS, AI_TOOL_OPTIONS } from '@/lib/constants';
+import { CASE_CATEGORY_OPTIONS, AI_TOOL_OPTIONS, CASE_TEAM_OPTIONS, CASE_BUSINESS_SCENARIO_OPTIONS } from '@/lib/constants';
 
 export default function CreateCasePage() {
   const { user, isAdmin } = useAuth();
@@ -40,7 +40,8 @@ export default function CreateCasePage() {
           content: values.content,
           category: values.category,
           ai_tools: values.ai_tools || [],
-          difficulty: values.difficulty || '基础',
+          team: values.team || '',
+          business_scenario: values.business_scenario || '',
         }),
       });
       if (!res.ok) {
@@ -84,17 +85,17 @@ export default function CreateCasePage() {
             <Input.TextArea rows={10} placeholder="详细描述你的 AI 实践过程，包括：&#10;1. 背景和痛点&#10;2. 使用了哪些 AI 工具&#10;3. 具体操作步骤&#10;4. 效果和收获" />
           </Form.Item>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Form.Item name="category" label="HR 模块" rules={[{ required: true, message: '请选择分类' }]}>
               <Select placeholder="选择 HR 模块分类" options={CASE_CATEGORY_OPTIONS} />
             </Form.Item>
 
-            <Form.Item name="difficulty" label="难度" rules={[{ required: true, message: '请选择难度' }]}>
-              <Select options={[
-                { label: '入门', value: '入门' },
-                { label: '基础', value: '基础' },
-                { label: '进阶', value: '进阶' },
-              ]} />
+            <Form.Item name="team" label="提报团队">
+              <Select placeholder="选择提报团队" options={CASE_TEAM_OPTIONS} allowClear />
+            </Form.Item>
+
+            <Form.Item name="business_scenario" label="业务场景">
+              <Select placeholder="选择业务场景" options={CASE_BUSINESS_SCENARIO_OPTIONS} allowClear />
             </Form.Item>
           </div>
 

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { title, summary, content, category, ai_tools, difficulty } = await request.json();
+    const { title, summary, content, category, ai_tools, team, business_scenario } = await request.json();
 
     if (!title || !summary || !content || !category) {
       return NextResponse.json({ error: '请填写必要字段' }, { status: 400 });
@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
         content,
         category,
         ai_tools: ai_tools || [],
-        difficulty: difficulty || '基础',
+        team: team || '',
+        business_scenario: business_scenario || '',
         author_id: userId,
         status: 'published',
       })

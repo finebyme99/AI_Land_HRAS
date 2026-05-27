@@ -1,4 +1,4 @@
-import type { CaseCategory, AppCategory, CourseCategory, CourseDifficulty, ContentType, EventStatus } from '@/types';
+import type { CaseCategory, AppCategory, CourseCategory, CourseDifficulty, ContentType, EventStatus, CaseTeam, CaseBusinessScenario } from '@/types';
 
 // HR 模块分类颜色映射
 export const CATEGORY_COLORS: Record<CaseCategory, string> = {
@@ -72,6 +72,17 @@ export const AI_TOOL_OPTIONS = [
 ];
 
 export const APP_CATEGORIES: AppCategory[] = ['对话类', '写作类', '设计类', '数据分析', '自动化', 'HR专属'];
+
+// 提报团队
+export const CASE_TEAMS: CaseTeam[] = ['LBU', 'FBU', 'ABU', 'HQU', 'WX', 'GEU', 'GUS', 'ZT_HSSC', 'GF_HSSC', 'ZT_ASSC', 'GF_ASSC'];
+export const CASE_TEAM_OPTIONS = CASE_TEAMS.map((t) => ({ label: t, value: t }));
+
+// 业务场景
+export const CASE_BUSINESS_SCENARIOS: CaseBusinessScenario[] = [
+  '数据分析', '招聘管理', '薪酬绩效', '培训管理', '组织与人才发展',
+  '文化氛围', '核算与报账', '基础人事支持', '行政管理', '日常工作', '考勤管理', '其他',
+];
+export const CASE_BUSINESS_SCENARIO_OPTIONS = CASE_BUSINESS_SCENARIOS.map((s) => ({ label: s, value: s }));
 
 export const EVENT_STATUS_MAP: Record<EventStatus, { label: string; color: string }> = {
   upcoming: { label: '即将开始', color: 'blue' },

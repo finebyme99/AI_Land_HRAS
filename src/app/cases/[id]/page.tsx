@@ -2,7 +2,8 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Tag, Avatar, Input, Spin, App } from 'antd';
+import { useRouter } from 'next/navigation';
+import { Tag, Avatar, Input, Spin, App, Modal } from 'antd';
 import {
   LikeOutlined,
   StarOutlined,
@@ -13,6 +14,8 @@ import {
   UserOutlined,
   BookOutlined,
   PaperClipOutlined,
+  StopOutlined,
+  UndoOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
@@ -22,7 +25,8 @@ import type { Case } from '@/types';
 export default function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { user, isAdmin } = useAuth();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
+  const router = useRouter();
   const [caseItem, setCaseItem] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
@@ -106,7 +110,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
       const res = await fetch('/api/interactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'toggle', target_type: 'case', target_id: id }),
+        body: JSON.stringify({ action: 'like', target_type: 'case', target_id: id }),
       });
       const data = await res.json();
       setLiked(data.active);
@@ -125,7 +129,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
       const res = await fetch('/api/interactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'toggle', target_type: 'case', target_id: id }),
+        body: JSON.stringify({ action: 'bookmark', target_type: 'case', target_id: id }),
       });
       const data = await res.json();
       setBookmarked(data.active);
@@ -147,6 +151,29 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
     setCaseItem({ ...caseItem, is_featured: newVal });
     await getSupabase().from('cases').update({ is_featured: newVal }).eq('id', id);
     message.success(newVal ? '已设为精选' : '已取消精选');
+  };
+
+  const handleTakedown = () => {
+    if (!caseItem) return;
+    modal.confirm({
+      title: '确认下架',
+      content: `确定要下架「${caseItem.title}」吗？下架后将不再展示在前台。`,
+      okText: '下架',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        await getSupabase().from('cases').update({ status: 'rejected' }).eq('id', id);
+        message.success('案例已下架');
+        router.push('/cases');
+      },
+    });
+  };
+
+  const handleRestore = async () => {
+    if (!caseItem) return;
+    setCaseItem({ ...caseItem, status: 'published' });
+    await getSupabase().from('cases').update({ status: 'published' }).eq('id', id);
+    message.success('案例已恢复上架');
   };
 
   const handleComment = async () => {
@@ -207,11 +234,14 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
       <article className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <Tag color={CATEGORY_COLORS[caseItem.category]}>{caseItem.category}</Tag>
+          {caseItem.team && <Tag color="blue">{caseItem.team}</Tag>}
+          {caseItem.business_scenario && <Tag color="cyan">{caseItem.business_scenario}</Tag>}
           {caseItem.ai_tools.map((tool) => (
             <Tag key={tool}>{tool}</Tag>
           ))}
           {caseItem.event_id && <Tag color="red">大赛作品</Tag>}
           {caseItem.is_featured && <Tag color="orange">精选</Tag>}
+          {caseItem.status === 'rejected' && <Tag color="volcano">已下架</Tag>}
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight">
@@ -273,11 +303,26 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
             <ShareAltOutlined /> 分享
           </button>
           {isAdmin && (
-            <button onClick={handleToggleFeatured}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-              style={{ color: caseItem.is_featured ? '#F27F22' : 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: caseItem.is_featured ? 'rgba(242, 127, 34, 0.08)' : 'var(--surface)' }}>
-              <StarFilled /> {caseItem.is_featured ? '取消精选' : '标为精选'}
-            </button>
+            <>
+              <button onClick={handleToggleFeatured}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+                style={{ color: caseItem.is_featured ? '#F27F22' : 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.6)', background: caseItem.is_featured ? 'rgba(242, 127, 34, 0.08)' : 'var(--surface)' }}>
+                <StarFilled /> {caseItem.is_featured ? '取消精选' : '标为精选'}
+              </button>
+              {caseItem.status === 'rejected' ? (
+                <button onClick={handleRestore}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+                  style={{ color: '#52c41a', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'rgba(82, 196, 26, 0.08)' }}>
+                  <UndoOutlined /> 恢复上架
+                </button>
+              ) : (
+                <button onClick={handleTakedown}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
+                  style={{ color: '#ff4d4f', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'rgba(255, 77, 79, 0.08)' }}>
+                  <StopOutlined /> 下架
+                </button>
+              )}
+            </>
           )}
         </div>
       </article>

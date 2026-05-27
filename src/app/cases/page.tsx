@@ -13,8 +13,8 @@ import {
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
-import { CATEGORY_COLORS, CASE_CATEGORIES, CASE_CATEGORY_OPTIONS } from '@/lib/constants';
-import type { Case, CaseCategory } from '@/types';
+import { CATEGORY_COLORS, CASE_CATEGORIES, CASE_CATEGORY_OPTIONS, CASE_TEAMS, CASE_BUSINESS_SCENARIOS } from '@/lib/constants';
+import type { Case, CaseCategory, CaseTeam, CaseBusinessScenario } from '@/types';
 
 export default function CasesPage() {
   const { isAdmin } = useAuth();
@@ -24,6 +24,8 @@ export default function CasesPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState<CaseCategory | ''>('');
+  const [team, setTeam] = useState<CaseTeam | ''>('');
+  const [businessScenario, setBusinessScenario] = useState<CaseBusinessScenario | ''>('');
   const [sortBy, setSortBy] = useState<string>('created_at');
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
@@ -35,7 +37,7 @@ export default function CasesPage() {
   }, [search]);
 
   // Reset page when filters change
-  useEffect(() => { setPage(1); }, [category, debouncedSearch, sortBy]);
+  useEffect(() => { setPage(1); }, [category, team, businessScenario, debouncedSearch, sortBy]);
 
   const fetchCases = useCallback(async () => {
     setLoading(true);
@@ -52,6 +54,8 @@ export default function CasesPage() {
         .range(from, to);
 
       if (category) query = query.eq('category', category);
+      if (team) query = query.eq('team', team);
+      if (businessScenario) query = query.eq('business_scenario', businessScenario);
       if (debouncedSearch) query = query.or(`title.ilike.%${debouncedSearch}%,summary.ilike.%${debouncedSearch}%`);
 
       const { data, error, count } = await query;
@@ -65,7 +69,7 @@ export default function CasesPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, debouncedSearch, sortBy, page]);
+  }, [category, team, businessScenario, debouncedSearch, sortBy, page]);
 
   useEffect(() => { fetchCases(); }, [fetchCases]);
 
@@ -93,7 +97,7 @@ export default function CasesPage() {
       </div>
 
       {/* Filters */}
-      <div className="glass rounded-xl p-4 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+      <div className="glass rounded-xl p-4 mb-6 space-y-3" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex flex-wrap gap-3 items-center">
           <Input.Search
             placeholder="搜索案例..."
@@ -127,6 +131,56 @@ export default function CasesPage() {
             <Radio.Button value="list"><UnorderedListOutlined /></Radio.Button>
           </Radio.Group>
         </div>
+        {/* 提报团队 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium shrink-0" style={{ color: 'var(--text-muted)' }}>提报团队</span>
+          <button
+            onClick={() => setTeam('')}
+            className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+            style={{
+              color: !team ? '#fff' : 'var(--text-secondary)',
+              background: !team ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+              border: '1px solid transparent',
+            }}
+          >全部</button>
+          {CASE_TEAMS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTeam(team === t ? '' : t)}
+              className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+              style={{
+                color: team === t ? '#fff' : 'var(--text-secondary)',
+                background: team === t ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+                border: '1px solid transparent',
+              }}
+            >{t}</button>
+          ))}
+        </div>
+        {/* 业务场景 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium shrink-0" style={{ color: 'var(--text-muted)' }}>业务场景</span>
+          <button
+            onClick={() => setBusinessScenario('')}
+            className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+            style={{
+              color: !businessScenario ? '#fff' : 'var(--text-secondary)',
+              background: !businessScenario ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+              border: '1px solid transparent',
+            }}
+          >全部</button>
+          {CASE_BUSINESS_SCENARIOS.map((s) => (
+            <button
+              key={s}
+              onClick={() => setBusinessScenario(businessScenario === s ? '' : s)}
+              className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+              style={{
+                color: businessScenario === s ? '#fff' : 'var(--text-secondary)',
+                background: businessScenario === s ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+                border: '1px solid transparent',
+              }}
+            >{s}</button>
+          ))}
+        </div>
       </div>
 
       {/* Content */}
@@ -151,6 +205,8 @@ export default function CasesPage() {
                 <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'var(--gradient-primary)' }} />
                 <div className="flex items-start gap-2 mb-3">
                   <Tag color={CATEGORY_COLORS[c.category]}>{c.category}</Tag>
+                  {c.team && <Tag color="blue">{c.team}</Tag>}
+                  {c.business_scenario && <Tag color="cyan">{c.business_scenario}</Tag>}
                   {c.event_id && <Tag color="red">大赛作品</Tag>}
                   {c.is_featured && <Tag color="orange">精选</Tag>}
                 </div>
@@ -184,6 +240,8 @@ export default function CasesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <Tag color={CATEGORY_COLORS[c.category]}>{c.category}</Tag>
+                      {c.team && <Tag color="blue">{c.team}</Tag>}
+                      {c.business_scenario && <Tag color="cyan">{c.business_scenario}</Tag>}
                       {c.is_featured && <Tag color="orange">精选</Tag>}
                     </div>
                     <h3 className="text-sm font-semibold truncate group-hover:opacity-80 transition-opacity">{c.title}</h3>

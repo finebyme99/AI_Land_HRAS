@@ -27,6 +27,22 @@ export type CaseCategory =
 
 export type ContentStatus = 'draft' | 'pending' | 'published' | 'rejected';
 
+export type CaseTeam = 'LBU' | 'FBU' | 'ABU' | 'HQU' | 'WX' | 'GEU' | 'GUS' | 'ZT_HSSC' | 'GF_HSSC' | 'ZT_ASSC' | 'GF_ASSC';
+
+export type CaseBusinessScenario =
+  | '数据分析'
+  | '招聘管理'
+  | '薪酬绩效'
+  | '培训管理'
+  | '组织与人才发展'
+  | '文化氛围'
+  | '核算与报账'
+  | '基础人事支持'
+  | '行政管理'
+  | '日常工作'
+  | '考勤管理'
+  | '其他';
+
 export interface Case {
   id: string;
   title: string;
@@ -44,6 +60,8 @@ export interface Case {
   comment_count: number;
   event_id: string | null;
   is_featured?: boolean;
+  team?: CaseTeam | '';
+  business_scenario?: CaseBusinessScenario | '';
   created_at: string;
   updated_at: string;
 }
