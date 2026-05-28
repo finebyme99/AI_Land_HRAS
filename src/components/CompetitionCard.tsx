@@ -34,6 +34,7 @@ export interface Submission {
   verifier?: string[];
   sourceUrl?: string;
   status?: string;
+  proposalNo?: number;
 }
 
 const TRACK_COLORS: Record<string, string> = {
@@ -65,6 +66,12 @@ export default function CompetitionCard({ data }: { data: Submission }) {
       {/* 标题 + 赛事进展 */}
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <h3 className="text-base font-bold flex-1 min-w-0" style={{ color: 'var(--foreground)' }}>
+          {data.proposalNo != null && (
+            <span className="inline-block mr-1.5 px-1.5 py-0.5 rounded text-[11px] font-semibold align-middle"
+              style={{ background: 'rgba(26,58,138,0.08)', color: 'var(--primary)' }}>
+              #{data.proposalNo}
+            </span>
+          )}
           {data.title ?? '未命名方案'}
         </h3>
         {data.status && (
