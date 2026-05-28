@@ -1,72 +1,70 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Spin, message } from 'antd';
+import { Spin, App } from 'antd';
 import { SyncOutlined, TrophyOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
 import type { Submission } from '@/components/CompetitionCard';
 import type { CompetitionReview } from '@/types';
 
-const CACHE_KEY = 'competition_submissions';
-
-function loadCache(period: string): Submission[] | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const cache = JSON.parse(raw);
-    if (cache.period !== period) return null;
-    return cache.items ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function saveCache(period: string, items: Submission[]) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ period, items, syncedAt: Date.now() }));
-  } catch { /* ignore */ }
-}
-
 export default function CompetitionsPage() {
   const { isAdmin, isReviewer } = useAuth();
   const [items, setItems] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
-  const [synced, setSynced] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [period] = useState('2605');
   const [reviews, setReviews] = useState<Record<string, { decision: string; reason: string; is_benchmark?: boolean }>>({});
+  const { message } = App.useApp();
 
-  const fetchData = async (showMsg = false) => {
+  // 从 Supabase 读取已同步数据
+  const fetchData = async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/competitions/sync?period=${period}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      const fetched = (data.items ?? []).sort(
+      setItems((data.items ?? []).sort(
         (a: Submission, b: Submission) => (b.monthlySavedHours ?? 0) - (a.monthlySavedHours ?? 0),
-      );
-      setItems(fetched);
-      setSynced(true);
-      saveCache(period, fetched);
-      if (showMsg) message.success(`已同步 ${fetched.length} 条方案`);
+      ));
+      setLoaded(true);
     } catch (err) {
-      if (showMsg) message.error(err instanceof Error ? err.message : '同步失败');
+      message.error(err instanceof Error ? err.message : '加载失败');
     } finally {
       setLoading(false);
     }
   };
 
-  // 页面加载时：有缓存先展示缓存，无缓存则自动拉取
-  useEffect(() => {
-    const cached = loadCache(period);
-    if (cached) {
-      cached.sort((a, b) => (b.monthlySavedHours ?? 0) - (a.monthlySavedHours ?? 0));
-      setItems(cached);
-      setSynced(true);
-    } else {
-      fetchData();
+  // 触发飞书 → Supabase 同步
+  const handleSync = async () => {
+    setSyncing(true);
+    message.loading({ content: '正在从飞书同步，附件较多时可能需要几分钟…', key: 'sync', duration: 0 });
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 分钟超时
+      const res = await fetch(`/api/competitions/sync?period=${period}`, {
+        method: 'POST',
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      message.success({ content: `已同步 ${data.synced} 条方案`, key: 'sync' });
+      await fetchData();
+    } catch (err) {
+      const msg = err instanceof DOMException && err.name === 'AbortError'
+        ? '同步超时，请稍后重试'
+        : err instanceof Error ? err.message : '同步失败';
+      message.error({ content: msg, key: 'sync' });
+    } finally {
+      setSyncing(false);
     }
+  };
+
+  // 页面加载
+  useEffect(() => {
+    fetchData();
   }, [period]);
 
   // 评委加载评审记录
@@ -135,8 +133,8 @@ export default function CompetitionsPage() {
                 </span>
               </h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                {synced ? `${items.length} 条方案` : '点击同步加载数据'}
-                {synced && items.length > 0 && (
+                {loaded ? `${items.length} 条方案` : '加载中...'}
+                {loaded && items.length > 0 && (
                   <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
                     style={{ background: 'rgba(242, 127, 34, 0.08)', color: '#b3540e' }}>
                     按照提报人填写的月度节省工时降序排列
@@ -163,16 +161,47 @@ export default function CompetitionsPage() {
             </a>
             {isAdmin && (
               <button
-                onClick={() => fetchData(true)}
-                disabled={loading}
+                onClick={handleSync}
+                disabled={syncing}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
                 style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
               >
-                <SyncOutlined spin={loading} /> {synced ? '重新同步' : '同步'}
+                <SyncOutlined spin={syncing} /> 从飞书同步
               </button>
             )}
           </div>
         </div>
+
+        {/* 评委评审进度 */}
+        {isReviewer && loaded && items.length > 0 && (() => {
+          const reviewed = items.filter((i) => reviews[i.id]);
+          const approved = reviewed.filter((i) => reviews[i.id].decision === 'approved').length;
+          const rejected = reviewed.filter((i) => reviews[i.id].decision === 'rejected').length;
+          const pending = items.length - reviewed.length;
+          return (
+            <div className="flex items-center gap-4 mb-5 px-4 py-3 rounded-xl text-xs"
+              style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
+              <span className="font-semibold" style={{ color: 'var(--primary)' }}>评审进度</span>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                待审 <b style={{ color: 'var(--foreground)' }}>{pending}</b> 条
+              </span>
+              <span style={{ color: '#16a34a' }}>
+                已通过 <b>{approved}</b> 条
+              </span>
+              <span style={{ color: '#dc2626' }}>
+                已驳回 <b>{rejected}</b> 条
+              </span>
+              <span style={{ color: 'var(--text-muted)' }}>
+                共 {items.length} 条
+              </span>
+              {pending > 0 && (
+                <span className="ml-auto font-medium" style={{ color: '#b3540e' }}>
+                  请及时完成评审
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {loading && (
           <div className="flex justify-center py-12">
@@ -180,9 +209,9 @@ export default function CompetitionsPage() {
           </div>
         )}
 
-        {!loading && synced && items.length === 0 && (
+        {!loading && loaded && items.length === 0 && (
           <div className="text-center py-12 glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>当前期次暂无参赛方案</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>暂无参赛方案，点击「从飞书同步」导入数据</p>
           </div>
         )}
 
