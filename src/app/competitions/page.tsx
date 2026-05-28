@@ -94,13 +94,19 @@ export default function CompetitionsPage() {
               <h2 className="text-xl font-bold flex items-center gap-2.5" style={{ color: 'var(--foreground)' }}>
                 本月参赛方案
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                  style={{ background: 'rgba(242, 127, 34, 0.1)', color: '#F27F22' }}>
+                  style={{ background: 'rgba(242, 127, 34, 0.1)', color: '#b3540e' }}>
                   <CalendarOutlined style={{ fontSize: 11 }} />
                   {period}
                 </span>
               </h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                 {synced ? `${items.length} 条方案` : '点击同步加载数据'}
+                {synced && items.length > 0 && (
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
+                    style={{ background: 'rgba(242, 127, 34, 0.08)', color: '#b3540e' }}>
+                    按照提报人填写的月度节省工时降序排列
+                  </span>
+                )}
               </p>
             </div>
           </div>
