@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Table, Tag, Select, Input, Button, Spin, message } from 'antd';
-import { SearchOutlined, DownloadOutlined, AuditOutlined } from '@ant-design/icons';
+import { SearchOutlined, DownloadOutlined, AuditOutlined, TeamOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import type { CompetitionReview } from '@/types';
 import type { ColumnsType } from 'antd/es/table';
@@ -18,6 +18,7 @@ export default function AdminReviewsPage() {
   const router = useRouter();
   const { isAdmin, isReviewer, loading: authLoading } = useAuth();
   const [reviews, setReviews] = useState<CompetitionReview[]>([]);
+  const [totalSubmissions, setTotalSubmissions] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [decisionFilter, setDecisionFilter] = useState('all');
@@ -37,10 +38,15 @@ export default function AdminReviewsPage() {
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/competitions/reviews');
-      if (!res.ok) throw new Error('获取失败');
-      const data = await res.json();
-      setReviews(data.reviews ?? []);
+      const [reviewsRes, syncRes] = await Promise.all([
+        fetch('/api/competitions/reviews'),
+        fetch('/api/competitions/sync?period=2605'),
+      ]);
+      if (!reviewsRes.ok) throw new Error('获取失败');
+      const reviewsData = await reviewsRes.json();
+      setReviews(reviewsData.reviews ?? []);
+      const syncData = await syncRes.json();
+      setTotalSubmissions(syncData.total ?? 0);
     } catch {
       message.error('获取评审记录失败');
     } finally {
@@ -197,6 +203,60 @@ export default function AdminReviewsPage() {
             )}
           </div>
         </div>
+
+        {/* 评委评审进度汇总 */}
+        {!loading && reviews.length > 0 && (() => {
+          const reviewedSubmissionIds = new Set(reviews.map((r) => r.submission_id));
+          const byReviewer: Record<string, { name: string; department: string; approved: number; rejected: number }> = {};
+          for (const r of reviews) {
+            const key = r.reviewer_id;
+            if (!byReviewer[key]) {
+              byReviewer[key] = {
+                name: r.reviewer?.name || r.reviewer_id,
+                department: r.reviewer?.department || '-',
+                approved: 0,
+                rejected: 0,
+              };
+            }
+            if (r.decision === 'approved') byReviewer[key].approved++;
+            else byReviewer[key].rejected++;
+          }
+          const reviewerList = Object.values(byReviewer);
+          return (
+            <div className="mb-6">
+              <div className="flex items-center gap-4 mb-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                <span>方案总数 <b style={{ color: 'var(--foreground)' }}>{totalSubmissions}</b></span>
+                <span>已评审 <b style={{ color: 'var(--foreground)' }}>{reviewedSubmissionIds.size}</b></span>
+                <span>未评审 <b style={{ color: totalSubmissions - reviewedSubmissionIds.size > 0 ? '#b3540e' : 'var(--foreground)' }}>
+                  {totalSubmissions - reviewedSubmissionIds.size}
+                </b></span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {reviewerList.map((rv) => {
+                  const total = rv.approved + rv.rejected;
+                  const pct = totalSubmissions > 0 ? Math.round((total / totalSubmissions) * 100) : 0;
+                  return (
+                    <div key={rv.name} className="rounded-xl p-3" style={{ background: 'rgba(26,58,138,0.03)', border: '1px solid rgba(26,58,138,0.06)' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <TeamOutlined style={{ color: 'var(--primary)' }} />
+                        <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{rv.name}</span>
+                        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{rv.department}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs">
+                        <span style={{ color: '#16a34a' }}><CheckCircleOutlined /> {rv.approved}</span>
+                        <span style={{ color: '#dc2626' }}><CloseCircleOutlined /> {rv.rejected}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>共 {total} 条</span>
+                        <span className="ml-auto text-[11px]" style={{ color: pct >= 100 ? '#16a34a' : '#b3540e' }}>
+                          {pct}% 完成
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         <Table
           columns={columns}
