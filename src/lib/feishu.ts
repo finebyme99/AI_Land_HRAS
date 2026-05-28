@@ -9,7 +9,7 @@ function getEnv(name: string): string {
 const FEISHU_API_BASE = 'https://open.feishu.cn/open-apis';
 
 // 获取 tenant_access_token（应用凭证）
-async function getTenantAccessToken(): Promise<string> {
+export async function getTenantAccessToken(): Promise<string> {
   const res = await fetch(`${FEISHU_API_BASE}/auth/v3/tenant_access_token/internal`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
