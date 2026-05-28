@@ -29,6 +29,7 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '评审周期': 'period',
   '组队团队成员': 'teamMembers',
   '赛事进展': 'status',
+  '自动编号': 'proposalNo',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
