@@ -27,7 +27,7 @@ main (稳定版，Vercel 生产部署源)
 
 ```bash
 # 1. 进入项目目录
-cd /Users/apple/Q/AI/26AI在集团落地/AILand
+cd /Users/apple/Q/AI/26AI落地/AILand
 
 # 2. 切到目标分支
 git checkout feat/case-module
@@ -153,3 +153,13 @@ A: 在当前分支直接改，但要在 PR 描述中说明，方便 review。
 
 ### Q: 如何同步 main 的最新代码到 feat 分支？
 A: `git checkout feat/xxx && git merge main` 或 `git rebase main`
+
+## 自检规范
+
+**所有改动必须自行验证后再提交，不要依赖用户发现 bug。**
+
+1. **页面类改动**：用 `curl` 验证 HTTP 状态码和关键 HTML 片段
+2. **API 类改动**：用 `curl` 调用接口，确认返回值符合预期
+3. **静态资源**：确认文件存在且 dev server 能正确 serve（Next.js 不自动 serve 目录下的 index.html，需用完整路径）
+4. **导航/路由**：确认按钮链接指向正确，页面切换后无残留元素
+5. **数据类改动**：确认数据库迁移文件、API 路由、前端消费端三者字段一致
