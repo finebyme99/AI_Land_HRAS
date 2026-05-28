@@ -114,13 +114,13 @@ export default function CompetitionsPage() {
           </div>
           <div className="flex items-center gap-2">
             <a href="https://finebyme99.github.io/hras-2026/" target="_blank" rel="noopener noreferrer"
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105"
-              style={{ background: 'var(--primary)' }}>
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+              style={{ background: 'var(--primary)', color: '#fff' }}>
               大赛主页
             </a>
             <a href="https://ztn.feishu.cn/share/base/form/shrcn2OaxMFequUyz2E6VkJFvJg" target="_blank" rel="noopener noreferrer"
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105"
-              style={{ background: 'var(--accent)' }}>
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+              style={{ background: 'var(--accent)', color: '#fff' }}>
               参与提报
             </a>
             <a href="https://ztn.feishu.cn/share/base/form/shrcnzQxxexe7eyuztTiCydTdz7" target="_blank" rel="noopener noreferrer"
