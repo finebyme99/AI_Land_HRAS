@@ -147,9 +147,18 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
   const handleToggleFeatured = async () => {
     if (!caseItem) return;
     const newVal = !caseItem.is_featured;
-    setCaseItem({ ...caseItem, is_featured: newVal });
-    await getSupabase().from('cases').update({ is_featured: newVal }).eq('id', id);
-    message.success(newVal ? '已设为精选' : '已取消精选');
+    try {
+      const res = await fetch('/api/cases', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, is_featured: newVal }),
+      });
+      if (!res.ok) throw new Error('操作失败');
+      setCaseItem({ ...caseItem, is_featured: newVal });
+      message.success(newVal ? '已设为精选' : '已取消精选');
+    } catch {
+      message.error('操作失败');
+    }
   };
 
   const handleDelete = () => {
@@ -161,8 +170,12 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
       okButtonProps: { danger: true },
       cancelText: '取消',
       onOk: async () => {
-        const { error } = await getSupabase().from('cases').update({ status: 'rejected' }).eq('id', id);
-        if (error) {
+        const res = await fetch('/api/cases', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, status: 'rejected' }),
+        });
+        if (!res.ok) {
           message.error('删除失败');
           return;
         }

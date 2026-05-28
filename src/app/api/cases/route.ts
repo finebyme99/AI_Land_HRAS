@@ -1,6 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
+// PATCH /api/cases — 更新案例（admin only，用于下架/精选等）
+export async function PATCH(request: NextRequest) {
+  const userId = request.cookies.get('feishu_user_id')?.value;
+  if (!userId) {
+    return NextResponse.json({ error: '请先登录' }, { status: 401 });
+  }
+
+  const { data: user } = await getSupabaseAdmin()
+    .from('users').select('id, role').eq('id', userId).single();
+  if (!user || (user.role !== 'admin' && user.role !== 'moderator')) {
+    return NextResponse.json({ error: '仅管理员可操作' }, { status: 403 });
+  }
+
+  try {
+    const { id, ...updates } = await request.json();
+    if (!id) {
+      return NextResponse.json({ error: '缺少案例 ID' }, { status: 400 });
+    }
+
+    const { data, error } = await getSupabaseAdmin()
+      .from('cases')
+      .update(updates)
+      .eq('id', id)
+      .select('id, status, is_featured')
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ case: data });
+  } catch (err: unknown) {
+    console.error('Case update error:', err);
+    return NextResponse.json({ error: '操作失败' }, { status: 500 });
+  }
+}
+
 // POST /api/cases — 创建案例（admin only）
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
