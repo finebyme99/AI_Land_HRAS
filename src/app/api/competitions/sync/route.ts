@@ -29,7 +29,6 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '评审周期': 'period',
   '组队团队成员': 'teamMembers',
   '赛事进展': 'status',
-  '补充附件：效果示意图/视频/相关源文件': 'attachments',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,18 +52,6 @@ function mapRecord(record: any): Record<string, unknown> {
     }
     else if (typeof value === 'object' && value !== null && 'name' in value) {
       mapped[key] = [(value as { name?: string }).name ?? ''];
-    }
-    // attachment field: [{file_token, name, size, type, tmp_url}] → normalized
-    else if (key === 'attachments' && Array.isArray(value)) {
-      mapped[key] = value
-        .filter((v: { file_token?: string }) => v.file_token)
-        .map((v: { file_token: string; name?: string; size?: number; type?: string; tmp_url?: string }) => ({
-          fileToken: v.file_token,
-          name: v.name ?? '',
-          size: v.size,
-          type: v.type,
-          tmpUrl: v.tmp_url ?? '',
-        }));
     }
     // select multi or painPoints
     else if (Array.isArray(value)) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { Tag, Image } from 'antd';
+import { Tag } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -8,7 +8,6 @@ import {
   ClockCircleOutlined,
   ToolOutlined,
   LinkOutlined,
-  DownloadOutlined,
 } from '@ant-design/icons';
 
 export interface Submission {
@@ -35,7 +34,6 @@ export interface Submission {
   verifier?: string[];
   sourceUrl?: string;
   status?: string;
-  attachments?: { fileToken: string; name: string; size?: number; type?: string; tmpUrl?: string }[];
 }
 
 const TRACK_COLORS: Record<string, string> = {
@@ -170,51 +168,6 @@ export default function CompetitionCard({ data }: { data: Submission }) {
           {data.extraValue}
         </div>
       )}
-
-      {/* 附件 */}
-      {data.attachments && data.attachments.length > 0 && (() => {
-        const images = data.attachments.filter((a) => a.type?.startsWith('image'));
-        const directUrl = (a: { tmpUrl?: string }) => a.tmpUrl ?? '';
-
-        return (
-          <div className="mb-3">
-            {images.length > 0 && (
-              <Image.PreviewGroup>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {images.map((a) => (
-                    <Image
-                      key={a.fileToken}
-                      src={directUrl(a)}
-                      alt={a.name}
-                      width={80}
-                      height={80}
-                      className="rounded-lg object-cover"
-                      style={{ border: '1px solid rgba(0,0,0,0.06)' }}
-                    />
-                  ))}
-                </div>
-              </Image.PreviewGroup>
-            )}
-            {data.attachments.map((a) => {
-              if (a.type?.startsWith('image')) return null;
-              const url = a.tmpUrl
-                ? `/api/competitions/media?tmpUrl=${encodeURIComponent(a.tmpUrl)}&name=${encodeURIComponent(a.name)}`
-                : '#';
-              return (
-                <a
-                  key={a.fileToken}
-                  href={url}
-                  download={a.name}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
-                  style={{ background: 'rgba(26,58,138,0.06)', color: 'var(--primary)' }}
-                >
-                  <DownloadOutlined /> {a.name}
-                </a>
-              );
-            })}
-          </div>
-        );
-      })()}
 
       {/* 底部：确认人 + 查看详情 */}
       <div className="flex items-center justify-between pt-3 text-[11px]"
