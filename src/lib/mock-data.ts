@@ -6,7 +6,7 @@ export const mockUser: User = {
   name: '张三',
   avatar: '',
   department: 'HRBP',
-  role: 'user',
+  roles: ['user'],
   bio: 'AI 爱好者',
   points: 120,
   level: 'AI探索者',

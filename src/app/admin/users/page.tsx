@@ -11,6 +11,7 @@ import type { ColumnsType } from 'antd/es/table';
 const roleOptions = [
   { value: 'user', label: '普通用户' },
   { value: 'contributor', label: '贡献者' },
+  { value: 'reviewer', label: '评委' },
   { value: 'moderator', label: '版主' },
   { value: 'admin', label: '管理员' },
 ];
@@ -18,8 +19,17 @@ const roleOptions = [
 const roleColors: Record<string, string> = {
   admin: 'red',
   moderator: 'orange',
+  reviewer: 'purple',
   contributor: 'green',
   user: 'default',
+};
+
+const roleLabels: Record<string, string> = {
+  admin: '管理员',
+  moderator: '版主',
+  reviewer: '评委',
+  contributor: '贡献者',
+  user: '用户',
 };
 
 const levelColors: Record<string, string> = {
@@ -62,12 +72,12 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleRoleChange = async (userId: string, role: string) => {
+  const handleRolesChange = async (userId: string, roles: string[]) => {
     try {
       const res = await fetch('/api/admin/users', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, role }),
+        body: JSON.stringify({ userId, roles }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -75,7 +85,7 @@ export default function AdminUsersPage() {
       }
       const data = await res.json();
       setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, role: data.user.role } : u))
+        prev.map((u) => (u.id === userId ? { ...u, roles: data.user.roles } : u))
       );
       message.success('角色修改成功');
     } catch (err: unknown) {
@@ -116,17 +126,19 @@ export default function AdminUsersPage() {
     },
     {
       title: '角色',
-      dataIndex: 'role',
-      key: 'role',
-      width: 160,
-      render: (role: string, record) => (
+      dataIndex: 'roles',
+      key: 'roles',
+      width: 220,
+      render: (roles: string[], record) => (
         <Select
-          value={role}
+          mode="multiple"
+          value={roles}
           size="small"
-          style={{ width: 120 }}
+          style={{ width: 200 }}
           options={roleOptions}
-          onChange={(val) => handleRoleChange(record.id, val)}
+          onChange={(val) => handleRolesChange(record.id, val)}
           disabled={record.id === user?.id}
+          maxTagCount="responsive"
         />
       ),
     },
@@ -157,9 +169,13 @@ export default function AdminUsersPage() {
     {
       title: '标签',
       key: 'tags',
-      width: 120,
+      width: 160,
       render: (_, record) => (
-        <Tag color={roleColors[record.role]}>{record.role === 'admin' ? '管理员' : record.role === 'moderator' ? '版主' : record.role === 'contributor' ? '贡献者' : '用户'}</Tag>
+        <div className="flex flex-wrap gap-1">
+          {(record.roles ?? []).map((r) => (
+            <Tag key={r} color={roleColors[r]}>{roleLabels[r] ?? r}</Tag>
+          ))}
+        </div>
       ),
     },
   ];

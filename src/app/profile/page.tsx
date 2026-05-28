@@ -68,7 +68,7 @@ export default function ProfilePage() {
             <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>等级</div>
           </div>
           <div className="text-center p-3 rounded-lg" style={{ background: 'var(--background)' }}>
-            <div className="text-2xl font-bold" style={{ color: '#7850a0' }}>{user.role === 'admin' ? '管理员' : '用户'}</div>
+            <div className="text-2xl font-bold" style={{ color: '#7850a0' }}>{(user.roles ?? []).includes('admin') ? '管理员' : '用户'}</div>
             <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>角色</div>
           </div>
         </div>

@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
           name: feishuUser.name,
           avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
           department: '',
-          role: 'user',
+          roles: ['user'],
         })
         .select('id')
         .single();
@@ -56,12 +56,12 @@ export async function GET(request: NextRequest) {
     const { count } = await getSupabaseAdmin()
       .from('users')
       .select('id', { count: 'exact', head: true })
-      .eq('role', 'admin');
+      .contains('roles', ['admin']);
 
     if ((count || 0) === 0) {
       await getSupabaseAdmin()
         .from('users')
-        .update({ role: 'admin' })
+        .update({ roles: ['admin'] })
         .eq('id', userId);
     }
 
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     // 获取用户完整信息（含 role）
     const { data: fullUser } = await getSupabaseAdmin()
       .from('users')
-      .select('id, name, avatar, role, department')
+      .select('id, name, avatar, roles, department')
       .eq('id', userId)
       .single();
 
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       id: userId,
       name: feishuUser.name,
       avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
-      role: fullUser?.role || 'user',
+      roles: fullUser?.roles || ['user'],
       department: fullUser?.department || '',
     }), {
       httpOnly: false,
