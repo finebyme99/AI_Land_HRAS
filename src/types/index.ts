@@ -179,6 +179,7 @@ export interface CompetitionReview {
   reviewer_id: string;
   reviewer?: Pick<User, 'id' | 'name' | 'avatar' | 'department'>;
   decision: ReviewDecision;
+  is_benchmark: boolean;
   reason: string;
   created_at: string;
   updated_at: string;

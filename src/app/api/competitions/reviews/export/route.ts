@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '导出失败' }, { status: 500 });
   }
 
-  const header = '方案编号,方案名称,方案ID,评审人,部门,评审结果,评审理由,评审时间';
+  const header = '方案编号,方案名称,方案ID,评审人,部门,评审结果,推荐标杆,评审理由,评审时间';
   const rows = (reviews || []).map((r) =>
     [
       r.proposal_no ?? '',
@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
       r.reviewer?.name || r.reviewer_id,
       r.reviewer?.department || '',
       r.decision === 'approved' ? '通过' : '驳回',
+      r.is_benchmark ? '是' : '否',
       `"${(r.reason || '').replace(/"/g, '""')}"`,
       r.created_at,
     ].join(',')
