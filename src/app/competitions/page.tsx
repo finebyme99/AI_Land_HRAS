@@ -35,17 +35,7 @@ export default function CompetitionsPage() {
   const [synced, setSynced] = useState(false);
   const [period] = useState('2605');
 
-  // 页面加载时读取缓存
-  useEffect(() => {
-    const cached = loadCache(period);
-    if (cached) {
-      cached.sort((a, b) => (b.monthlySavedHours ?? 0) - (a.monthlySavedHours ?? 0));
-      setItems(cached);
-      setSynced(true);
-    }
-  }, [period]);
-
-  const handleSync = async () => {
+  const fetchData = async (showMsg = false) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/competitions/sync?period=${period}`);
@@ -57,13 +47,25 @@ export default function CompetitionsPage() {
       setItems(fetched);
       setSynced(true);
       saveCache(period, fetched);
-      message.success(`已同步 ${fetched.length} 条方案`);
+      if (showMsg) message.success(`已同步 ${fetched.length} 条方案`);
     } catch (err) {
-      message.error(err instanceof Error ? err.message : '同步失败');
+      if (showMsg) message.error(err instanceof Error ? err.message : '同步失败');
     } finally {
       setLoading(false);
     }
   };
+
+  // 页面加载时：有缓存先展示缓存，无缓存则自动拉取
+  useEffect(() => {
+    const cached = loadCache(period);
+    if (cached) {
+      cached.sort((a, b) => (b.monthlySavedHours ?? 0) - (a.monthlySavedHours ?? 0));
+      setItems(cached);
+      setSynced(true);
+    } else {
+      fetchData();
+    }
+  }, [period]);
 
   return (
     <>
@@ -112,7 +114,7 @@ export default function CompetitionsPage() {
           </div>
           {isAdmin && (
             <button
-              onClick={handleSync}
+              onClick={() => fetchData(true)}
               disabled={loading}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
               style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
