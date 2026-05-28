@@ -9,8 +9,6 @@ import {
   ToolOutlined,
   LinkOutlined,
   DownloadOutlined,
-  PaperClipOutlined,
-  PlayCircleOutlined,
 } from '@ant-design/icons';
 
 export interface Submission {
@@ -37,7 +35,7 @@ export interface Submission {
   verifier?: string[];
   sourceUrl?: string;
   status?: string;
-  attachments?: { fileToken: string; name: string; size?: number; type?: string }[];
+  attachments?: { fileToken: string; name: string; size?: number; type?: string; tmpUrl?: string }[];
 }
 
 const TRACK_COLORS: Record<string, string> = {
@@ -176,24 +174,17 @@ export default function CompetitionCard({ data }: { data: Submission }) {
       {/* 附件 */}
       {data.attachments && data.attachments.length > 0 && (() => {
         const images = data.attachments.filter((a) => a.type?.startsWith('image'));
-        const videos = data.attachments.filter((a) => a.type?.startsWith('video'));
-        const others = data.attachments.filter((a) => !a.type?.startsWith('image') && !a.type?.startsWith('video'));
-        const mediaUrl = (a: { fileToken: string; name: string }) =>
-          `/api/competitions/media?token=${a.fileToken}&name=${encodeURIComponent(a.name)}`;
+        const directUrl = (a: { tmpUrl?: string }) => a.tmpUrl ?? '';
 
         return (
           <div className="mb-3">
-            <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1"
-              style={{ color: 'var(--text-muted)' }}>
-              <PaperClipOutlined /> 附件
-            </div>
             {images.length > 0 && (
               <Image.PreviewGroup>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {images.map((a) => (
                     <Image
                       key={a.fileToken}
-                      src={mediaUrl(a)}
+                      src={directUrl(a)}
                       alt={a.name}
                       width={80}
                       height={80}
@@ -204,44 +195,23 @@ export default function CompetitionCard({ data }: { data: Submission }) {
                 </div>
               </Image.PreviewGroup>
             )}
-            {videos.length > 0 && (
-              <div className="space-y-2 mb-2">
-                {videos.map((a) => (
-                  <div key={a.fileToken} className="rounded-lg overflow-hidden" style={{ background: 'rgba(0,0,0,0.02)' }}>
-                    <div className="flex items-center gap-2 px-3 py-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      <PlayCircleOutlined /> {a.name}
-                    </div>
-                    <video
-                      src={mediaUrl(a)}
-                      controls
-                      className="w-full max-h-48"
-                      preload="metadata"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-            {others.length > 0 && (
-              <div className="space-y-1">
-                {others.map((a) => (
-                  <a
-                    key={a.fileToken}
-                    href={mediaUrl(a)}
-                    download={a.name}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-black/[0.03]"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
-                    <DownloadOutlined className="flex-shrink-0" />
-                    <span className="truncate flex-1">{a.name}</span>
-                    {a.size != null && (
-                      <span className="flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
-                        {(a.size / 1024).toFixed(0)}KB
-                      </span>
-                    )}
-                  </a>
-                ))}
-              </div>
-            )}
+            {data.attachments.map((a) => {
+              if (a.type?.startsWith('image')) return null;
+              const url = a.tmpUrl
+                ? `/api/competitions/media?tmpUrl=${encodeURIComponent(a.tmpUrl)}&name=${encodeURIComponent(a.name)}`
+                : '#';
+              return (
+                <a
+                  key={a.fileToken}
+                  href={url}
+                  download={a.name}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+                  style={{ background: 'rgba(26,58,138,0.06)', color: 'var(--primary)' }}
+                >
+                  <DownloadOutlined /> {a.name}
+                </a>
+              );
+            })}
           </div>
         );
       })()}

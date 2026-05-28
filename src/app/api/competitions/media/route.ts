@@ -1,24 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTenantAccessToken } from '@/lib/feishu';
-
-const FEISHU_API = 'https://open.feishu.cn/open-apis';
 
 export async function GET(request: NextRequest) {
-  const token = request.nextUrl.searchParams.get('token');
+  const tmpUrl = request.nextUrl.searchParams.get('tmpUrl');
   const name = request.nextUrl.searchParams.get('name') ?? 'file';
 
-  if (!token) {
-    return NextResponse.json({ error: '缺少 token 参数' }, { status: 400 });
+  if (!tmpUrl) {
+    return NextResponse.json({ error: '缺少 tmpUrl 参数' }, { status: 400 });
   }
 
   try {
-    const accessToken = await getTenantAccessToken();
-    const res = await fetch(`${FEISHU_API}/drive/v1/medias/${token}/download`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const res = await fetch(tmpUrl);
 
     if (!res.ok) {
-      return NextResponse.json({ error: `飞书下载失败: ${res.status}` }, { status: 502 });
+      return NextResponse.json({ error: `下载失败: ${res.status}` }, { status: 502 });
     }
 
     const contentType = res.headers.get('content-type') ?? 'application/octet-stream';
@@ -32,7 +26,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (err) {
-    console.error('下载飞书附件失败:', err);
+    console.error('下载附件失败:', err);
     return NextResponse.json({ error: '下载失败' }, { status: 500 });
   }
 }
