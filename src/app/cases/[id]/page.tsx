@@ -161,7 +161,11 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
       okButtonProps: { danger: true },
       cancelText: '取消',
       onOk: async () => {
-        await getSupabase().from('cases').update({ status: 'rejected' }).eq('id', id);
+        const { error } = await getSupabase().from('cases').update({ status: 'rejected' }).eq('id', id);
+        if (error) {
+          message.error('删除失败');
+          return;
+        }
         message.success('案例已删除');
         router.push('/cases');
       },
