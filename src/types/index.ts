@@ -168,31 +168,6 @@ export interface EventSubmission {
   submitted_at: string;
 }
 
-// ============ 话题 ============
-export interface Topic {
-  id: string;
-  title: string;
-  content: string;
-  tags: string[];
-  author: Pick<User, 'id' | 'name' | 'avatar' | 'department'>;
-  view_count: number;
-  answer_count: number;
-  has_accepted_answer: boolean;
-  is_featured?: boolean;
-  created_at: string;
-}
-
-export interface Answer {
-  id: string;
-  topic_id: string;
-  content: string;
-  author: Pick<User, 'id' | 'name' | 'avatar' | 'department'>;
-  vote_count: number;
-  is_accepted: boolean;
-  comment_count: number;
-  created_at: string;
-}
-
 // ============ 通用 ============
 export interface Comment {
   id: string;

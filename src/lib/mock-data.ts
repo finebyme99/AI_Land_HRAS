@@ -1,4 +1,4 @@
-import type { Case, Topic, Event, Course, AppRecommendation, User } from '@/types';
+import type { Case, Event, Course, AppRecommendation, User } from '@/types';
 
 export const mockUser: User = {
   id: '1',
@@ -108,53 +108,6 @@ export const mockCases: Case[] = [
     attachments: [],
     created_at: '2026-05-11T16:00:00Z',
     updated_at: '2026-05-11T16:00:00Z',
-  },
-];
-
-export const mockTopics: Topic[] = [
-  {
-    id: '1',
-    title: '大家在招聘场景中用什么 AI 工具？',
-    content: '最近想在招聘流程中引入 AI，想听听大家的经验...',
-    tags: ['招聘', '工具推荐'],
-    author: { id: '1', name: '张三', avatar: '', department: 'HRBP' },
-    view_count: 89,
-    answer_count: 6,
-    has_accepted_answer: true,
-    created_at: '2026-05-15T10:00:00Z',
-  },
-  {
-    id: '2',
-    title: 'Prompt Engineering 有什么好的学习资源？',
-    content: '想系统学习 Prompt Engineering，求推荐课程或资料',
-    tags: ['学习', 'Prompt'],
-    author: { id: '2', name: '李四', avatar: '', department: 'COE' },
-    view_count: 156,
-    answer_count: 12,
-    has_accepted_answer: false,
-    created_at: '2026-05-14T14:00:00Z',
-  },
-  {
-    id: '3',
-    title: '用 AI 做员工满意度分析靠谱吗？',
-    content: '想用大模型分析员工满意度调查的开放性问题，不知道效果如何',
-    tags: ['员工关系', '数据分析'],
-    author: { id: '3', name: '王五', avatar: '', department: 'HR' },
-    view_count: 67,
-    answer_count: 4,
-    has_accepted_answer: false,
-    created_at: '2026-05-13T09:00:00Z',
-  },
-  {
-    id: '4',
-    title: '飞书机器人 + AI 能做什么有趣的 HR 应用？',
-    content: '想搞一个飞书机器人来做一些 HR 自动化，有经验的分享下',
-    tags: ['飞书', '自动化'],
-    author: { id: '4', name: '赵六', avatar: '', department: 'HRBP' },
-    view_count: 123,
-    answer_count: 8,
-    has_accepted_answer: false,
-    created_at: '2026-05-12T11:00:00Z',
   },
 ];
 
