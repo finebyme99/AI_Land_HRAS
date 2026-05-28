@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Spin, message } from 'antd';
-import { ArrowLeftOutlined, SyncOutlined, TrophyOutlined, CalendarOutlined } from '@ant-design/icons';
+import { SyncOutlined, TrophyOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
 import type { Submission } from '@/components/CompetitionCard';
@@ -35,17 +35,7 @@ export default function CompetitionsPage() {
   const [synced, setSynced] = useState(false);
   const [period] = useState('2605');
 
-  // 页面加载时读取缓存
-  useEffect(() => {
-    const cached = loadCache(period);
-    if (cached) {
-      cached.sort((a, b) => (b.monthlySavedHours ?? 0) - (a.monthlySavedHours ?? 0));
-      setItems(cached);
-      setSynced(true);
-    }
-  }, [period]);
-
-  const handleSync = async () => {
+  const fetchData = async (showMsg = false) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/competitions/sync?period=${period}`);
@@ -57,31 +47,28 @@ export default function CompetitionsPage() {
       setItems(fetched);
       setSynced(true);
       saveCache(period, fetched);
-      message.success(`已同步 ${fetched.length} 条方案`);
+      if (showMsg) message.success(`已同步 ${fetched.length} 条方案`);
     } catch (err) {
-      message.error(err instanceof Error ? err.message : '同步失败');
+      if (showMsg) message.error(err instanceof Error ? err.message : '同步失败');
     } finally {
       setLoading(false);
     }
   };
 
+  // 页面加载时：有缓存先展示缓存，无缓存则自动拉取
+  useEffect(() => {
+    const cached = loadCache(period);
+    if (cached) {
+      cached.sort((a, b) => (b.monthlySavedHours ?? 0) - (a.monthlySavedHours ?? 0));
+      setItems(cached);
+      setSynced(true);
+    } else {
+      fetchData();
+    }
+  }, [period]);
+
   return (
     <>
-      {/* 返回按钮 */}
-      <a
-        href="/"
-        className="fixed bottom-6 left-4 z-[60] flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:scale-105 hover:shadow-lg"
-        style={{
-          background: 'rgba(255, 255, 255, 0.85)',
-          backdropFilter: 'blur(12px)',
-          color: 'var(--primary)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-          border: '1px solid rgba(255, 255, 255, 0.6)',
-        }}
-      >
-        <ArrowLeftOutlined /> 返回 AI 岛
-      </a>
-
       {/* 本月参赛方案卡片 */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex items-center justify-between mb-6">
@@ -110,16 +97,33 @@ export default function CompetitionsPage() {
               </p>
             </div>
           </div>
-          {isAdmin && (
-            <button
-              onClick={handleSync}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-              style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
-            >
-              <SyncOutlined spin={loading} /> {synced ? '重新同步' : '同步多维表格数据'}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <a href="https://finebyme99.github.io/hras-2026/" target="_blank" rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+              style={{ background: 'var(--primary)', color: '#fff' }}>
+              大赛主页
+            </a>
+            <a href="https://ztn.feishu.cn/share/base/form/shrcn2OaxMFequUyz2E6VkJFvJg" target="_blank" rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+              style={{ background: 'var(--accent)', color: '#fff' }}>
+              参与提报
+            </a>
+            <a href="https://ztn.feishu.cn/share/base/form/shrcnzQxxexe7eyuztTiCydTdz7" target="_blank" rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+              style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', color: 'var(--primary)', border: '1px solid rgba(26,58,138,0.15)' }}>
+              参与许愿
+            </a>
+            {isAdmin && (
+              <button
+                onClick={() => fetchData(true)}
+                disabled={loading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
+                style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
+              >
+                <SyncOutlined spin={loading} /> {synced ? '重新同步' : '同步'}
+              </button>
+            )}
+          </div>
         </div>
 
         {loading && (
@@ -142,15 +146,6 @@ export default function CompetitionsPage() {
           </div>
         )}
       </section>
-
-      {/* 大赛原始页面 */}
-      <div className="w-full" style={{ height: 'calc(100vh - 60px)' }}>
-        <iframe
-          src="/hras-2026/index.html"
-          className="w-full h-full border-0"
-          title="AI 大赛"
-        />
-      </div>
     </>
   );
 }
