@@ -6,7 +6,6 @@ import { Tag, Spin } from 'antd';
 import {
   BookOutlined,
   TrophyOutlined,
-  CommentOutlined,
   ReadOutlined,
   ArrowRightOutlined,
   EyeOutlined,
@@ -17,7 +16,7 @@ import {
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { CATEGORY_COLORS, COURSE_DIFFICULTY_COLORS } from '@/lib/constants';
-import type { Case, Topic, Event, Course } from '@/types';
+import type { Case, Event, Course } from '@/types';
 
 function CaseCard({ data }: { data: Case }) {
   return (
@@ -46,33 +45,6 @@ function CaseCard({ data }: { data: Case }) {
   );
 }
 
-function TopicCard({ topic }: { topic: Topic }) {
-  return (
-    <Link href={`/topics/${topic.id}`} className="block group">
-      <div className="glass rounded-xl px-5 py-4 mb-3 transition-all duration-300 hover:-translate-y-0.5"
-        style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-medium mb-1.5 truncate group-hover:opacity-80 transition-opacity">
-              {topic.title}
-              {topic.is_featured && <Tag color="orange" className="ml-1.5 text-xs">精选</Tag>}
-            </h4>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {topic.tags.slice(0, 3).map((tag) => (
-                <Tag key={tag} className="text-xs">{tag}</Tag>
-              ))}
-            </div>
-          </div>
-          <div className="text-xs flex-shrink-0 ml-4 font-medium px-3 py-1 rounded-full"
-            style={{ color: 'var(--primary)', background: 'rgba(26, 58, 138, 0.06)' }}>
-            {topic.answer_count} 回答
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
 function SectionHeader({ icon, title, href, iconBg, iconColor, linkText = '查看全部' }: { icon: React.ReactNode; title: string; href: string; iconBg?: string; iconColor?: string; linkText?: string }) {
   return (
     <div className="flex items-center justify-between mb-5">
@@ -91,34 +63,29 @@ function SectionHeader({ icon, title, href, iconBg, iconColor, linkText = '查�
 export default function Home() {
   const { isAdmin } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
-  const [topics, setTopics] = useState<Topic[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [stats, setStats] = useState({ cases: 0, topics: 0, users: 0, courses: 0 });
+  const [stats, setStats] = useState({ cases: 0, users: 0, courses: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       try {
-        const [casesRes, topicsRes, eventsRes, coursesRes, caseCount, topicCount, userCount, courseCount] = await Promise.all([
+        const [casesRes, eventsRes, coursesRes, caseCount, userCount, courseCount] = await Promise.all([
           getSupabase().from('cases').select('*, author:users!author_id(id, name, avatar, department)').eq('status', 'published').order('view_count', { ascending: false }).limit(6),
-          getSupabase().from('topics').select('*, author:users!author_id(id, name, avatar, department)').order('created_at', { ascending: false }).limit(6),
           getSupabase().from('events').select('*').in('status', ['ongoing', 'upcoming']).order('start_time', { ascending: false }),
           getSupabase().from('courses').select('*, chapters:course_chapters(*)').order('created_at', { ascending: false }).limit(6),
           getSupabase().from('cases').select('id', { count: 'exact', head: true }).eq('status', 'published'),
-          getSupabase().from('topics').select('id', { count: 'exact', head: true }),
           getSupabase().from('users').select('id', { count: 'exact', head: true }),
           getSupabase().from('courses').select('id', { count: 'exact', head: true }),
         ]);
 
         setCases((casesRes.data ?? []) as Case[]);
-        setTopics((topicsRes.data ?? []) as Topic[]);
         setEvents((eventsRes.data ?? []) as Event[]);
         setCourses((coursesRes.data ?? []) as Course[]);
         setStats({
           cases: caseCount.count || 0,
-          topics: topicCount.count || 0,
           users: userCount.count || 0,
           courses: courseCount.count || 0,
         });
@@ -143,7 +110,6 @@ export default function Home() {
 
   const statItems = [
     { label: '案例总数', value: stats.cases, icon: <BookOutlined />, iconBg: 'rgba(26, 58, 138, 0.12)', iconColor: '#1a3a8a' },
-    { label: '话题总数', value: stats.topics, icon: <CommentOutlined />, iconBg: 'rgba(242, 127, 34, 0.12)', iconColor: '#F27F22' },
     { label: '注册用户', value: stats.users, icon: <TeamOutlined />, iconBg: 'rgba(34, 197, 94, 0.12)', iconColor: '#22c55e' },
     { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a' },
   ];
@@ -162,14 +128,9 @@ export default function Home() {
           <span className="shimmer-text">真正用起来</span>
         </h1>
         <p className="text-[17px] mb-8 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
-          案例沉淀、知识学习、活动运营、话题互助，<br />HRAS 全员的 AI 园地
+          案例沉淀、知识学习、活动运营，<br />HRAS 全员的 AI 园地
         </p>
         <div className="flex flex-wrap gap-3 justify-center">
-          <Link href="/topics/create">
-            <button className="btn-gradient">
-              <PlusOutlined /> 发起话题
-            </button>
-          </Link>
           {isAdmin && (
             <Link href="/cases?create=1">
               <button className="btn-gradient">
@@ -243,18 +204,6 @@ export default function Home() {
         </section>
       )}
 
-      {/* Latest Topics */}
-      {topics.length > 0 && (
-        <section className="mb-10">
-          <SectionHeader icon={<CommentOutlined />} title="最新话题" href="/topics" iconBg="rgba(242, 127, 34, 0.1)" iconColor="#F27F22" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {topics.map((topic) => (
-              <TopicCard key={topic.id} topic={topic} />
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Recommended Courses */}
       {courses.length > 0 && (
         <section className="mb-10">
@@ -288,7 +237,7 @@ export default function Home() {
       )}
 
       {/* Empty state */}
-      {cases.length === 0 && topics.length === 0 && courses.length === 0 && (
+      {cases.length === 0 && courses.length === 0 && (
         <div className="text-center py-16">
           <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl glass">
             <BookOutlined style={{ color: 'var(--primary)' }} />

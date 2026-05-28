@@ -7,7 +7,7 @@ import CursorBot from "@/components/CursorBot";
 
 export const metadata: Metadata = {
   title: "HRAS AI岛 — HR 的 AI 社区",
-  description: "HR 圈的 AI 社区 — 案例沉淀、知识学习、活动运营、话题互助的一站式平台",
+  description: "HR 圈的 AI 社区 — 案例沉淀、知识学习、活动运营的一站式平台",
 };
 
 export default function RootLayout({
