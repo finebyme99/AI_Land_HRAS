@@ -70,7 +70,7 @@ export default function CompetitionsPage() {
   // 评委加载评审记录
   useEffect(() => {
     if (isReviewer) {
-      fetch('/api/competitions/reviews')
+      fetch('/api/competitions/reviews?mine=true')
         .then((r) => r.json())
         .then((data) => {
           const map: Record<string, { decision: string; reason: string; is_benchmark?: boolean }> = {};

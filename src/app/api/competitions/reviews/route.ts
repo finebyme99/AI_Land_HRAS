@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
   }
 
   const submissionId = request.nextUrl.searchParams.get('submission_id');
+  const mine = request.nextUrl.searchParams.get('mine');
 
   let query = getSupabaseAdmin()
     .from('competition_reviews')
@@ -31,6 +32,9 @@ export async function GET(request: NextRequest) {
 
   if (submissionId) {
     query = query.eq('submission_id', submissionId);
+  }
+  if (mine === 'true') {
+    query = query.eq('reviewer_id', reviewer.id);
   }
 
   const { data: reviews, error } = await query;
