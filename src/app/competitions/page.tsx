@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Spin, message } from 'antd';
-import { ArrowLeftOutlined, SyncOutlined, TrophyOutlined, CalendarOutlined } from '@ant-design/icons';
+import { SyncOutlined, TrophyOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
 import type { Submission } from '@/components/CompetitionCard';
@@ -69,21 +69,6 @@ export default function CompetitionsPage() {
 
   return (
     <>
-      {/* 返回按钮 */}
-      <a
-        href="/"
-        className="fixed bottom-6 left-4 z-[60] flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:scale-105 hover:shadow-lg"
-        style={{
-          background: 'rgba(255, 255, 255, 0.85)',
-          backdropFilter: 'blur(12px)',
-          color: 'var(--primary)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-          border: '1px solid rgba(255, 255, 255, 0.6)',
-        }}
-      >
-        <ArrowLeftOutlined /> 返回 AI 岛
-      </a>
-
       {/* 本月参赛方案卡片 */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex items-center justify-between mb-6">
