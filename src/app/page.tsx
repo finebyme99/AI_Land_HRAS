@@ -85,7 +85,7 @@ function Orb3D() {
 }
 
 /* ─── Data Dashboard Panel ─── */
-function DataDashboard({ savedHours, participantCount }: { savedHours: number; participantCount: number }) {
+function DataDashboard({ savedHours, participantCount, awardCount }: { savedHours: number; participantCount: number; awardCount: number }) {
   return (
     <div className="relative group/dashboard">
       {/* Breathing glow behind card */}
@@ -172,6 +172,28 @@ function DataDashboard({ savedHours, participantCount }: { savedHours: number; p
               </div>
             </div>
           </div>
+
+          {/* Award Count — "大赛获奖人数" */}
+          <div className="relative group rounded-xl p-5 transition-all duration-500 hover:scale-[1.03] hover:shadow-xl cursor-default"
+            style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.06), rgba(234,179,8,0.02))' }}>
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.08), transparent)' }} />
+            <div className="relative flex items-center gap-4">
+              <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3"
+                style={{ background: 'linear-gradient(135deg, #eab308, #ca8a04)', color: '#fff', boxShadow: '0 4px 20px rgba(234,179,8,0.35)' }}>
+                <TrophyOutlined />
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>大赛获奖人数</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[32px] font-extrabold tracking-tight leading-none" style={{ color: 'var(--foreground)' }}>
+                    <AnimatedCounter target={awardCount} duration={2.5} />
+                  </span>
+                  <span className="text-sm font-semibold" style={{ color: '#eab308', opacity: 0.7 }}>人</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
@@ -240,7 +262,7 @@ export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [stats, setStats] = useState({ cases: 0, users: 0, courses: 0 });
-  const [dashboard, setDashboard] = useState({ savedHours: 0, participantCount: 0 });
+  const [dashboard, setDashboard] = useState({ savedHours: 0, participantCount: 0, awardCount: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -254,7 +276,7 @@ export default function Home() {
           getSupabase().from('cases').select('id', { count: 'exact', head: true }).eq('status', 'published'),
           getSupabase().from('users').select('id', { count: 'exact', head: true }),
           getSupabase().from('courses').select('id', { count: 'exact', head: true }),
-          fetch('/api/admin/settings').then(r => r.json()).catch(() => ({ saved_hours: 0, participant_count: 0 })),
+          fetch('/api/admin/settings').then(r => r.json()).catch(() => ({ saved_hours: 0, participant_count: 0, award_count: 0 })),
         ]);
 
         setCases((casesRes.data ?? []) as Case[]);
@@ -269,6 +291,7 @@ export default function Home() {
         setDashboard({
           savedHours: settingsRes.saved_hours || 0,
           participantCount: settingsRes.participant_count || 0,
+          awardCount: settingsRes.award_count || 0,
         });
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -291,6 +314,7 @@ export default function Home() {
 
   const statItems = [
     { label: '案例总数', value: stats.cases, icon: <BookOutlined />, iconBg: 'rgba(26, 58, 138, 0.12)', iconColor: '#1a3a8a' },
+    { label: '大赛获奖', value: dashboard.awardCount, icon: <TrophyOutlined />, iconBg: 'rgba(242, 127, 34, 0.12)', iconColor: '#F27F22' },
     { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a' },
     { label: '注册用户', value: stats.users, icon: <TeamOutlined />, iconBg: 'rgba(34, 197, 94, 0.12)', iconColor: '#22c55e' },
   ];
@@ -339,6 +363,7 @@ export default function Home() {
             <DataDashboard
               savedHours={dashboard.savedHours}
               participantCount={dashboard.participantCount}
+              awardCount={dashboard.awardCount}
             />
           </div>
         </div>

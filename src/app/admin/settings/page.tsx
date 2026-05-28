@@ -25,6 +25,7 @@ export default function AdminSettingsPage() {
           form.setFieldsValue({
             saved_hours: data.saved_hours || 0,
             participant_count: data.participant_count || 0,
+            award_count: data.award_count || 0,
           });
         })
         .catch(() => message.error('加载设置失败'))
@@ -32,7 +33,7 @@ export default function AdminSettingsPage() {
     }
   }, [isAdmin, form]);
 
-  const handleSave = async (values: { saved_hours: number; participant_count: number }) => {
+  const handleSave = async (values: { saved_hours: number; participant_count: number; award_count: number }) => {
     setSaving(true);
     try {
       const res = await fetch('/api/admin/settings', {
@@ -94,6 +95,19 @@ export default function AdminSettingsPage() {
               max={999999}
               style={{ width: '100%' }}
               placeholder="输入平台参与人次"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="award_count"
+            label="大赛获奖人数"
+            rules={[{ required: true, message: '请输入获奖人数' }]}
+          >
+            <InputNumber
+              min={0}
+              max={999999}
+              style={{ width: '100%' }}
+              placeholder="输入大赛获奖人数"
             />
           </Form.Item>
 

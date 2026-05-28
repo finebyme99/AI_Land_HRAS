@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         saved_hours: 0,
         participant_count: 0,
+        award_count: 0,
         updated_at: null,
       });
     }
@@ -32,10 +33,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       saved_hours: data.saved_hours || 0,
       participant_count: data.participant_count || 0,
+      award_count: data.award_count || 0,
       updated_at: data.updated_at,
     });
   } catch {
-    return NextResponse.json({ saved_hours: 0, participant_count: 0, updated_at: null });
+    return NextResponse.json({ saved_hours: 0, participant_count: 0, award_count: 0, updated_at: null });
   }
 }
 
@@ -47,7 +49,7 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    const { saved_hours, participant_count } = await request.json();
+    const { saved_hours, participant_count, award_count } = await request.json();
 
     const { error } = await getSupabaseAdmin()
       .from('platform_settings')
@@ -55,6 +57,7 @@ export async function PUT(request: NextRequest) {
         id: 1,
         saved_hours: saved_hours ?? 0,
         participant_count: participant_count ?? 0,
+        award_count: award_count ?? 0,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
 
