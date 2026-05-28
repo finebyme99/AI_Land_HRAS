@@ -5,7 +5,7 @@ export interface User {
   name: string;
   avatar: string;
   department: string;
-  role: 'user' | 'contributor' | 'moderator' | 'admin';
+  roles: string[];
   bio: string;
   points: number;
   level: 'AI新手' | 'AI探索者' | 'AI达人' | 'AI专家';
@@ -166,6 +166,22 @@ export interface EventSubmission {
   score: number | null;
   rank: number | null;
   submitted_at: string;
+}
+
+// ============ 评审 ============
+export type ReviewDecision = 'approved' | 'rejected';
+
+export interface CompetitionReview {
+  id: string;
+  submission_id: string;
+  proposal_no: number | null;
+  title: string;
+  reviewer_id: string;
+  reviewer?: Pick<User, 'id' | 'name' | 'avatar' | 'department'>;
+  decision: ReviewDecision;
+  reason: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // ============ 通用 ============

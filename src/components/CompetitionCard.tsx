@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Tag } from 'antd';
+import { Tag, Button, Modal, Input } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -9,6 +9,8 @@ import {
   ClockCircleOutlined,
   ToolOutlined,
   LinkOutlined,
+  CheckOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 
 export interface Submission {
@@ -56,8 +58,29 @@ function formatPercent(val?: number): string {
   return `${(val * 100).toFixed(1)}%`;
 }
 
-export default function CompetitionCard({ data }: { data: Submission }) {
+interface CompetitionCardProps {
+  data: Submission;
+  isReviewer?: boolean;
+  existingReview?: { decision: string; reason: string } | null;
+  onReview?: (submissionId: string, decision: 'approved' | 'rejected', reason?: string) => void;
+}
+
+export default function CompetitionCard({ data, isReviewer, existingReview, onReview }: CompetitionCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const handleApprove = () => {
+    onReview?.(data.id, 'approved');
+  };
+
+  const handleReject = () => {
+    if (!rejectReason.trim()) return;
+    onReview?.(data.id, 'rejected', rejectReason.trim());
+    setRejectModalOpen(false);
+    setRejectReason('');
+  };
+
   return (
     <div className="glass rounded-2xl p-5 sm:p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden"
       style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
@@ -103,7 +126,7 @@ export default function CompetitionCard({ data }: { data: Submission }) {
         {data.sceneCategory && <Tag>{data.sceneCategory}</Tag>}
       </div>
 
-      {/* 核心指标 — 突出 */}
+      {/* 核心指标 */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(242, 127, 34, 0.06)' }}>
           <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
@@ -185,7 +208,7 @@ export default function CompetitionCard({ data }: { data: Submission }) {
         </div>
       )}
 
-      {/* 底部：确认人 + 查看详情 */}
+      {/* 底部：确认人 + 查看多维表格源记录 */}
       <div className="flex items-center justify-between pt-3 text-[11px]"
         style={{ borderTop: '1px solid rgba(255,255,255,0.4)', color: 'var(--text-muted)' }}>
         {data.verifier && data.verifier.length > 0 && (
@@ -195,10 +218,72 @@ export default function CompetitionCard({ data }: { data: Submission }) {
           <a href={data.recordUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1 hover:opacity-70 transition-opacity ml-auto"
             style={{ color: 'var(--primary)' }}>
-            <LinkOutlined /> 查看详情
+            <LinkOutlined /> 查看多维表格源记录
           </a>
         )}
       </div>
+
+      {/* 评委评审区域 — 位于卡片最底部 */}
+      {isReviewer && (
+        <div className="mt-3 pt-3" style={{ borderTop: '1px dashed rgba(0,0,0,0.08)' }}>
+          {existingReview ? (
+            <div className="flex items-center gap-2">
+              <Tag color={existingReview.decision === 'approved' ? 'green' : 'red'} className="text-xs">
+                {existingReview.decision === 'approved' ? '已通过' : '已驳回'}
+              </Tag>
+              {existingReview.decision === 'rejected' && existingReview.reason && (
+                <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                  {existingReview.reason}
+                </span>
+              )}
+              <div className="ml-auto flex gap-1.5">
+                <Button size="small" type="text" icon={<CheckOutlined />}
+                  style={{ color: '#16a34a' }}
+                  onClick={handleApprove} />
+                <Button size="small" type="text" icon={<CloseOutlined />}
+                  style={{ color: '#dc2626' }}
+                  onClick={() => setRejectModalOpen(true)} />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-end gap-2">
+              <Button size="small" icon={<CheckOutlined />}
+                style={{ color: '#16a34a', borderColor: '#16a34a' }}
+                onClick={handleApprove}>
+                通过
+              </Button>
+              <Button size="small" danger icon={<CloseOutlined />}
+                onClick={() => setRejectModalOpen(true)}>
+                驳回调整
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 驳回理由 Modal */}
+      <Modal
+        title="驳回调整 — 填写理由"
+        open={rejectModalOpen}
+        onOk={handleReject}
+        onCancel={() => { setRejectModalOpen(false); setRejectReason(''); }}
+        okText="确认驳回"
+        cancelText="取消"
+        okButtonProps={{ danger: true, type: 'primary', disabled: !rejectReason.trim(), style: { color: '#fff' } }}
+      >
+        <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
+          请说明需要调整的原因，以便提交人改进方案。
+        </p>
+        <Input.TextArea
+          rows={4}
+          placeholder="请输入驳回理由（必填）"
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          maxLength={500}
+          showCount
+          style={{ marginBottom: 8 }}
+        />
+      </Modal>
     </div>
   );
 }

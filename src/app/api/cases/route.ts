@@ -9,8 +9,8 @@ export async function PATCH(request: NextRequest) {
   }
 
   const { data: user } = await getSupabaseAdmin()
-    .from('users').select('id, role').eq('id', userId).single();
-  if (!user || (user.role !== 'admin' && user.role !== 'moderator')) {
+    .from('users').select('id, roles').eq('id', userId).single();
+  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) {
     return NextResponse.json({ error: '仅管理员可操作' }, { status: 403 });
   }
 
@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
 
   // 验证管理员权限
   const { data: user } = await getSupabaseAdmin()
-    .from('users').select('id, role').eq('id', userId).single();
-  if (!user || (user.role !== 'admin' && user.role !== 'moderator')) {
+    .from('users').select('id, roles').eq('id', userId).single();
+  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) {
     return NextResponse.json({ error: '仅管理员可发布案例' }, { status: 403 });
   }
 

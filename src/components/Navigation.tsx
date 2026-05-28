@@ -37,7 +37,7 @@ const userMenuItems = [
 export default function Navigation() {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { user, loading, isAdmin, signOut } = useAuth();
+  const { user, loading, isAdmin, isReviewer, signOut } = useAuth();
 
   const handleLogout = async () => {
     await signOut();
@@ -113,6 +113,9 @@ export default function Navigation() {
                       key: item.key,
                       label: <Link href={item.key}>{item.label}</Link>,
                     })),
+                    ...(isReviewer ? [
+                      { key: '/admin/reviews', label: <Link href="/admin/reviews">评审管理</Link> },
+                    ] : []),
                     ...(isAdmin ? [
                       { key: '/admin/users', label: <Link href="/admin/users">用户管理</Link> },
                       { key: '/admin/settings', label: <Link href="/admin/settings">平台设置</Link> },
@@ -208,6 +211,9 @@ export default function Navigation() {
                     key: item.key,
                     label: <Link href={item.key} onClick={() => setDrawerOpen(false)}>{item.label}</Link>,
                   })),
+                  ...(isReviewer ? [
+                    { key: '/admin/reviews', label: <Link href="/admin/reviews" onClick={() => setDrawerOpen(false)}>评审管理</Link> },
+                  ] : []),
                   ...(isAdmin ? [
                     { key: '/admin/users', label: <Link href="/admin/users" onClick={() => setDrawerOpen(false)}>用户管理</Link> },
                     { key: '/admin/settings', label: <Link href="/admin/settings" onClick={() => setDrawerOpen(false)}>平台设置</Link> },

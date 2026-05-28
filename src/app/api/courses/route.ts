@@ -6,8 +6,8 @@ async function requireAdmin(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
   const { data: user } = await getSupabaseAdmin()
-    .from('users').select('id, role').eq('id', userId).single();
-  if (!user || (user.role !== 'admin' && user.role !== 'moderator')) return null;
+    .from('users').select('id, roles').eq('id', userId).single();
+  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) return null;
   return user;
 }
 

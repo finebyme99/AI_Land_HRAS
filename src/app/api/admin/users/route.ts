@@ -8,11 +8,11 @@ async function requireAdmin(request: NextRequest) {
 
   const { data: user } = await getSupabaseAdmin()
     .from('users')
-    .select('id, role')
+    .select('id, roles')
     .eq('id', userId)
     .single();
 
-  if (!user || (user.role !== 'admin' && user.role !== 'moderator')) return null;
+  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) return null;
   return user;
 }
 
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: users, error } = await getSupabaseAdmin()
       .from('users')
-      .select('id, feishu_open_id, name, avatar, department, role, bio, points, level, created_at')
+      .select('id, feishu_open_id, name, avatar, department, roles, bio, points, level, created_at')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -45,14 +45,14 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    const { userId, role } = await request.json();
+    const { userId, roles } = await request.json();
 
-    if (!userId || !role) {
+    if (!userId || !roles) {
       return NextResponse.json({ error: '缺少参数' }, { status: 400 });
     }
 
-    const validRoles = ['user', 'contributor', 'moderator', 'admin'];
-    if (!validRoles.includes(role)) {
+    const validRoles = ['user', 'contributor', 'reviewer', 'moderator', 'admin'];
+    if (!Array.isArray(roles) || !roles.every((r: string) => validRoles.includes(r))) {
       return NextResponse.json({ error: '无效角色' }, { status: 400 });
     }
 
@@ -63,9 +63,9 @@ export async function PATCH(request: NextRequest) {
 
     const { data: user, error } = await getSupabaseAdmin()
       .from('users')
-      .update({ role })
+      .update({ roles })
       .eq('id', userId)
-      .select('id, name, avatar, department, role, points, level, created_at')
+      .select('id, name, avatar, department, roles, points, level, created_at')
       .single();
 
     if (error) throw error;

@@ -6,6 +6,7 @@ import { SyncOutlined, TrophyOutlined, CalendarOutlined } from '@ant-design/icon
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
 import type { Submission } from '@/components/CompetitionCard';
+import type { CompetitionReview } from '@/types';
 
 const CACHE_KEY = 'competition_submissions';
 
@@ -29,11 +30,12 @@ function saveCache(period: string, items: Submission[]) {
 }
 
 export default function CompetitionsPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isReviewer } = useAuth();
   const [items, setItems] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
   const [synced, setSynced] = useState(false);
   const [period] = useState('2605');
+  const [reviews, setReviews] = useState<Record<string, { decision: string; reason: string }>>({});
 
   const fetchData = async (showMsg = false) => {
     setLoading(true);
@@ -66,6 +68,51 @@ export default function CompetitionsPage() {
       fetchData();
     }
   }, [period]);
+
+  // 评委加载评审记录
+  useEffect(() => {
+    if (isReviewer) {
+      fetch('/api/competitions/reviews')
+        .then((r) => r.json())
+        .then((data) => {
+          const map: Record<string, { decision: string; reason: string }> = {};
+          (data.reviews ?? []).forEach((r: CompetitionReview) => {
+            map[r.submission_id] = { decision: r.decision, reason: r.reason };
+          });
+          setReviews(map);
+        })
+        .catch(() => {});
+    }
+  }, [isReviewer]);
+
+  const handleReview = async (submissionId: string, decision: 'approved' | 'rejected', reason?: string) => {
+    try {
+      const item = items.find((i) => i.id === submissionId);
+      const res = await fetch('/api/competitions/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submission_id: submissionId,
+          decision,
+          reason,
+          proposal_no: item?.proposalNo ?? null,
+          title: item?.title ?? '',
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
+      const data = await res.json();
+      setReviews((prev) => ({
+        ...prev,
+        [submissionId]: { decision: data.review.decision, reason: data.review.reason },
+      }));
+      message.success(decision === 'approved' ? '已通过' : '已驳回');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '评审失败');
+    }
+  };
 
   return (
     <>
@@ -141,7 +188,13 @@ export default function CompetitionsPage() {
         {items.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((item) => (
-              <CompetitionCard key={item.id} data={item} />
+              <CompetitionCard
+                key={item.id}
+                data={item}
+                isReviewer={isReviewer}
+                existingReview={reviews[item.id] || null}
+                onReview={handleReview}
+              />
             ))}
           </div>
         )}
