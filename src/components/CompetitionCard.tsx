@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Tag } from 'antd';
 import {
   UserOutlined,
@@ -56,6 +57,7 @@ function formatPercent(val?: number): string {
 }
 
 export default function CompetitionCard({ data }: { data: Submission }) {
+  const [expanded, setExpanded] = useState(false);
   return (
     <div className="glass rounded-2xl p-5 sm:p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden"
       style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
@@ -172,7 +174,14 @@ export default function CompetitionCard({ data }: { data: Submission }) {
       {data.extraValue && (
         <div className="mb-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
           <span className="font-medium" style={{ color: 'var(--text-muted)' }}>附加价值：</span>
-          {data.extraValue}
+          <span className={expanded ? '' : 'line-clamp-1'}>{data.extraValue}</span>
+          {data.extraValue.length > 50 && (
+            <button onClick={() => setExpanded(!expanded)}
+              className="ml-1 text-[11px] font-medium hover:underline"
+              style={{ color: 'var(--primary)' }}>
+              {expanded ? '收起' : '展开'}
+            </button>
+          )}
         </div>
       )}
 
