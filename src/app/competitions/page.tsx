@@ -112,16 +112,33 @@ export default function CompetitionsPage() {
               </p>
             </div>
           </div>
-          {isAdmin && (
-            <button
-              onClick={() => fetchData(true)}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-              style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
-            >
-              <SyncOutlined spin={loading} /> {synced ? '重新同步' : '同步多维表格数据'}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <a href="https://finebyme99.github.io/hras-2026/" target="_blank" rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105"
+              style={{ background: 'var(--primary)' }}>
+              大赛主页
+            </a>
+            <a href="https://ztn.feishu.cn/share/base/form/shrcn2OaxMFequUyz2E6VkJFvJg" target="_blank" rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105"
+              style={{ background: 'var(--accent)' }}>
+              参与提报
+            </a>
+            <a href="https://ztn.feishu.cn/share/base/form/shrcnzQxxexe7eyuztTiCydTdz7" target="_blank" rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+              style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', color: 'var(--primary)', border: '1px solid rgba(26,58,138,0.15)' }}>
+              参与许愿
+            </a>
+            {isAdmin && (
+              <button
+                onClick={() => fetchData(true)}
+                disabled={loading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
+                style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
+              >
+                <SyncOutlined spin={loading} /> {synced ? '重新同步' : '同步'}
+              </button>
+            )}
+          </div>
         </div>
 
         {loading && (
@@ -143,27 +160,6 @@ export default function CompetitionsPage() {
             ))}
           </div>
         )}
-      </section>
-
-      {/* 大赛快捷入口 */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
-        <div className="flex flex-wrap justify-center gap-3">
-          <a href="https://finebyme99.github.io/hras-2026/" target="_blank" rel="noopener noreferrer"
-            className="px-6 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:scale-105 hover:shadow-lg"
-            style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}>
-            前往大赛主页
-          </a>
-          <a href="https://ztn.feishu.cn/share/base/form/shrcn2OaxMFequUyz2E6VkJFvJg" target="_blank" rel="noopener noreferrer"
-            className="px-6 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:scale-105 hover:shadow-lg"
-            style={{ background: 'var(--accent)', boxShadow: '0 4px 15px rgba(242,127,34,0.25)' }}>
-            参与提报
-          </a>
-          <a href="https://ztn.feishu.cn/share/base/form/shrcnzQxxexe7eyuztTiCydTdz7" target="_blank" rel="noopener noreferrer"
-            className="px-6 py-2.5 rounded-xl text-sm font-medium transition-all hover:scale-105 hover:shadow-lg"
-            style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', color: 'var(--primary)', border: '1px solid rgba(26,58,138,0.15)', boxShadow: '0 4px 15px rgba(0,0,0,0.06)' }}>
-            参与许愿
-          </a>
-        </div>
       </section>
     </>
   );
