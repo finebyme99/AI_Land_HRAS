@@ -128,6 +128,13 @@ export default function AdminReviewsPage() {
       ),
     },
     {
+      title: '标杆',
+      dataIndex: 'is_benchmark',
+      key: 'is_benchmark',
+      width: 70,
+      render: (val: boolean) => val ? <Tag color="gold">标杆</Tag> : '-',
+    },
+    {
       title: '评审理由',
       dataIndex: 'reason',
       key: 'reason',

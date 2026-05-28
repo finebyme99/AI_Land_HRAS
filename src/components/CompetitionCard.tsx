@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Tag, Button, Modal, Input } from 'antd';
+import { Tag, Button, Modal, Input, Checkbox, Tooltip } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -61,17 +61,18 @@ function formatPercent(val?: number): string {
 interface CompetitionCardProps {
   data: Submission;
   isReviewer?: boolean;
-  existingReview?: { decision: string; reason: string } | null;
-  onReview?: (submissionId: string, decision: 'approved' | 'rejected', reason?: string) => void;
+  existingReview?: { decision: string; reason: string; is_benchmark?: boolean } | null;
+  onReview?: (submissionId: string, decision: 'approved' | 'rejected', reason?: string, is_benchmark?: boolean) => void;
 }
 
 export default function CompetitionCard({ data, isReviewer, existingReview, onReview }: CompetitionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [benchmarkChecked, setBenchmarkChecked] = useState(existingReview?.is_benchmark ?? false);
 
   const handleApprove = () => {
-    onReview?.(data.id, 'approved');
+    onReview?.(data.id, 'approved', undefined, benchmarkChecked);
   };
 
   const handleReject = () => {
@@ -231,6 +232,9 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
               <Tag color={existingReview.decision === 'approved' ? 'green' : 'red'} className="text-xs">
                 {existingReview.decision === 'approved' ? '已通过' : '已驳回'}
               </Tag>
+              {existingReview.decision === 'approved' && existingReview.is_benchmark && (
+                <Tag color="gold" className="text-xs">标杆案例</Tag>
+              )}
               {existingReview.decision === 'rejected' && existingReview.reason && (
                 <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
                   {existingReview.reason}
@@ -246,16 +250,23 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-end gap-2">
-              <Button size="small" icon={<CheckOutlined />}
-                style={{ color: '#16a34a', borderColor: '#16a34a' }}
-                onClick={handleApprove}>
-                通过
-              </Button>
-              <Button size="small" danger icon={<CloseOutlined />}
-                onClick={() => setRejectModalOpen(true)}>
-                驳回调整
-              </Button>
+            <div className="flex flex-col items-end gap-2">
+              <Tooltip title="广受评委认可的标杆案例，会推举在全HRAS宣讲，应具备三要素：落地成效显著、可推广复用、有启发性">
+                <Checkbox checked={benchmarkChecked} onChange={(e) => setBenchmarkChecked(e.target.checked)}>
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>推荐为标杆案例</span>
+                </Checkbox>
+              </Tooltip>
+              <div className="flex items-center gap-2">
+                <Button size="small" icon={<CheckOutlined />}
+                  style={{ color: '#16a34a', borderColor: '#16a34a' }}
+                  onClick={handleApprove}>
+                  通过
+                </Button>
+                <Button size="small" danger icon={<CloseOutlined />}
+                  onClick={() => setRejectModalOpen(true)}>
+                  驳回调整
+                </Button>
+              </div>
             </div>
           )}
         </div>

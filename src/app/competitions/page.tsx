@@ -35,7 +35,7 @@ export default function CompetitionsPage() {
   const [loading, setLoading] = useState(false);
   const [synced, setSynced] = useState(false);
   const [period] = useState('2605');
-  const [reviews, setReviews] = useState<Record<string, { decision: string; reason: string }>>({});
+  const [reviews, setReviews] = useState<Record<string, { decision: string; reason: string; is_benchmark?: boolean }>>({});
 
   const fetchData = async (showMsg = false) => {
     setLoading(true);
@@ -75,9 +75,9 @@ export default function CompetitionsPage() {
       fetch('/api/competitions/reviews')
         .then((r) => r.json())
         .then((data) => {
-          const map: Record<string, { decision: string; reason: string }> = {};
+          const map: Record<string, { decision: string; reason: string; is_benchmark?: boolean }> = {};
           (data.reviews ?? []).forEach((r: CompetitionReview) => {
-            map[r.submission_id] = { decision: r.decision, reason: r.reason };
+            map[r.submission_id] = { decision: r.decision, reason: r.reason, is_benchmark: r.is_benchmark };
           });
           setReviews(map);
         })
@@ -85,7 +85,7 @@ export default function CompetitionsPage() {
     }
   }, [isReviewer]);
 
-  const handleReview = async (submissionId: string, decision: 'approved' | 'rejected', reason?: string) => {
+  const handleReview = async (submissionId: string, decision: 'approved' | 'rejected', reason?: string, is_benchmark?: boolean) => {
     try {
       const item = items.find((i) => i.id === submissionId);
       const res = await fetch('/api/competitions/reviews', {
@@ -97,6 +97,7 @@ export default function CompetitionsPage() {
           reason,
           proposal_no: item?.proposalNo ?? null,
           title: item?.title ?? '',
+          is_benchmark,
         }),
       });
       if (!res.ok) {
@@ -106,7 +107,7 @@ export default function CompetitionsPage() {
       const data = await res.json();
       setReviews((prev) => ({
         ...prev,
-        [submissionId]: { decision: data.review.decision, reason: data.review.reason },
+        [submissionId]: { decision: data.review.decision, reason: data.review.reason, is_benchmark: data.review.is_benchmark },
       }));
       message.success(decision === 'approved' ? '已通过' : '已驳回');
     } catch (err) {

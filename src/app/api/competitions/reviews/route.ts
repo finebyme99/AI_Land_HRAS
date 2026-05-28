@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '无评审权限' }, { status: 403 });
   }
 
-  const { submission_id, decision, reason, proposal_no, title } = await request.json();
+  const { submission_id, decision, reason, proposal_no, title, is_benchmark } = await request.json();
 
   if (!submission_id || !decision) {
     return NextResponse.json({ error: '缺少参数' }, { status: 400 });
@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
         reason: reason || '',
         proposal_no: proposal_no ?? null,
         title: title || '',
+        is_benchmark: decision === 'approved' ? !!is_benchmark : false,
       },
       { onConflict: 'submission_id,reviewer_id' }
     )
