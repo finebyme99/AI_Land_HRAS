@@ -29,19 +29,19 @@ Console Error
 Warning: [antd: message] Static function can not consume context like dynamic theme. Please use 'App' component instead.
 
 
-    at createConsoleError (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_next_dist_115brz8._.js:2379:71)
-    at handleConsoleError (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_next_dist_115brz8._.js:3165:54)
-    at console.error (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_next_dist_115brz8._.js:3312:57)
-    at warning (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_0uotdlj._.js:268:21)
-    at call (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_0uotdlj._.js:285:9)
-    at warningOnce (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_0uotdlj._.js:290:5)
-    at _warning (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_antd_0e994e.._.js:83:220)
-    at push.warnContext (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_antd_0e994e.._.js:2353:205)
-    at typeOpen (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_antd_es_0p0~c5v._.js:9592:201)
-    at staticMethods.<computed> [as success] (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_antd_es_0p0~c5v._.js:9642:38)
-    at handleSubmit (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/src_0tqlvev._.js:190:204)
-    at onFinish (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_%40rc-component_form_es_00e7w11._.js:2371:17)
-    at <unknown> (file:///Users/apple/Q/AI/26AI在集团落地/AILand/.next/dev/static/chunks/node_modules_%40rc-component_form_es_00e7w11._.js:2196:21)
+    at createConsoleError (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_next_dist_115brz8._.js:2379:71)
+    at handleConsoleError (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_next_dist_115brz8._.js:3165:54)
+    at console.error (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_next_dist_115brz8._.js:3312:57)
+    at warning (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_0uotdlj._.js:268:21)
+    at call (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_0uotdlj._.js:285:9)
+    at warningOnce (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_0uotdlj._.js:290:5)
+    at _warning (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_antd_0e994e.._.js:83:220)
+    at push.warnContext (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_antd_0e994e.._.js:2353:205)
+    at typeOpen (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_antd_es_0p0~c5v._.js:9592:201)
+    at staticMethods.<computed> [as success] (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_antd_es_0p0~c5v._.js:9642:38)
+    at handleSubmit (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/src_0tqlvev._.js:190:204)
+    at onFinish (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_%40rc-component_form_es_00e7w11._.js:2371:17)
+    at <unknown> (file:///Users/apple/Q/AI/26AI落地/AILand/.next/dev/static/chunks/node_modules_%40rc-component_form_es_00e7w11._.js:2196:21)
 
 Next.js version: 16.2.6 (Turbopack)
  |
@@ -99,57 +99,23 @@ Warning: [antd: message] Static function can not consume context like dynamic th
 
 ---
 
-## 4. AI 话题社区
-
-### 4.1 列表页
+## 4. AI 大赛
 
 | # | 验收项 | 状态 | 备注 |
 |---|--------|------|------|
-| 4.1.1 | 话题列表正常加载 | [ ] | |
-| 4.1.2 | 排序切换正常（最新/最热） | [ ] | |
-| 4.1.3 | 标签筛选正常 | [ ] | |
-| 4.1.4 | 关键词搜索正常（有 debounce） | [ ] | |
-| 4.1.5 | 卡片展示：标题 + 标签 + 回答数 + 作者 | [ ] | |
-
-### 4.2 详情页
-
-| # | 验收项 | 状态 | 备注 |
-|---|--------|------|------|
-| 4.2.1 | 话题详情正常加载 | [ ] | |
-| 4.2.2 | 回答列表正常展示 | [ ] | |
-| 4.2.3 | 返回列表功能正常 | [ ] | |
-
-### 4.3 发起话题
-
-| # | 验收项 | 状态 | 备注 |
-|---|--------|------|------|
-| 4.3.1 | 发起话题表单能正常打开 | [ ] | |
-| 4.3.2 | 表单字段完整（标题/内容/标签） | [ ] | |
-| 4.3.3 | 提交功能正常 | [ ] | |
+| 4.1 | 大赛页面正常加载，底部 iframe 展示 hras-2026 页面 | [x] | |
+| 4.2 | 「返回 AI 岛」按钮在左下角，仅大赛页面显示 | [x] | |
+| 4.3 | 管理员可见「同步多维表格数据」按钮 | [x] | |
+| 4.4 | 同步后卡片按月均节省工时降序排列 | [x] | |
+| 4.5 | 卡片展示：标题、赛事进展标签、提报人+团队成员、团队/赛道/场景分类标签 | [x] | |
+| 4.6 | 卡片突出指标：月均节省工时（左，橙色）、提效比例（右，蓝色） | [x] | |
+| 4.7 | 卡片细节：AI 工具、工时对比（改造前后）、核心痛点、附加价值 | [x] | |
+| 4.8 | 卡片底部：工时数据确认人 + 查看详情（飞书记录链接） | [x] | |
+| 4.9 | 同步数据 localStorage 缓存，刷新页面不丢失 | [x] | |
 
 ---
 
-## 5. AI 大赛
-
-### 5.1 列表页
-
-| # | 验收项 | 状态 | 备注 |
-|---|--------|------|------|
-| 5.1.1 | 大赛列表正常加载 | [ ] | |
-| 5.1.2 | 按状态分组显示（进行中/即将开始/已结束） | [ ] | |
-| 5.1.3 | 卡片展示：封面 + 标题 + 时间 + 报名人数 + 状态 | [ ] | |
-
-### 5.2 详情页
-
-| # | 验收项 | 状态 | 备注 |
-|---|--------|------|------|
-| 5.2.1 | 大赛详情正常加载 | [ ] | |
-| 5.2.2 | 显示规则、时间、奖项信息 | [ ] | |
-| 5.2.3 | 返回列表功能正常 | [ ] | |
-
----
-
-## 6. AI 公开课
+## 5. AI 公开课
 
 ### 6.1 列表页
 
@@ -173,7 +139,7 @@ Warning: [antd: message] Static function can not consume context like dynamic th
 
 ---
 
-## 7. AI 应用推荐
+## 6. AI 应用推荐
 
 ### 7.1 列表页
 
@@ -194,7 +160,7 @@ Warning: [antd: message] Static function can not consume context like dynamic th
 
 ---
 
-## 8. 个人中心
+## 7. 个人中心
 
 | # | 验收项 | 状态 | 备注 |
 |---|--------|------|------|
@@ -207,7 +173,7 @@ Warning: [antd: message] Static function can not consume context like dynamic th
 
 ---
 
-## 9. 导航与全局
+## 8. 导航与全局
 
 | # | 验收项 | 状态 | 备注 |
 |---|--------|------|------|
@@ -220,7 +186,7 @@ Warning: [antd: message] Static function can not consume context like dynamic th
 
 ---
 
-## 10. 视觉与交互
+## 9. 视觉与交互
 
 | # | 验收项 | 状态 | 备注 |
 |---|--------|------|------|

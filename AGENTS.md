@@ -10,10 +10,10 @@
 
 ```
 main (稳定版，Vercel 部署源)
-├── feat/case-module    ← 案例库模块
-├── feat/course-module  ← 课程模块
-├── feat/topic-module   ← 问答话题模块
-└── feat/app-module     ← 应用推荐模块
+├── feat/case-module         ← 案例库模块
+├── feat/course-module       ← 课程模块
+├── feat/competition-module  ← AI 大赛模块
+└── feat/app-module          ← 应用推荐模块
 ```
 
 每个窗口 checkout 对应分支，所有 commit 在 feat 分支上，完成后 PR 合回 main。
@@ -21,10 +21,10 @@ main (稳定版，Vercel 部署源)
 ## 分支切换命令
 
 ```bash
-git checkout feat/case-module    # 案例库开发
-git checkout feat/course-module  # 课程开发
-git checkout feat/topic-module   # 问答开发
-git checkout feat/app-module     # 应用推荐开发
+git checkout feat/case-module         # 案例库开发
+git checkout feat/course-module       # 课程开发
+git checkout feat/competition-module  # AI 大赛开发
+git checkout feat/app-module          # 应用推荐开发
 ```
 
 ## 详细规范

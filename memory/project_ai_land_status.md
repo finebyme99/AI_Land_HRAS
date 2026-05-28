@@ -6,7 +6,7 @@ type: project
 
 **项目名**：HRAS AI岛（英文名：HRAS AI Land）
 **仓库**：https://github.com/finebyme99/AI_Land_HRAS
-**本地路径**：/Users/apple/Q/AI/26AI在集团落地/AILand
+**本地路径**：/Users/apple/Q/AI/26AI落地/AILand
 **生产地址**：https://hras-ai-land.vercel.app
 
 ## 技术栈
@@ -28,9 +28,8 @@ type: project
 - [x] 首页 — Hero 双栏（文字 + 动态数据看板）+ 统计卡片
 - [x] 案例库 — 列表/详情/创建
 - [x] 公开课 — 列表/详情/创建
-- [x] 问答话题 — 列表/详情/创建
 - [x] 应用推荐 — 列表/详情
-- [x] AI大赛 — 列表/详情
+- [x] AI大赛 — 参赛方案卡片（飞书 Base 同步）+ hras-2026 iframe
 - [x] 个人中心 — 个人资料/收藏/贡献/通知/设置
 - [x] 登录 — 飞书 OAuth 流程
 - [x] 管理员 — 用户管理（/admin/users）+ 平台设置（/admin/settings）
@@ -49,6 +48,7 @@ type: project
 | `/api/interactions` | 点赞/收藏/取消 |
 | `/api/admin/users` | 用户管理（GET 列表/PATCH 改角色）|
 | `/api/admin/settings` | 平台设置（GET/PUT）|
+| `/api/competitions/sync` | 读取飞书 Base 赛事方案数据 |
 
 ## 已完成功能
 
@@ -65,7 +65,7 @@ type: project
 
 ## 待完成
 
-- [ ] 运行 `006_platform_settings.sql` 迁移（Supabase Dashboard）
+- [ ] 运行 `008_platform_settings_award_count.sql` 迁移（Supabase Dashboard）
 - [ ] 模块 feat 分支可能与 main 有分歧，需要检查/合并
 - [ ] 内容审核后台（轻量实现）
 - [ ] 多语言支持

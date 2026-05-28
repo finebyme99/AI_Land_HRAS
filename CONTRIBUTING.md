@@ -8,11 +8,11 @@ HRAS AI Land 是 HR AI 社区平台，基于 Next.js 16 + Supabase + 飞书 OAut
 
 ```
 main (稳定版，Vercel 生产部署源)
-├── feat/case-module    ← 案例库模块
-├── feat/course-module  ← 课程模块
-├── feat/topic-module   ← 问答话题模块
-├── feat/app-module     ← 应用推荐模块
-└── feat/xxx-module     ← 按需创建新模块
+├── feat/case-module         ← 案例库模块
+├── feat/course-module       ← 课程模块
+├── feat/competition-module  ← AI 大赛模块
+├── feat/app-module          ← 应用推荐模块
+└── feat/xxx-module          ← 按需创建新模块
 ```
 
 ### 分支规则
