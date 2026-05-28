@@ -145,14 +145,26 @@ export default function CompetitionsPage() {
         )}
       </section>
 
-      {/* 大赛原始页面 */}
-      <div className="w-full" style={{ height: 'calc(100vh - 60px)' }}>
-        <iframe
-          src="/hras-2026/index.html"
-          className="w-full h-full border-0"
-          title="AI 大赛"
-        />
-      </div>
+      {/* 大赛快捷入口 */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
+        <div className="flex flex-wrap justify-center gap-3">
+          <a href="https://finebyme99.github.io/hras-2026/" target="_blank" rel="noopener noreferrer"
+            className="px-6 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:scale-105 hover:shadow-lg"
+            style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}>
+            前往大赛主页
+          </a>
+          <a href="https://ztn.feishu.cn/share/base/form/shrcn2OaxMFequUyz2E6VkJFvJg" target="_blank" rel="noopener noreferrer"
+            className="px-6 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:scale-105 hover:shadow-lg"
+            style={{ background: 'var(--accent)', boxShadow: '0 4px 15px rgba(242,127,34,0.25)' }}>
+            参与提报
+          </a>
+          <a href="https://ztn.feishu.cn/share/base/form/shrcnzQxxexe7eyuztTiCydTdz7" target="_blank" rel="noopener noreferrer"
+            className="px-6 py-2.5 rounded-xl text-sm font-medium transition-all hover:scale-105 hover:shadow-lg"
+            style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', color: 'var(--primary)', border: '1px solid rgba(26,58,138,0.15)', boxShadow: '0 4px 15px rgba(0,0,0,0.06)' }}>
+            参与许愿
+          </a>
+        </div>
+      </section>
     </>
   );
 }
