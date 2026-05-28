@@ -85,7 +85,7 @@ function Orb3D() {
 }
 
 /* ─── Data Dashboard Panel ─── */
-function DataDashboard({ savedHours, participantCount, awardCount }: { savedHours: number; participantCount: number; awardCount: number }) {
+function DataDashboard({ savedHours, participantCount }: { savedHours: number; participantCount: number }) {
   return (
     <div className="relative group/dashboard">
       {/* Breathing glow behind card */}
@@ -173,27 +173,6 @@ function DataDashboard({ savedHours, participantCount, awardCount }: { savedHour
             </div>
           </div>
 
-          {/* Award Count — "大赛获奖人数" */}
-          <div className="relative group rounded-xl p-5 transition-all duration-500 hover:scale-[1.03] hover:shadow-xl cursor-default"
-            style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.06), rgba(234,179,8,0.02))' }}>
-            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.08), transparent)' }} />
-            <div className="relative flex items-center gap-4">
-              <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3"
-                style={{ background: 'linear-gradient(135deg, #eab308, #ca8a04)', color: '#fff', boxShadow: '0 4px 20px rgba(234,179,8,0.35)' }}>
-                <TrophyOutlined />
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>大赛获奖人数</div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-[32px] font-extrabold tracking-tight leading-none" style={{ color: 'var(--foreground)' }}>
-                    <AnimatedCounter target={awardCount} duration={2.5} />
-                  </span>
-                  <span className="text-sm font-semibold" style={{ color: '#eab308', opacity: 0.7 }}>人</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
@@ -363,7 +342,6 @@ export default function Home() {
             <DataDashboard
               savedHours={dashboard.savedHours}
               participantCount={dashboard.participantCount}
-              awardCount={dashboard.awardCount}
             />
           </div>
         </div>
