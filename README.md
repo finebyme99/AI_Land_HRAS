@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Land (AILand)
 
-## Getting Started
+HR AI 社区平台，面向 HRAS 团队，集成案例库、课程、AI 大赛、应用推荐等模块。
 
-First, run the development server:
+## 技术栈
+
+- **框架**: Next.js 16 (App Router)
+- **UI**: React 19 + Ant Design 6 + Tailwind CSS 4
+- **后端**: Supabase (PostgreSQL + RLS)
+- **认证**: 飞书 OAuth
+- **部署**: Vercel
+
+## 本地开发
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+访问 `http://localhost:3000`。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 环境变量
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 变量 | 说明 |
+|------|------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目 URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (API 路由用) |
+| `FEISHU_APP_ID` | 飞书应用 App ID |
+| `FEISHU_APP_SECRET` | 飞书应用 App Secret |
 
-## Learn More
+## 项目结构
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/              # Next.js App Router 页面
+│   ├── api/          # API 路由
+│   ├── admin/        # 管理后台
+│   ├── cases/        # 案例库
+│   ├── courses/      # 课程
+│   ├── competitions/ # AI 大赛
+│   └── page.tsx      # 首页
+├── components/       # 共享组件
+└── lib/              # 工具函数 (Supabase 客户端、飞书 API、认证)
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 详细规范
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+见 `CONTRIBUTING.md` 和 `AGENTS.md`。
