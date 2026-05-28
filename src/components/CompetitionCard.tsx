@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Tag, Button, Modal, Input, Checkbox, Tooltip, Image } from 'antd';
+import { Tag, Button, Modal, Input, Checkbox, Tooltip, Image, App } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -81,13 +81,24 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [benchmarkChecked, setBenchmarkChecked] = useState(existingReview?.is_benchmark ?? false);
+  const { message } = App.useApp();
 
   const handleApprove = () => {
+    if (existingReview?.decision === 'approved') {
+      message.warning('请勿重复操作，已通过');
+      return;
+    }
     onReview?.(data.id, 'approved', undefined, benchmarkChecked);
   };
 
   const handleReject = () => {
     if (!rejectReason.trim()) return;
+    if (existingReview?.decision === 'rejected') {
+      message.warning('请勿重复操作，已驳回');
+      setRejectModalOpen(false);
+      setRejectReason('');
+      return;
+    }
     onReview?.(data.id, 'rejected', rejectReason.trim());
     setRejectModalOpen(false);
     setRejectReason('');
