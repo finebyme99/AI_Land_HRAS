@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Tag, Button, Input, Image, App, Modal } from 'antd';
+import { Tag, Input, Image, App, Modal } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -476,22 +476,30 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
               </div>
 
               {/* 评语 + 提交 */}
-              <div className="mb-2">
-                <Input.TextArea
-                  rows={2}
-                  placeholder="评语（选填）"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  maxLength={100}
-                  showCount
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button size="small" type="primary" icon={<CheckOutlined />}
+              <Input.TextArea
+                rows={2}
+                placeholder="评语（选填）"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                maxLength={100}
+                style={{ marginBottom: 8 }}
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  {comment.length}/100
+                </span>
+                <button
+                  onClick={handleSubmit}
                   disabled={!allScored}
-                  onClick={handleSubmit}>
-                  提交评分
-                </Button>
+                  className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                  style={{
+                    background: allScored ? 'var(--primary)' : 'rgba(0,0,0,0.08)',
+                    color: allScored ? '#fff' : 'var(--text-muted)',
+                    boxShadow: allScored ? '0 4px 12px rgba(26,58,138,0.25)' : 'none',
+                  }}
+                >
+                  <CheckOutlined className="mr-1" /> 提交评分
+                </button>
               </div>
             </div>
           )}
