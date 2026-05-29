@@ -182,14 +182,18 @@ export async function POST(request: NextRequest) {
 
     const token = await getTenantAccessToken();
 
-    // 分页拉取飞书记录
+    // 分页拉取飞书记录（优先服务端按评审周期过滤）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allRecords: any[] = [];
     let pageToken: string | undefined;
+    let filterSupported = true;
 
     do {
       const url = new URL(`${FEISHU_API}/bitable/v1/apps/${BASE_APP}/tables/${TABLE_ID}/records`);
       url.searchParams.set('page_size', '100');
+      if (filterSupported) {
+        url.searchParams.set('filter', `AND(CurrentValue.[评审周期]="${period}")`);
+      }
       if (pageToken) url.searchParams.set('page_token', pageToken);
 
       const res = await fetch(url.toString(), {
@@ -198,31 +202,67 @@ export async function POST(request: NextRequest) {
       const json = await res.json();
 
       if (json.code !== 0) {
-        console.error('飞书 API 错误:', JSON.stringify(json, null, 2));
-        return NextResponse.json({ error: json.msg ?? '飞书 API 错误' }, { status: 502 });
+        if (!filterSupported) {
+          console.error('飞书 API 错误:', JSON.stringify(json, null, 2));
+          return NextResponse.json({ error: json.msg ?? '飞书 API 错误' }, { status: 502 });
+        }
+        // filter 不支持，回退全量拉取
+        console.warn('飞书 filter 不可用，回退全量拉取');
+        filterSupported = false;
+        pageToken = undefined;
+        allRecords.length = 0;
+        continue;
       }
 
       allRecords.push(...(json.data?.items ?? []));
       pageToken = json.data?.has_more ? json.data.page_token : undefined;
     } while (pageToken);
 
-    // 过滤当前周期
-    const periodRecords = allRecords.filter((r) => {
-      const fields = r.fields ?? {};
-      const periodField = fields['评审周期'];
-      if (Array.isArray(periodField) && periodField.length > 0 && typeof periodField[0] === 'object' && 'text' in periodField[0]) {
-        return periodField.map((v: { text?: string }) => v.text ?? '').join('') === period;
+    // filter 未生效时，内存过滤
+    const periodRecords = filterSupported
+      ? allRecords
+      : allRecords.filter((r) => {
+          const fields = r.fields ?? {};
+          const periodField = fields['评审周期'];
+          if (Array.isArray(periodField) && periodField.length > 0 && typeof periodField[0] === 'object' && 'text' in periodField[0]) {
+            return periodField.map((v: { text?: string }) => v.text ?? '').join('') === period;
+          }
+          return periodField === period;
+        });
+
+    // 预检：批量查询已存在的附件，避免重复下载
+    const recordIds = periodRecords.map((r) => r.record_id);
+    const existingPaths = new Set<string>();
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < recordIds.length; i += BATCH_SIZE) {
+      const batch = recordIds.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(async (rid) => {
+          const { data: files } = await getSupabaseAdmin().storage.from(BUCKET).list(rid);
+          return { rid, files: files ?? [] };
+        }),
+      );
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          for (const f of r.value.files) {
+            existingPaths.add(`${r.value.rid}/${f.name}`);
+          }
+        }
       }
-      return periodField === period;
-    });
+    }
 
     // 逐条处理：下载附件 → 上传 Storage → 准备 DB 数据
     const rows: Record<string, unknown>[] = [];
+    let skippedAttachments = 0;
+    let downloadedAttachments = 0;
 
     for (const record of periodRecords) {
       const mapped = mapRecord(record);
       const attachments = Array.isArray(mapped.attachments) ? mapped.attachments : [];
 
+      // 筛选出需要下载的附件（已存在的直接跳过）
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const toDownload: { att: any; storagePath: string }[] = [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const processedAttachments: any[] = [];
 
@@ -234,25 +274,43 @@ export async function POST(request: NextRequest) {
         const safeName = a.name.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g, '_');
         const storagePath = `${mapped.id}/${safeName}`;
 
-        try {
-          // 先用 token 从飞书下载，失败则用 tmp_url 公开链接
-          let fileRes: Response | null = null;
-          if (a.url) {
-            fileRes = await fetch(a.url, { headers: { 'Authorization': `Bearer ${token}` } });
-          }
-          if (!fileRes?.ok && a.tmp_url) {
-            fileRes = await fetch(a.tmp_url);
-          }
+        if (existingPaths.has(storagePath)) {
+          // 已存在，直接记录元数据
+          processedAttachments.push({ name: a.name, type: a.type, size: a.size, storage_path: storagePath });
+          skippedAttachments++;
+        } else {
+          toDownload.push({ att: a, storagePath });
+        }
+      }
 
-          if (fileRes?.ok) {
-            const buffer = await fileRes.arrayBuffer();
-            await uploadToStorage(BUCKET, storagePath, buffer, a.type || 'application/octet-stream');
-            processedAttachments.push({ name: a.name, type: a.type, size: a.size, storage_path: storagePath });
+      // 并发下载上传（最多 5 个并发）
+      const CONCURRENCY = 5;
+      for (let i = 0; i < toDownload.length; i += CONCURRENCY) {
+        const batch = toDownload.slice(i, i + CONCURRENCY);
+        const results = await Promise.allSettled(
+          batch.map(async ({ att: a, storagePath }) => {
+            let fileRes: Response | null = null;
+            if (a.url) {
+              fileRes = await fetch(a.url, { headers: { 'Authorization': `Bearer ${token}` } });
+            }
+            if (!fileRes?.ok && a.tmp_url) {
+              fileRes = await fetch(a.tmp_url);
+            }
+            if (fileRes?.ok) {
+              const buffer = await fileRes.arrayBuffer();
+              await uploadToStorage(BUCKET, storagePath, buffer, a.type || 'application/octet-stream');
+              return { name: a.name, type: a.type, size: a.size, storage_path: storagePath };
+            }
+            throw new Error(`下载失败: ${fileRes?.status ?? 'no url'}`);
+          }),
+        );
+        for (const r of results) {
+          if (r.status === 'fulfilled') {
+            processedAttachments.push(r.value);
+            downloadedAttachments++;
           } else {
-            console.error(`附件下载失败 ${a.name}: ${fileRes?.status ?? 'no url'}`);
+            console.error('附件处理异常:', r.reason);
           }
-        } catch (e) {
-          console.error(`附件处理异常 ${a.name}:`, e);
         }
       }
 
@@ -307,7 +365,11 @@ export async function POST(request: NextRequest) {
       if (error) throw new Error(`写入数据库失败: ${errMsg(error)}`);
     }
 
-    return NextResponse.json({ synced: rows.length, period });
+    return NextResponse.json({
+      synced: rows.length,
+      period,
+      attachments: { downloaded: downloadedAttachments, skipped: skippedAttachments },
+    });
   } catch (err) {
     console.error('同步大赛方案失败:', err);
     return NextResponse.json({ error: `同步失败: ${errMsg(err)}` }, { status: 500 });

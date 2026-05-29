@@ -18,7 +18,10 @@ export function getSupabaseAdmin(): SupabaseClient {
 }
 
 // Storage 辅助函数
+const _bucketCache = new Set<string>();
+
 export async function ensureBucket(bucket: string): Promise<void> {
+  if (_bucketCache.has(bucket)) return;
   const supabase = getSupabaseAdmin();
   const { data: buckets, error: listErr } = await supabase.storage.listBuckets();
   if (listErr) {
@@ -32,6 +35,7 @@ export async function ensureBucket(bucket: string): Promise<void> {
       throw new Error(`创建 Storage bucket 失败: ${createErr.message}`);
     }
   }
+  _bucketCache.add(bucket);
 }
 
 export async function uploadToStorage(
