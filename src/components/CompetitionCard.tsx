@@ -307,8 +307,10 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
               )}
               {/* AI 费用 */}
               {data.aiCost != null && data.aiCost > 0 && (
-                <div className="flex items-center justify-between text-xs pt-2">
+                <div className="grid grid-cols-[120px_1fr_40px_1fr] gap-2 items-center text-xs pt-2">
                   <span style={{ color: 'var(--text-muted)' }}>AI 月均费用</span>
+                  <span></span>
+                  <span></span>
                   <span className="font-medium" style={{ color: 'var(--primary)' }}>¥{data.aiCost}</span>
                 </div>
               )}
