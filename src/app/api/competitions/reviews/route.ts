@@ -102,12 +102,13 @@ export async function POST(request: NextRequest) {
 
   const total = computeWeightedScore(scores, reviewer_role as ReviewerRole);
 
-  // 检查是否已有评审记录，已有则拒绝
+  // 检查是否已有新机制评审记录（旧的 approved/rejected 不拦截）
   const { data: existing } = await getSupabaseAdmin()
     .from('competition_reviews')
     .select('id')
     .eq('submission_id', submission_id)
     .eq('reviewer_id', reviewer.id)
+    .eq('decision', 'reviewed')
     .maybeSingle();
 
   if (existing) {

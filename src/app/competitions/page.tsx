@@ -81,13 +81,11 @@ export default function CompetitionsPage() {
             map[r.submission_id] = { decision: r.decision, scores: r.scores, reason: r.reason, reviewer_role: r.reviewer_role };
           });
           setReviews(map);
-          // 已有评审记录，锁定角色
-          if (reviewsList.length > 0) {
-            const firstRole = reviewsList[0].reviewer_role;
-            if (firstRole) {
-              setReviewerRole(firstRole);
-              setRoleLocked(true);
-            }
+          // 已有新机制评审记录，锁定角色
+          const newReviews = reviewsList.filter((r) => r.decision === 'reviewed' && r.reviewer_role);
+          if (newReviews.length > 0) {
+            setReviewerRole(newReviews[0].reviewer_role!);
+            setRoleLocked(true);
           }
         })
         .catch(() => {});
