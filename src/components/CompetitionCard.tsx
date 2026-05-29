@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Tag, Button, Input, Image, App, Radio, Modal } from 'antd';
+import { Tag, Button, Input, Image, App, Modal } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -78,6 +78,7 @@ const STATUS_COLORS: Record<string, string> = {
 interface CompetitionCardProps {
   data: Submission;
   isReviewer?: boolean;
+  reviewerRole?: ReviewerRole | null;
   existingReview?: { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null } | null;
   onReview?: (submissionId: string, scores: ReviewScores, reviewerRole: ReviewerRole, reason?: string) => void;
 }
@@ -107,15 +108,16 @@ function MetricRow({ label, before, after, unit }: { label: string; before: Reac
   );
 }
 
-export default function CompetitionCard({ data, isReviewer, existingReview, onReview }: CompetitionCardProps) {
+export default function CompetitionCard({ data, isReviewer, reviewerRole, existingReview, onReview }: CompetitionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [comment, setComment] = useState(existingReview?.reason ?? '');
-  const [reviewerRole, setReviewerRole] = useState<ReviewerRole | null>(existingReview?.reviewer_role ?? null);
   const [scores, setScores] = useState<ReviewScores>(existingReview?.scores ?? {});
   const { message } = App.useApp();
 
   const hasExisting = existingReview?.decision === 'reviewed';
-  const activeDims = reviewerRole ? SCORE_DIMENSIONS[reviewerRole] : [];
+  // 已评审用当时的角色决定维度，未评审用页面顶部选择的角色
+  const effectiveRole = hasExisting ? existingReview?.reviewer_role ?? reviewerRole : reviewerRole;
+  const activeDims = effectiveRole ? SCORE_DIMENSIONS[effectiveRole] : [];
 
   const totalScore = activeDims.reduce((sum, dim) => {
     const val = scores[dim.key];
@@ -377,7 +379,8 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
 
       {/* 评委评审区域 */}
       {isReviewer && (
-        <div className="mt-3 pt-3" style={{ borderTop: '1px dashed rgba(0,0,0,0.08)' }}>
+        <div className="mt-4 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 px-5 sm:px-6 pt-4 pb-5 rounded-b-2xl"
+          style={{ background: 'rgba(26,58,138,0.03)', borderTop: '1px solid rgba(26,58,138,0.08)' }}>
           {/* 已评审：显示评分明细（不可修改） */}
           {hasExisting && existingReview ? (
             <div>
@@ -410,93 +413,79 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
                 </div>
               )}
             </div>
+          ) : !reviewerRole ? (
+            <div className="text-center py-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+              请先在页面顶部选择评委角色后再评分
+            </div>
           ) : (
             /* 评分表单 */
             <div>
-              {/* 角色选择 */}
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>评委角色</span>
-                <Radio.Group size="small" value={reviewerRole} onChange={(e) => {
-                  setReviewerRole(e.target.value);
-                  setScores({});
-                }}>
-                  <Radio.Button value="user">用户评委</Radio.Button>
-                  <Radio.Button value="business">业务评委</Radio.Button>
-                  <Radio.Button value="tech">技术评委</Radio.Button>
-                </Radio.Group>
+              {/* 评分维度 */}
+              <div className="space-y-3 mb-3">
+                {activeDims.map((dim) => (
+                  <div key={dim.key} className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.5)' }}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
+                        {dim.label}
+                        <span className="text-[10px] font-normal ml-1.5" style={{ color: 'var(--text-muted)' }}>
+                          权重 ×{dim.weight}
+                        </span>
+                      </span>
+                      <span className="text-sm font-bold" style={{ color: scores[dim.key] != null ? (scores[dim.key]! >= 4 ? '#16a34a' : scores[dim.key]! <= 2 ? '#dc2626' : 'var(--primary)') : 'var(--text-muted)' }}>
+                        {scores[dim.key] ?? '-'}
+                      </span>
+                    </div>
+                    <div className="flex gap-1 mb-1.5">
+                      {[1, 2, 3, 4, 5].map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => handleScoreChange(dim.key, v)}
+                          className="flex-1 h-7 rounded text-xs font-medium transition-all"
+                          style={{
+                            background: scores[dim.key] === v
+                              ? v >= 4 ? 'rgba(22,163,74,0.15)' : v <= 2 ? 'rgba(220,38,38,0.12)' : 'rgba(26,58,138,0.12)'
+                              : 'rgba(0,0,0,0.03)',
+                            color: scores[dim.key] === v
+                              ? v >= 4 ? '#16a34a' : v <= 2 ? '#dc2626' : 'var(--primary)'
+                              : 'var(--text-muted)',
+                            border: scores[dim.key] === v
+                              ? `1px solid ${v >= 4 ? 'rgba(22,163,74,0.3)' : v <= 2 ? 'rgba(220,38,38,0.25)' : 'rgba(26,58,138,0.25)'}`
+                              : '1px solid transparent',
+                          }}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                      <span>1分：{dim.lowSignal}</span>
+                      <span>5分：{dim.highSignal}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* 评分维度 */}
-              {reviewerRole && (
-                <div className="space-y-3 mb-3">
-                  {activeDims.map((dim) => (
-                    <div key={dim.key} className="rounded-lg p-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
-                          {dim.label}
-                          <span className="text-[10px] font-normal ml-1.5" style={{ color: 'var(--text-muted)' }}>
-                            权重 ×{dim.weight}
-                          </span>
-                        </span>
-                        <span className="text-sm font-bold" style={{ color: scores[dim.key] != null ? (scores[dim.key]! >= 4 ? '#16a34a' : scores[dim.key]! <= 2 ? '#dc2626' : 'var(--primary)') : 'var(--text-muted)' }}>
-                          {scores[dim.key] ?? '-'}
-                        </span>
-                      </div>
-                      <div className="flex gap-1 mb-1.5">
-                        {[1, 2, 3, 4, 5].map((v) => (
-                          <button
-                            key={v}
-                            onClick={() => handleScoreChange(dim.key, v)}
-                            className="flex-1 h-7 rounded text-xs font-medium transition-all"
-                            style={{
-                              background: scores[dim.key] === v
-                                ? v >= 4 ? 'rgba(22,163,74,0.15)' : v <= 2 ? 'rgba(220,38,38,0.12)' : 'rgba(26,58,138,0.12)'
-                                : 'rgba(0,0,0,0.03)',
-                              color: scores[dim.key] === v
-                                ? v >= 4 ? '#16a34a' : v <= 2 ? '#dc2626' : 'var(--primary)'
-                                : 'var(--text-muted)',
-                              border: scores[dim.key] === v
-                                ? `1px solid ${v >= 4 ? 'rgba(22,163,74,0.3)' : v <= 2 ? 'rgba(220,38,38,0.25)' : 'rgba(26,58,138,0.25)'}`
-                                : '1px solid transparent',
-                            }}
-                          >
-                            {v}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex justify-between text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                        <span>1分：{dim.lowSignal}</span>
-                        <span>5分：{dim.highSignal}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {/* 总分预览 */}
-              {reviewerRole && (
-                <div className="flex items-center justify-between mb-3 px-3 py-2 rounded-lg"
-                  style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
-                  <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>加权总分</span>
-                  <span className="text-lg font-bold" style={{ color: 'var(--primary)' }}>
-                    {totalScore.toFixed(1)}
-                    <span className="text-xs font-normal ml-1" style={{ color: 'var(--text-muted)' }}>/ {maxScore}</span>
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center justify-between mb-3 px-3 py-2 rounded-lg"
+                style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
+                <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>加权总分</span>
+                <span className="text-lg font-bold" style={{ color: 'var(--primary)' }}>
+                  {totalScore.toFixed(1)}
+                  <span className="text-xs font-normal ml-1" style={{ color: 'var(--text-muted)' }}>/ {maxScore}</span>
+                </span>
+              </div>
 
-              {/* 评语 */}
-              <Input.TextArea
-                rows={2}
-                placeholder="评语（选填）"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                maxLength={500}
-                showCount
-                className="mb-3"
-              />
-
-              {/* 提交 */}
+              {/* 评语 + 提交 */}
+              <div className="mb-2">
+                <Input.TextArea
+                  rows={2}
+                  placeholder="评语（选填）"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  maxLength={100}
+                  showCount
+                />
+              </div>
               <div className="flex justify-end">
                 <Button size="small" type="primary" icon={<CheckOutlined />}
                   disabled={!allScored}

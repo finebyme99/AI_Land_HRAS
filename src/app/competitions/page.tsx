@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Spin, App } from 'antd';
+import { Spin, App, Radio } from 'antd';
 import { SyncOutlined, TrophyOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
@@ -16,6 +16,7 @@ export default function CompetitionsPage() {
   const [loaded, setLoaded] = useState(false);
   const [period] = useState('2605');
   const [reviews, setReviews] = useState<Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }>>({});
+  const [reviewerRole, setReviewerRole] = useState<ReviewerRole | null>(null);
   const { message } = App.useApp();
 
   // 从 Supabase 读取已同步数据
@@ -172,31 +173,51 @@ export default function CompetitionsPage() {
           </div>
         </div>
 
-        {/* 评委评审进度 */}
-        {isReviewer && loaded && items.length > 0 && (() => {
-          const reviewedCount = items.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
-          const pending = items.length - reviewedCount;
-          return (
-            <div className="flex items-center gap-4 mb-5 px-4 py-3 rounded-xl text-xs"
+        {/* 评委角色选择 + 评审进度 */}
+        {isReviewer && loaded && items.length > 0 && (
+          <div className="mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-xl mb-3"
               style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
-              <span className="font-semibold" style={{ color: 'var(--primary)' }}>评审进度</span>
-              <span style={{ color: 'var(--text-secondary)' }}>
-                待审 <b style={{ color: 'var(--foreground)' }}>{pending}</b> 条
-              </span>
-              <span style={{ color: '#16a34a' }}>
-                已评审 <b>{reviewedCount}</b> 条
-              </span>
-              <span style={{ color: 'var(--text-muted)' }}>
-                共 {items.length} 条
-              </span>
-              {pending > 0 && (
-                <span className="ml-auto font-medium" style={{ color: '#b3540e' }}>
-                  请及时完成评审
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold" style={{ color: 'var(--primary)' }}>我的角色</span>
+                <Radio.Group size="small" value={reviewerRole} onChange={(e) => setReviewerRole(e.target.value)}>
+                  <Radio.Button value="user">用户评委</Radio.Button>
+                  <Radio.Button value="business">业务评委</Radio.Button>
+                  <Radio.Button value="tech">技术评委</Radio.Button>
+                </Radio.Group>
+              </div>
+              {!reviewerRole && (
+                <span className="text-[11px]" style={{ color: '#b3540e' }}>
+                  请选择评委角色后开始评分
                 </span>
               )}
             </div>
-          );
-        })()}
+            {(() => {
+              const reviewedCount = items.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
+              const pending = items.length - reviewedCount;
+              return (
+                <div className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs"
+                  style={{ background: 'rgba(26,58,138,0.02)', border: '1px solid rgba(26,58,138,0.05)' }}>
+                  <span className="font-semibold" style={{ color: 'var(--primary)' }}>评审进度</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    待审 <b style={{ color: 'var(--foreground)' }}>{pending}</b> 条
+                  </span>
+                  <span style={{ color: '#16a34a' }}>
+                    已评审 <b>{reviewedCount}</b> 条
+                  </span>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    共 {items.length} 条
+                  </span>
+                  {pending > 0 && (
+                    <span className="ml-auto font-medium" style={{ color: '#b3540e' }}>
+                      请及时完成评审
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {loading && (
           <div className="flex justify-center py-12">
@@ -217,6 +238,7 @@ export default function CompetitionsPage() {
                 key={item.id}
                 data={item}
                 isReviewer={isReviewer}
+                reviewerRole={reviewerRole}
                 existingReview={reviews[item.id] || null}
                 onReview={handleReview}
               />
