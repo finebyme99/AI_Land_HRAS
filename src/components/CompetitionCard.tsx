@@ -5,8 +5,6 @@ import { Tag, Button, Modal, Input, Checkbox, Tooltip, Image, App } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
-  ThunderboltOutlined,
-  ClockCircleOutlined,
   ToolOutlined,
   LinkOutlined,
   CheckOutlined,
@@ -14,6 +12,7 @@ import {
   PaperClipOutlined,
   FileOutlined,
   PlayCircleOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 
 export interface Submission {
@@ -42,7 +41,6 @@ export interface Submission {
   status?: string;
   proposalNo?: number;
   attachments?: AttachmentFile[];
-  // 新增字段（本期不展示，备用）
   implementation?: string;
   newOperationCount?: number;
   oldOperationCount?: number;
@@ -76,9 +74,11 @@ const STATUS_COLORS: Record<string, string> = {
   '并入其他方案': 'gray',
 };
 
-function formatPercent(val?: number): string {
-  if (val == null) return '-';
-  return `${(val * 100).toFixed(1)}%`;
+interface CompetitionCardProps {
+  data: Submission;
+  isReviewer?: boolean;
+  existingReview?: { decision: string; reason: string; is_benchmark?: boolean } | null;
+  onReview?: (submissionId: string, decision: 'approved' | 'rejected', reason?: string, is_benchmark?: boolean) => void;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -89,11 +89,21 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-interface CompetitionCardProps {
-  data: Submission;
-  isReviewer?: boolean;
-  existingReview?: { decision: string; reason: string; is_benchmark?: boolean } | null;
-  onReview?: (submissionId: string, decision: 'approved' | 'rejected', reason?: string, is_benchmark?: boolean) => void;
+/** 前后对比行 */
+function MetricRow({ label, before, after, unit }: { label: string; before: React.ReactNode; after: React.ReactNode; unit?: string }) {
+  return (
+    <div className="grid grid-cols-[120px_1fr_40px_1fr] gap-2 items-center text-xs py-1.5"
+      style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span className="text-right font-medium" style={{ color: 'var(--text-primary)' }}>
+        {before ?? '-'}{unit && <span className="text-[10px] ml-0.5" style={{ color: 'var(--text-muted)' }}>{unit}</span>}
+      </span>
+      <SwapOutlined className="text-center" style={{ color: 'var(--primary)', fontSize: 10 }} />
+      <span className="font-medium" style={{ color: '#16a34a' }}>
+        {after ?? '-'}{unit && <span className="text-[10px] ml-0.5" style={{ color: 'var(--text-muted)' }}>{unit}</span>}
+      </span>
+    </div>
+  );
 }
 
 export default function CompetitionCard({ data, isReviewer, existingReview, onReview }: CompetitionCardProps) {
@@ -160,7 +170,7 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
         </div>
       )}
 
-      {/* ③ 标签：团队 + 赛道 + 场景分类 */}
+      {/* ③ 标签 */}
       <div className="flex flex-wrap gap-1.5 mb-4">
         {data.team && (Array.isArray(data.team) ? data.team : [data.team]).map((t) => (
           <Tag key={t} color="blue">{t}</Tag>
@@ -173,113 +183,125 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
         {data.sceneCategory && <Tag>{data.sceneCategory}</Tag>}
       </div>
 
-      {/* ④ 场景：原场景与流程 */}
-      {data.beforeProcess && (
-        <div className="mb-4">
-          <SectionLabel>场景描述</SectionLabel>
-          <div className="text-xs leading-relaxed" style={{ color: 'var(--text-primary)' }}>
-            {expanded ? data.beforeProcess : (
-              data.beforeProcess.length > 120 ? `${data.beforeProcess.slice(0, 120)}...` : data.beforeProcess
-            )}
-            {data.beforeProcess.length > 120 && (
-              <button onClick={() => setExpanded(!expanded)}
-                className="ml-1 text-[11px] font-medium hover:underline"
-                style={{ color: 'var(--primary)' }}>
-                {expanded ? '收起' : '展开'}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      {/* 主体：左右两栏 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-4">
 
-      {/* ⑤ 痛点 */}
-      {data.painPoints && data.painPoints.length > 0 && (
-        <div className="mb-4">
-          <SectionLabel>核心痛点</SectionLabel>
-          <div className="flex flex-wrap gap-1">
-            {data.painPoints.map((p) => (
-              <span key={p} className="px-2 py-0.5 rounded-full text-[11px]"
-                style={{ background: 'rgba(239, 68, 68, 0.06)', color: '#dc2626' }}>{p}</span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ⑥ 解决方法：现工作流程 + AI 工具 */}
-      {(data.afterProcess || (data.aiTools && data.aiTools.length > 0)) && (
-        <div className="mb-4">
-          <SectionLabel>解决方法</SectionLabel>
-          {data.afterProcess && (
-            <div className="text-xs leading-relaxed mb-2" style={{ color: 'var(--text-primary)' }}>
-              {data.afterProcess}
+        {/* 左栏：场景 + 痛点 + 解决方法 */}
+        <div>
+          {/* ④ 场景描述 */}
+          {data.beforeProcess && (
+            <div className="mb-4">
+              <SectionLabel>场景描述</SectionLabel>
+              <div className="text-xs leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                {expanded ? data.beforeProcess : (
+                  data.beforeProcess.length > 200 ? `${data.beforeProcess.slice(0, 200)}...` : data.beforeProcess
+                )}
+                {data.beforeProcess.length > 200 && (
+                  <button onClick={() => setExpanded(!expanded)}
+                    className="ml-1 text-[11px] font-medium hover:underline"
+                    style={{ color: 'var(--primary)' }}>
+                    {expanded ? '收起' : '展开'}
+                  </button>
+                )}
+              </div>
             </div>
           )}
-          {data.aiTools && data.aiTools.length > 0 && (
-            <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-              <ToolOutlined className="flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-              <span>{data.aiTools.join('、')}</span>
+
+          {/* ⑤ 核心痛点 */}
+          {data.painPoints && data.painPoints.length > 0 && (
+            <div className="mb-4">
+              <SectionLabel>核心痛点</SectionLabel>
+              <div className="flex flex-wrap gap-1">
+                {data.painPoints.map((p) => (
+                  <span key={p} className="px-2 py-0.5 rounded-full text-[11px]"
+                    style={{ background: 'rgba(239, 68, 68, 0.06)', color: '#dc2626' }}>{p}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ⑥ 解决方法 */}
+          {(data.afterProcess || data.implementation || (data.aiTools && data.aiTools.length > 0)) && (
+            <div className="mb-4">
+              <SectionLabel>解决方法</SectionLabel>
+              {data.afterProcess && (
+                <div className="text-xs leading-relaxed mb-2" style={{ color: 'var(--text-primary)' }}>
+                  {data.afterProcess}
+                </div>
+              )}
+              {data.implementation && (
+                <div className="text-xs leading-relaxed mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="font-medium" style={{ color: 'var(--text-muted)' }}>实现步骤：</span>
+                  {data.implementation}
+                </div>
+              )}
+              {data.aiTools && data.aiTools.length > 0 && (
+                <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  <ToolOutlined className="flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                  <span>{data.aiTools.join('、')}</span>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
 
-      {/* ⑦ 结果数据：核心指标 + 工时对比 */}
-      <div className="mb-4">
-        <SectionLabel>结果数据</SectionLabel>
-        {/* 核心指标 */}
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(242, 127, 34, 0.06)' }}>
-            <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
-              <ClockCircleOutlined /> 月均节省工时
-            </div>
-            <div className="text-2xl font-extrabold" style={{ color: 'var(--accent)' }}>
-              {data.monthlySavedHours != null ? `${data.monthlySavedHours}h` : '-'}
+        {/* 右栏：过程对比 + 结果 */}
+        <div>
+          {/* ⑦ 过程对比 */}
+          <div className="mb-4">
+            <SectionLabel>过程对比</SectionLabel>
+            <div className="rounded-lg p-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
+              {/* 表头 */}
+              <div className="grid grid-cols-[120px_1fr_40px_1fr] gap-2 text-[10px] font-semibold uppercase tracking-wider pb-1.5 mb-1"
+                style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', color: 'var(--text-muted)' }}>
+                <span>指标</span>
+                <span className="text-right">改造前</span>
+                <span></span>
+                <span>改造后</span>
+              </div>
+              {/* 对比行 */}
+              {data.beforeHoursPerPerson != null && (
+                <MetricRow label="人均工时" before={data.beforeHoursPerPerson} after={data.afterHoursPerPerson} unit="h/月" />
+              )}
+              {data.beforePeopleCount != null && (
+                <MetricRow label="投入人数" before={data.beforePeopleCount} after={data.afterPeopleCount} unit="人" />
+              )}
+              {data.oldFrequency && (
+                <MetricRow label="工作频率" before={data.oldFrequency} after={data.newFrequency} />
+              )}
+              {data.oldOperationCount != null && (
+                <MetricRow label="操作次数" before={data.oldOperationCount} after={data.newOperationCount} unit="次" />
+              )}
+              {data.oldHoursPerTask != null && (
+                <MetricRow label="单次工时" before={data.oldHoursPerTask} after={data.newDuration} unit="h" />
+              )}
+              {data.oldPeopleCount != null && (
+                <MetricRow label="执行人数" before={data.oldPeopleCount} after={data.newPeopleCount} unit="人" />
+              )}
+              {/* AI 费用 */}
+              {data.aiCost != null && data.aiCost > 0 && (
+                <div className="flex items-center justify-between text-xs pt-2 mt-1"
+                  style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>AI 月均费用</span>
+                  <span className="font-medium" style={{ color: 'var(--primary)' }}>¥{data.aiCost}</span>
+                </div>
+              )}
             </div>
           </div>
-          <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(26, 58, 138, 0.06)' }}>
-            <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
-              <ThunderboltOutlined /> 提效比例
+
+          {/* ⑧ 其他价值 */}
+          {data.extraValue && (
+            <div className="mb-4">
+              <SectionLabel>附加价值</SectionLabel>
+              <div className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                {data.extraValue}
+              </div>
             </div>
-            <div className="text-2xl font-extrabold" style={{ color: 'var(--primary)' }}>
-              {formatPercent(data.efficiencyRate)}
-            </div>
-          </div>
+          )}
         </div>
-        {/* 工时对比 */}
-        {(data.beforeHoursPerPerson != null || data.afterHoursPerPerson != null) && (
-          <div className="rounded-lg p-3 text-xs" style={{ background: 'rgba(0,0,0,0.02)' }}>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <div className="font-medium mb-1" style={{ color: 'var(--text-muted)' }}>改造前</div>
-                <div style={{ color: 'var(--text-primary)' }}>
-                  {data.beforeHoursPerPerson ?? '-'}h/人 · {data.beforePeopleCount ?? '-'}人
-                </div>
-              </div>
-              <div>
-                <div className="font-medium mb-1" style={{ color: 'var(--text-muted)' }}>改造后</div>
-                <div style={{ color: 'var(--text-primary)' }}>
-                  {data.afterHoursPerPerson ?? '-'}h/人 · {data.afterPeopleCount ?? '-'}人
-                </div>
-              </div>
-            </div>
-            {data.aiCost != null && data.aiCost > 0 && (
-              <div className="mt-2 pt-2" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>AI 费用：</span>
-                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>¥{data.aiCost}/月</span>
-              </div>
-            )}
-          </div>
-        )}
-        {/* 其他价值 */}
-        {data.extraValue && (
-          <div className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <span className="font-medium" style={{ color: 'var(--text-muted)' }}>附加价值：</span>
-            {data.extraValue}
-          </div>
-        )}
       </div>
 
-      {/* ⑧ 附件 */}
+      {/* ⑨ 附件 */}
       {data.attachments && data.attachments.length > 0 && (
         <div className="mb-3">
           <SectionLabel>
