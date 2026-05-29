@@ -149,8 +149,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (error) {
-    console.error('评审写入失败:', error);
-    return NextResponse.json({ error: `评审失败: ${error.message}` }, { status: 500 });
+    return NextResponse.json({ error: '评审失败' }, { status: 500 });
   }
 
   return NextResponse.json({ review, total });
