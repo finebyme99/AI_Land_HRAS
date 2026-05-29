@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Tag, Input, Image, App, Modal } from 'antd';
+import { Tag, Input, Image, App, Popconfirm } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -132,31 +132,8 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
     setScores((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = () => {
-    if (!reviewerRole) {
-      message.warning('请先选择评委角色');
-      return;
-    }
-    if (!allScored) {
-      message.warning('请完成所有维度的评分');
-      return;
-    }
-    Modal.confirm({
-      title: '确认提交评分',
-      content: (
-        <div>
-          <p>总分 <b>{totalScore.toFixed(1)}</b> / {maxScore}，提交后不可修改。</p>
-          <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-            {activeDims.map((d) => `${d.label}: ${scores[d.key]}`).join('、')}
-          </p>
-        </div>
-      ),
-      okText: '确认提交',
-      cancelText: '再想想',
-      onOk: () => {
-        onReview?.(data.id, scores, reviewerRole, comment.trim() || undefined);
-      },
-    });
+  const handleConfirmSubmit = () => {
+    onReview?.(data.id, scores, reviewerRole!, comment.trim() || undefined);
   };
 
   return (
@@ -490,18 +467,26 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
                 <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
                   {comment.length}/100
                 </span>
-                <button
-                  onClick={handleSubmit}
+                <Popconfirm
+                  title="确认提交评分"
+                  description={<span>总分 <b>{totalScore.toFixed(1)}</b> / {maxScore}，提交后不可修改</span>}
+                  onConfirm={handleConfirmSubmit}
+                  okText="确认提交"
+                  cancelText="再想想"
                   disabled={!allScored}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
-                  style={{
-                    background: allScored ? 'var(--primary)' : 'rgba(0,0,0,0.08)',
-                    color: allScored ? '#fff' : 'var(--text-muted)',
-                    boxShadow: allScored ? '0 4px 12px rgba(26,58,138,0.25)' : 'none',
-                  }}
                 >
-                  <CheckOutlined className="mr-1" /> 提交评分
-                </button>
+                  <button
+                    disabled={!allScored}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                    style={{
+                      background: allScored ? 'var(--primary)' : 'rgba(0,0,0,0.08)',
+                      color: allScored ? '#fff' : 'var(--text-muted)',
+                      boxShadow: allScored ? '0 4px 12px rgba(26,58,138,0.25)' : 'none',
+                    }}
+                  >
+                    <CheckOutlined className="mr-1" /> 提交评分
+                  </button>
+                </Popconfirm>
               </div>
             </div>
           )}

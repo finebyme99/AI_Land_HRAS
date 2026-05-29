@@ -17,6 +17,7 @@ export default function CompetitionsPage() {
   const [period] = useState('2605');
   const [reviews, setReviews] = useState<Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }>>({});
   const [reviewerRole, setReviewerRole] = useState<ReviewerRole | null>(null);
+  const [roleLocked, setRoleLocked] = useState(false);
   const { message } = App.useApp();
 
   // 从 Supabase 读取已同步数据
@@ -80,6 +81,12 @@ export default function CompetitionsPage() {
             map[r.submission_id] = { decision: r.decision, scores: r.scores, reason: r.reason, reviewer_role: r.reviewer_role };
           });
           setReviews(map);
+          // 已有新机制评审记录，锁定角色
+          const reviewed = reviewsList.filter((r) => r.decision === 'reviewed' && r.reviewer_role);
+          if (reviewed.length > 0) {
+            setReviewerRole(reviewed[0].reviewer_role!);
+            setRoleLocked(true);
+          }
         })
         .catch(() => {});
     }
@@ -109,6 +116,7 @@ export default function CompetitionsPage() {
         ...prev,
         [submissionId]: { decision: data.review.decision, scores: data.review.scores, reason: data.review.reason, reviewer_role: data.review.reviewer_role },
       }));
+      setRoleLocked(true);
       message.success('评分已提交');
     } catch (err) {
       message.error(err instanceof Error ? err.message : '评审失败');
@@ -193,8 +201,9 @@ export default function CompetitionsPage() {
                 ]).map((r) => (
                   <button
                     key={r.key}
-                    onClick={() => setReviewerRole(r.key)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+                    onClick={() => !roleLocked && setReviewerRole(r.key)}
+                    disabled={roleLocked}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     style={{
                       background: reviewerRole === r.key ? 'var(--primary)' : 'rgba(255,255,255,0.6)',
                       color: reviewerRole === r.key ? '#fff' : 'var(--text-secondary)',
@@ -205,8 +214,13 @@ export default function CompetitionsPage() {
                     {r.icon} {r.label}
                   </button>
                 ))}
+                {roleLocked && (
+                  <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    角色已锁定
+                  </span>
+                )}
               </div>
-              {!reviewerRole && (
+              {!reviewerRole && !roleLocked && (
                 <span className="text-[11px]" style={{ color: '#b3540e' }}>
                   请选择评委角色后开始评分
                 </span>
