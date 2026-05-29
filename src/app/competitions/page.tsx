@@ -1,21 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Spin, App } from 'antd';
-import { SyncOutlined, TrophyOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Spin, App, Switch } from 'antd';
+import { SyncOutlined, TrophyOutlined, CalendarOutlined, UserOutlined, BankOutlined, CodeOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
 import type { Submission } from '@/components/CompetitionCard';
-import type { CompetitionReview } from '@/types';
+import type { CompetitionReview, ReviewScores, ReviewerRole } from '@/types';
 
 export default function CompetitionsPage() {
-  const { isAdmin, isReviewer } = useAuth();
+  const { user, isAdmin, isReviewer } = useAuth();
   const [items, setItems] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [period] = useState('2605');
-  const [reviews, setReviews] = useState<Record<string, { decision: string; reason: string; is_benchmark?: boolean }>>({});
+  const [reviews, setReviews] = useState<Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }>>({});
+  const [reviewerRole, setReviewerRole] = useState<ReviewerRole | null>(null);
+  const [roleLocked, setRoleLocked] = useState(false);
+  const [onlyPending, setOnlyPending] = useState(false);
   const { message } = App.useApp();
 
   // 从 Supabase 读取已同步数据
@@ -67,23 +70,30 @@ export default function CompetitionsPage() {
     fetchData();
   }, [period]);
 
-  // 评委加载评审记录
+  // 评委加载评审记录，已有评审则锁定角色
   useEffect(() => {
     if (isReviewer) {
       fetch('/api/competitions/reviews?mine=true')
         .then((r) => r.json())
         .then((data) => {
-          const map: Record<string, { decision: string; reason: string; is_benchmark?: boolean }> = {};
-          (data.reviews ?? []).forEach((r: CompetitionReview) => {
-            map[r.submission_id] = { decision: r.decision, reason: r.reason, is_benchmark: r.is_benchmark };
+          const reviewsList: CompetitionReview[] = data.reviews ?? [];
+          const map: Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }> = {};
+          reviewsList.forEach((r) => {
+            map[r.submission_id] = { decision: r.decision, scores: r.scores, reason: r.reason, reviewer_role: r.reviewer_role };
           });
           setReviews(map);
+          // 已有新机制评审记录，锁定角色
+          const reviewed = reviewsList.filter((r) => r.decision === 'reviewed' && r.reviewer_role);
+          if (reviewed.length > 0) {
+            setReviewerRole(reviewed[0].reviewer_role!);
+            setRoleLocked(true);
+          }
         })
         .catch(() => {});
     }
   }, [isReviewer]);
 
-  const handleReview = async (submissionId: string, decision: 'approved' | 'rejected', reason?: string, is_benchmark?: boolean) => {
+  const handleReview = async (submissionId: string, scores: ReviewScores, reviewerRole: ReviewerRole, reason?: string) => {
     try {
       const item = items.find((i) => i.id === submissionId);
       const res = await fetch('/api/competitions/reviews', {
@@ -91,11 +101,11 @@ export default function CompetitionsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           submission_id: submissionId,
-          decision,
+          scores,
+          reviewer_role: reviewerRole,
           reason,
           proposal_no: item?.proposalNo ?? null,
           title: item?.title ?? '',
-          is_benchmark,
         }),
       });
       if (!res.ok) {
@@ -105,13 +115,23 @@ export default function CompetitionsPage() {
       const data = await res.json();
       setReviews((prev) => ({
         ...prev,
-        [submissionId]: { decision: data.review.decision, reason: data.review.reason, is_benchmark: data.review.is_benchmark },
+        [submissionId]: { decision: data.review.decision, scores: data.review.scores, reason: data.review.reason, reviewer_role: data.review.reviewer_role },
       }));
-      message.success(decision === 'approved' ? '已通过' : '已驳回');
+      setRoleLocked(true);
+      message.success('评分已提交');
     } catch (err) {
       message.error(err instanceof Error ? err.message : '评审失败');
     }
   };
+
+  // 用户评委只看 reviewers 包含自己的方案，业务/技术评委看全部
+  const roleFiltered = reviewerRole === 'user'
+    ? items.filter((i) => i.reviewers?.includes(user?.name ?? ''))
+    : items;
+  // 只看未评审
+  const displayItems = onlyPending
+    ? roleFiltered.filter((i) => reviews[i.id]?.decision !== 'reviewed')
+    : roleFiltered;
 
   return (
     <>
@@ -133,8 +153,8 @@ export default function CompetitionsPage() {
                 </span>
               </h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                {loaded ? `${items.length} 条方案` : '加载中...'}
-                {loaded && items.length > 0 && (
+                {loaded ? `${displayItems.length} 条方案` : '加载中...'}
+                {loaded && displayItems.length > 0 && (
                   <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
                     style={{ background: 'rgba(242, 127, 34, 0.08)', color: '#b3540e' }}>
                     按照提报人填写的月度节省工时降序排列
@@ -149,7 +169,7 @@ export default function CompetitionsPage() {
               style={{ background: 'var(--primary)', color: '#fff' }}>
               大赛主页
             </a>
-            <a href="https://ztn.feishu.cn/share/base/form/shrcn2OaxMFequUyz2E6VkJFvJg" target="_blank" rel="noopener noreferrer"
+            <a href="https://ztn.feishu.cn/share/base/form/shrcnzpkRvRFdo6359hFYfCTpZg" target="_blank" rel="noopener noreferrer"
               className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
               style={{ background: 'var(--accent)', color: '#fff' }}>
               参与提报
@@ -172,36 +192,70 @@ export default function CompetitionsPage() {
           </div>
         </div>
 
-        {/* 评委评审进度 */}
-        {isReviewer && loaded && items.length > 0 && (() => {
-          const reviewed = items.filter((i) => reviews[i.id]);
-          const approved = reviewed.filter((i) => reviews[i.id].decision === 'approved').length;
-          const rejected = reviewed.filter((i) => reviews[i.id].decision === 'rejected').length;
-          const pending = items.length - reviewed.length;
-          return (
-            <div className="flex items-center gap-4 mb-5 px-4 py-3 rounded-xl text-xs"
+        {/* 评委角色选择 + 评审进度 */}
+        {isReviewer && loaded && items.length > 0 && (
+          <div className="mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-xl mb-3"
               style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
-              <span className="font-semibold" style={{ color: 'var(--primary)' }}>评审进度</span>
-              <span style={{ color: 'var(--text-secondary)' }}>
-                待审 <b style={{ color: 'var(--foreground)' }}>{pending}</b> 条
-              </span>
-              <span style={{ color: '#16a34a' }}>
-                已通过 <b>{approved}</b> 条
-              </span>
-              <span style={{ color: '#dc2626' }}>
-                已驳回 <b>{rejected}</b> 条
-              </span>
-              <span style={{ color: 'var(--text-muted)' }}>
-                共 {items.length} 条
-              </span>
-              {pending > 0 && (
-                <span className="ml-auto font-medium" style={{ color: '#b3540e' }}>
-                  请及时完成评审
+              <span className="text-xs font-semibold" style={{ color: 'var(--primary)' }}>我的角色</span>
+              <div className="flex items-center gap-2">
+                {([
+                  { key: 'user' as ReviewerRole, label: '用户评委', icon: <UserOutlined /> },
+                  { key: 'business' as ReviewerRole, label: '业务评委', icon: <BankOutlined /> },
+                  { key: 'tech' as ReviewerRole, label: '技术评委', icon: <CodeOutlined /> },
+                ]).map((r) => (
+                  <button
+                    key={r.key}
+                    onClick={() => !roleLocked && setReviewerRole(r.key)}
+                    disabled={roleLocked}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{
+                      background: reviewerRole === r.key ? 'var(--primary)' : 'rgba(255,255,255,0.6)',
+                      color: reviewerRole === r.key ? '#fff' : 'var(--text-secondary)',
+                      border: reviewerRole === r.key ? 'none' : '1px solid rgba(26,58,138,0.12)',
+                      boxShadow: reviewerRole === r.key ? '0 4px 12px rgba(26,58,138,0.25)' : 'none',
+                    }}
+                  >
+                    {r.icon} {r.label}
+                  </button>
+                ))}
+                {roleLocked && (
+                  <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    角色已锁定
+                  </span>
+                )}
+              </div>
+              {!reviewerRole && !roleLocked && (
+                <span className="text-[11px]" style={{ color: '#b3540e' }}>
+                  请选择评委角色后开始评分
                 </span>
               )}
             </div>
-          );
-        })()}
+            {(() => {
+              const reviewedCount = displayItems.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
+              const pending = displayItems.length - reviewedCount;
+              return (
+                <div className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs"
+                  style={{ background: 'rgba(26,58,138,0.02)', border: '1px solid rgba(26,58,138,0.05)' }}>
+                  <span className="font-semibold" style={{ color: 'var(--primary)' }}>评审进度</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    待审 <b style={{ color: 'var(--foreground)' }}>{pending}</b> 条
+                  </span>
+                  <span style={{ color: '#16a34a' }}>
+                    已评审 <b>{reviewedCount}</b> 条
+                  </span>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    共 {displayItems.length} 条
+                  </span>
+                  <span className="ml-auto flex items-center gap-1.5">
+                    <Switch size="small" checked={onlyPending} onChange={setOnlyPending} />
+                    <span style={{ color: 'var(--text-secondary)' }}>只看未评审</span>
+                  </span>
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {loading && (
           <div className="flex justify-center py-12">
@@ -209,19 +263,22 @@ export default function CompetitionsPage() {
           </div>
         )}
 
-        {!loading && loaded && items.length === 0 && (
+        {!loading && loaded && displayItems.length === 0 && (
           <div className="text-center py-12 glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>暂无参赛方案，点击「从飞书同步」导入数据</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              {reviewerRole === 'user' ? '暂无分配给您的评审方案，请联系管理员分配' : '暂无参赛方案，点击「从飞书同步」导入数据'}
+            </p>
           </div>
         )}
 
-        {items.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {items.map((item) => (
+        {displayItems.length > 0 && (
+          <div className="flex flex-col gap-4">
+            {displayItems.map((item) => (
               <CompetitionCard
                 key={item.id}
                 data={item}
                 isReviewer={isReviewer}
+                reviewerRole={reviewerRole}
                 existingReview={reviews[item.id] || null}
                 onReview={handleReview}
               />

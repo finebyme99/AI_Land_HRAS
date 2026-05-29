@@ -169,7 +169,47 @@ export interface EventSubmission {
 }
 
 // ============ 评审 ============
-export type ReviewDecision = 'approved' | 'rejected';
+export type ReviewDecision = 'approved' | 'rejected' | 'reviewed';
+export type ReviewerRole = 'user' | 'business' | 'tech';
+
+/** 评审评分维度（8维） */
+export interface ReviewScores {
+  scenario?: number;        // 场景明确性（用户评委 ×1.5）
+  painPoint?: number;       // 痛点真实性（用户评委 ×1.2）
+  effectiveness?: number;   // 产品实用性（用户评委 ×1.2）
+  replicability?: number;   // 可复用性（业务评委 ×1.5）
+  dataReliability?: number; // 数据详实度（业务评委 ×1.2）
+  breakthrough?: number;    // 突破开创性（业务评委 ×1.2）
+  techUsability?: number;   // 技术可用性（技术评委 ×1.2）
+  toolFit?: number;         // 工具合理性（技术评委 ×1.0）
+}
+
+/** 评分维度配置 */
+export interface ScoreDimension {
+  key: keyof ReviewScores;
+  label: string;
+  weight: number;
+  highSignal: string;
+  lowSignal: string;
+}
+
+/** 各角色对应的评分维度 */
+export const SCORE_DIMENSIONS: Record<ReviewerRole, ScoreDimension[]> = {
+  user: [
+    { key: 'scenario', label: '场景明确性', weight: 1.5, highSignal: '场景高频刚需、描述清晰完整', lowSignal: '场景模糊或低频，描述不清' },
+    { key: 'painPoint', label: '痛点真实性', weight: 1.2, highSignal: '场景高频，大家普遍反馈痛', lowSignal: '低频场景，或已有成熟解决方案' },
+    { key: 'effectiveness', label: '产品实用性', weight: 1.2, highSignal: '显著提效/显著增值/解决长期痛点', lowSignal: '和用之前差不多，甚至更复杂' },
+  ],
+  business: [
+    { key: 'replicability', label: '可复用性', weight: 1.5, highSignal: '覆盖面广、涉及多团队、或有战略价值', lowSignal: '影响范围极窄，依赖个人/仅个别人受益' },
+    { key: 'dataReliability', label: '数据详实度', weight: 1.2, highSignal: '量化数据可信/符合真实业务场景', lowSignal: '量化数据矛盾/不符合真实场景' },
+    { key: 'breakthrough', label: '突破开创性', weight: 1.2, highSignal: '之前没有此能力，达成了流程首创或再造', lowSignal: '无任何流程再造、突破创新' },
+  ],
+  tech: [
+    { key: 'techUsability', label: '技术可用性', weight: 1.2, highSignal: '有高度标准可用的SOP/SKILLS/代码仓库', lowSignal: '存在技术隐患/疑点，不具备技术可行性' },
+    { key: 'toolFit', label: '工具合理性', weight: 1.0, highSignal: 'AI工具匹配场景，选型有依据', lowSignal: '工具和场景明显不匹配' },
+  ],
+};
 
 export interface CompetitionReview {
   id: string;
@@ -181,6 +221,8 @@ export interface CompetitionReview {
   decision: ReviewDecision;
   is_benchmark: boolean;
   reason: string;
+  scores: ReviewScores;
+  reviewer_role: ReviewerRole | null;
   created_at: string;
   updated_at: string;
 }
@@ -205,4 +247,14 @@ export interface Notification {
   target_id: string;
   is_read: boolean;
   created_at: string;
+}
+
+/** 计算加权总分 */
+export function computeWeightedScore(scores: ReviewScores, role: ReviewerRole): number {
+  const dims = SCORE_DIMENSIONS[role];
+  if (!dims) return 0;
+  return dims.reduce((sum, dim) => {
+    const val = scores[dim.key];
+    return sum + (val != null ? val * dim.weight : 0);
+  }, 0);
 }

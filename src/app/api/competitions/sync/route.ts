@@ -33,7 +33,7 @@ const FIELD_NAME_MAP: Record<string, string> = {
   'AI工具': 'aiTools',
   '提报提效比例': 'efficiencyRate',
   '提报月均节省工时': 'monthlySavedHours',
-  '原场景与流程': 'beforeProcess',
+  '原场景与流程_AI润色': 'beforeProcess',
   '核心痛点': 'painPoints',
   '现工作流程': 'afterProcess',
   '原人均每月投入工时': 'beforeHoursPerPerson',
@@ -48,7 +48,19 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '组队团队成员': 'teamMembers',
   '赛事进展': 'status',
   '自动编号': 'proposalNo',
-  '补充附件：效果示意图/视频/相关源文件': 'attachments',
+  '补充附件': 'attachments',
+  // 新增字段
+  '实现过程': 'implementation',
+  '新工作次数': 'newOperationCount',
+  '原操作次数': 'oldOperationCount',
+  '提报组队类型': 'teamType',
+  '原每次工时': 'oldHoursPerTask',
+  '新执行时长': 'newDuration',
+  '新执行人数': 'newPeopleCount',
+  '原执行人数': 'oldPeopleCount',
+  '原工作频率': 'oldFrequency',
+  '新工作频率': 'newFrequency',
+  '用户': 'reviewers',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -131,6 +143,18 @@ export async function GET(request: NextRequest) {
         size: a.size,
         url: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${a.storage_path}`,
       })),
+      // 新增字段
+      implementation: row.implementation,
+      newOperationCount: row.new_operation_count,
+      oldOperationCount: row.old_operation_count,
+      teamType: row.team_type,
+      oldHoursPerTask: row.old_hours_per_task,
+      newDuration: row.new_duration,
+      newPeopleCount: row.new_people_count,
+      oldPeopleCount: row.old_people_count,
+      oldFrequency: row.old_frequency,
+      newFrequency: row.new_frequency,
+      reviewers: row.reviewers,
     }));
 
     return NextResponse.json({ items, total: items.length, period });
@@ -260,6 +284,18 @@ export async function POST(request: NextRequest) {
         attachments: processedAttachments,
         record_url: mapped.recordUrl ?? null,
         synced_at: new Date().toISOString(),
+        // 新增字段
+        implementation: mapped.implementation ?? null,
+        new_operation_count: mapped.newOperationCount ?? null,
+        old_operation_count: mapped.oldOperationCount ?? null,
+        team_type: mapped.teamType ?? null,
+        old_hours_per_task: mapped.oldHoursPerTask ?? null,
+        new_duration: mapped.newDuration ?? null,
+        new_people_count: mapped.newPeopleCount ?? null,
+        old_people_count: mapped.oldPeopleCount ?? null,
+        old_frequency: mapped.oldFrequency ?? null,
+        new_frequency: mapped.newFrequency ?? null,
+        reviewers: toArray(mapped.reviewers),
       });
     }
 

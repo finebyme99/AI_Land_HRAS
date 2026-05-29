@@ -3,16 +3,19 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Table, Tag, Select, Input, Button, Spin, message } from 'antd';
-import { SearchOutlined, DownloadOutlined, AuditOutlined, TeamOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { SearchOutlined, DownloadOutlined, AuditOutlined, TeamOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
-import type { CompetitionReview } from '@/types';
+import type { CompetitionReview, ReviewScores, ReviewerRole } from '@/types';
+import { SCORE_DIMENSIONS, computeWeightedScore } from '@/types';
 import type { ColumnsType } from 'antd/es/table';
 
-const decisionOptions = [
+const filterOptions = [
   { value: 'all', label: '全部' },
-  { value: 'approved', label: '通过' },
-  { value: 'rejected', label: '驳回' },
+  { value: 'reviewed', label: '已评审' },
+  { value: 'pending', label: '待评审' },
 ];
+
+const ROLE_LABELS: Record<ReviewerRole, string> = { user: '用户评委', business: '业务评委', tech: '技术评委' };
 
 export default function AdminReviewsPage() {
   const router = useRouter();
@@ -21,7 +24,7 @@ export default function AdminReviewsPage() {
   const [totalSubmissions, setTotalSubmissions] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [decisionFilter, setDecisionFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     if (!authLoading && !isReviewer) {
@@ -71,7 +74,8 @@ export default function AdminReviewsPage() {
   };
 
   const filtered = reviews.filter((r) => {
-    if (decisionFilter !== 'all' && r.decision !== decisionFilter) return false;
+    if (statusFilter === 'reviewed' && r.decision !== 'reviewed') return false;
+    if (statusFilter === 'pending' && r.decision === 'reviewed') return false;
     if (search) {
       const q = search.toLowerCase();
       return (
@@ -107,43 +111,51 @@ export default function AdminReviewsPage() {
       title: '方案名称',
       dataIndex: 'title',
       key: 'title',
-      width: 200,
+      width: 180,
       ellipsis: true,
     },
     {
       title: '评审人',
       key: 'reviewer',
-      width: 120,
+      width: 100,
       render: (_, record) => record.reviewer?.name || record.reviewer_id,
     },
     {
-      title: '部门',
-      key: 'department',
-      width: 150,
-      render: (_, record) => record.reviewer?.department || '-',
+      title: '角色',
+      dataIndex: 'reviewer_role',
+      key: 'reviewer_role',
+      width: 90,
+      render: (val: ReviewerRole | null) => val ? ROLE_LABELS[val] : '-',
     },
     {
-      title: '评审结果',
-      dataIndex: 'decision',
-      key: 'decision',
-      width: 100,
-      render: (val: string) => (
-        <Tag color={val === 'approved' ? 'green' : 'red'}>
-          {val === 'approved' ? '通过' : '驳回'}
-        </Tag>
-      ),
+      title: '总分',
+      key: 'total',
+      width: 80,
+      render: (_, record) => {
+        if (record.decision !== 'reviewed' || !record.scores || !record.reviewer_role) return '-';
+        const total = computeWeightedScore(record.scores, record.reviewer_role);
+        return <span className="font-semibold" style={{ color: total >= 35 ? '#16a34a' : total >= 20 ? 'var(--primary)' : '#dc2626' }}>{total.toFixed(1)}</span>;
+      },
+      sorter: (a, b) => {
+        const ta = a.decision === 'reviewed' && a.scores && a.reviewer_role ? computeWeightedScore(a.scores, a.reviewer_role) : 0;
+        const tb = b.decision === 'reviewed' && b.scores && b.reviewer_role ? computeWeightedScore(b.scores, b.reviewer_role) : 0;
+        return ta - tb;
+      },
     },
+    ...Object.values(SCORE_DIMENSIONS).flat().map((dim) => ({
+      title: dim.label,
+      key: dim.key,
+      width: 80,
+      render: (_: unknown, record: CompetitionReview) => {
+        const val = record.scores?.[dim.key];
+        return val != null ? <span style={{ color: val >= 4 ? '#16a34a' : val <= 2 ? '#dc2626' : 'inherit' }}>{val}</span> : '-';
+      },
+    })),
     {
-      title: '标杆',
-      dataIndex: 'is_benchmark',
-      key: 'is_benchmark',
-      width: 70,
-      render: (val: boolean) => val ? <Tag color="gold">标杆</Tag> : '-',
-    },
-    {
-      title: '评审理由',
+      title: '评语',
       dataIndex: 'reason',
       key: 'reason',
+      width: 150,
       ellipsis: true,
       render: (val: string) => val || '-',
     },
@@ -176,9 +188,9 @@ export default function AdminReviewsPage() {
           </div>
           <div className="flex items-center gap-2">
             <Select
-              value={decisionFilter}
-              onChange={setDecisionFilter}
-              options={decisionOptions}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={filterOptions}
               style={{ width: 100 }}
               size="small"
             />
@@ -206,35 +218,41 @@ export default function AdminReviewsPage() {
 
         {/* 评委评审进度汇总 */}
         {!loading && reviews.length > 0 && (() => {
-          const reviewedSubmissionIds = new Set(reviews.map((r) => r.submission_id));
-          const byReviewer: Record<string, { name: string; department: string; approved: number; rejected: number }> = {};
+          const reviewedSubmissionIds = new Set(reviews.filter((r) => r.decision === 'reviewed').map((r) => r.submission_id));
+          const byReviewer: Record<string, { name: string; department: string; reviewed: number; avgScore: number; scoreCount: number }> = {};
           for (const r of reviews) {
             const key = r.reviewer_id;
             if (!byReviewer[key]) {
               byReviewer[key] = {
                 name: r.reviewer?.name || r.reviewer_id,
                 department: r.reviewer?.department || '-',
-                approved: 0,
-                rejected: 0,
+                reviewed: 0,
+                avgScore: 0,
+                scoreCount: 0,
               };
             }
-            if (r.decision === 'approved') byReviewer[key].approved++;
-            else byReviewer[key].rejected++;
+            if (r.decision === 'reviewed') {
+              byReviewer[key].reviewed++;
+              if (r.scores && r.reviewer_role) {
+                byReviewer[key].avgScore += computeWeightedScore(r.scores, r.reviewer_role);
+                byReviewer[key].scoreCount++;
+              }
+            }
           }
           const reviewerList = Object.values(byReviewer);
           return (
             <div className="mb-6">
               <div className="flex items-center gap-4 mb-3 text-xs" style={{ color: 'var(--text-muted)' }}>
                 <span>方案总数 <b style={{ color: 'var(--foreground)' }}>{totalSubmissions}</b></span>
-                <span>已评审 <b style={{ color: 'var(--foreground)' }}>{reviewedSubmissionIds.size}</b></span>
+                <span>已评审 <b style={{ color: '#16a34a' }}>{reviewedSubmissionIds.size}</b></span>
                 <span>未评审 <b style={{ color: totalSubmissions - reviewedSubmissionIds.size > 0 ? '#b3540e' : 'var(--foreground)' }}>
                   {totalSubmissions - reviewedSubmissionIds.size}
                 </b></span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {reviewerList.map((rv) => {
-                  const total = rv.approved + rv.rejected;
-                  const pct = totalSubmissions > 0 ? Math.round((total / totalSubmissions) * 100) : 0;
+                  const pct = totalSubmissions > 0 ? Math.round((rv.reviewed / totalSubmissions) * 100) : 0;
+                  const avg = rv.scoreCount > 0 ? (rv.avgScore / rv.scoreCount).toFixed(1) : '-';
                   return (
                     <div key={rv.name} className="rounded-xl p-3" style={{ background: 'rgba(26,58,138,0.03)', border: '1px solid rgba(26,58,138,0.06)' }}>
                       <div className="flex items-center gap-2 mb-2">
@@ -243,9 +261,8 @@ export default function AdminReviewsPage() {
                         <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{rv.department}</span>
                       </div>
                       <div className="flex items-center gap-3 text-xs">
-                        <span style={{ color: '#16a34a' }}><CheckCircleOutlined /> {rv.approved}</span>
-                        <span style={{ color: '#dc2626' }}><CloseCircleOutlined /> {rv.rejected}</span>
-                        <span style={{ color: 'var(--text-muted)' }}>共 {total} 条</span>
+                        <span style={{ color: '#16a34a' }}><CheckCircleOutlined /> {rv.reviewed}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>均分 {avg}</span>
                         <span className="ml-auto text-[11px]" style={{ color: pct >= 100 ? '#16a34a' : '#b3540e' }}>
                           {pct}% 完成
                         </span>
