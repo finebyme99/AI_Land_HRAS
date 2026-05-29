@@ -192,7 +192,7 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
           {data.beforeProcess && (
             <div className="mb-4">
               <SectionLabel>场景描述</SectionLabel>
-              <div className="text-xs leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-xs leading-relaxed whitespace-pre-line" style={{ color: 'var(--text-primary)' }}>
                 {expanded ? data.beforeProcess : (
                   data.beforeProcess.length > 200 ? `${data.beforeProcess.slice(0, 200)}...` : data.beforeProcess
                 )}
@@ -220,25 +220,27 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
             </div>
           )}
 
-          {/* ⑥ 解决方法 */}
+          {/* ⑥ 解决方案/最新流程 */}
           {(data.afterProcess || data.implementation || (data.aiTools && data.aiTools.length > 0)) && (
             <div className="mb-4">
-              <SectionLabel>解决方法</SectionLabel>
+              <SectionLabel>解决方案/最新流程</SectionLabel>
               {data.afterProcess && (
-                <div className="text-xs leading-relaxed mb-2" style={{ color: 'var(--text-primary)' }}>
+                <div className="text-xs leading-relaxed mb-2 whitespace-pre-line" style={{ color: 'var(--text-primary)' }}>
                   {data.afterProcess}
                 </div>
               )}
               {data.implementation && (
-                <div className="text-xs leading-relaxed mb-2" style={{ color: 'var(--text-secondary)' }}>
+                <div className="text-xs leading-relaxed mb-2 whitespace-pre-line" style={{ color: 'var(--text-secondary)' }}>
                   <span className="font-medium" style={{ color: 'var(--text-muted)' }}>实现步骤：</span>
                   {data.implementation}
                 </div>
               )}
               {data.aiTools && data.aiTools.length > 0 && (
-                <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  <ToolOutlined className="flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                  <span>{data.aiTools.join('、')}</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <ToolOutlined className="flex-shrink-0 text-[10px]" style={{ color: 'var(--text-muted)' }} />
+                  {data.aiTools.map((tool) => (
+                    <Tag key={tool} color="purple" className="text-[11px]">{tool}</Tag>
+                  ))}
                 </div>
               )}
             </div>
@@ -247,9 +249,9 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
 
         {/* 右栏：过程对比 + 结果 */}
         <div>
-          {/* ⑦ 过程对比 */}
+          {/* ⑦ 量化数据对比 */}
           <div className="mb-4">
-            <SectionLabel>过程对比</SectionLabel>
+            <SectionLabel>量化数据对比</SectionLabel>
             <div className="rounded-lg p-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
               {/* 表头 */}
               <div className="grid grid-cols-[120px_1fr_40px_1fr] gap-2 text-[10px] font-semibold uppercase tracking-wider pb-1.5 mb-1"
@@ -261,10 +263,10 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
               </div>
               {/* 对比行 */}
               {data.beforeHoursPerPerson != null && (
-                <MetricRow label="人均工时" before={data.beforeHoursPerPerson} after={data.afterHoursPerPerson} unit="h/月" />
+                <MetricRow label="每人月均投入工时" before={data.beforeHoursPerPerson} after={data.afterHoursPerPerson} unit="h" />
               )}
               {data.beforePeopleCount != null && (
-                <MetricRow label="投入人数" before={data.beforePeopleCount} after={data.afterPeopleCount} unit="人" />
+                <MetricRow label="月均投入人数" before={data.beforePeopleCount} after={data.afterPeopleCount} unit="人" />
               )}
               {data.oldFrequency && (
                 <MetricRow label="工作频率" before={data.oldFrequency} after={data.newFrequency} />
@@ -289,13 +291,21 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
             </div>
           </div>
 
-          {/* ⑧ 其他价值 */}
+          {/* ⑧ 附加价值 */}
           {data.extraValue && (
-            <div className="mb-4">
+            <div className="mb-3">
               <SectionLabel>附加价值</SectionLabel>
               <div className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                 {data.extraValue}
               </div>
+            </div>
+          )}
+
+          {/* ⑨ 工时数据确认人 */}
+          {data.verifier && data.verifier.length > 0 && (
+            <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              <TeamOutlined className="mr-1" />
+              工时数据确认人：{data.verifier.join('、')}
             </div>
           )}
         </div>
@@ -334,15 +344,12 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
         </div>
       )}
 
-      {/* 底部：确认人 + 源记录 */}
-      <div className="flex items-center justify-between pt-3 text-[11px]"
+      {/* 底部：源记录 */}
+      <div className="flex items-center justify-end pt-3 text-[11px]"
         style={{ borderTop: '1px solid rgba(255,255,255,0.4)', color: 'var(--text-muted)' }}>
-        {data.verifier && data.verifier.length > 0 && (
-          <span><TeamOutlined /> 工时数据确认人：{data.verifier.join('、')}</span>
-        )}
         {data.recordUrl && (
           <a href={data.recordUrl} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1 hover:opacity-70 transition-opacity ml-auto"
+            className="flex items-center gap-1 hover:opacity-70 transition-opacity"
             style={{ color: 'var(--primary)' }}>
             <LinkOutlined /> 查看源记录
           </a>
