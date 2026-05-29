@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Spin, App } from 'antd';
+import { Spin, App, Switch } from 'antd';
 import { SyncOutlined, TrophyOutlined, CalendarOutlined, UserOutlined, BankOutlined, CodeOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
@@ -18,6 +18,7 @@ export default function CompetitionsPage() {
   const [reviews, setReviews] = useState<Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }>>({});
   const [reviewerRole, setReviewerRole] = useState<ReviewerRole | null>(null);
   const [roleLocked, setRoleLocked] = useState(false);
+  const [onlyPending, setOnlyPending] = useState(false);
   const { message } = App.useApp();
 
   // 从 Supabase 读取已同步数据
@@ -124,9 +125,13 @@ export default function CompetitionsPage() {
   };
 
   // 用户评委只看 reviewers 包含自己的方案，业务/技术评委看全部
-  const displayItems = reviewerRole === 'user'
+  const roleFiltered = reviewerRole === 'user'
     ? items.filter((i) => i.reviewers?.includes(user?.name ?? ''))
     : items;
+  // 只看未评审
+  const displayItems = onlyPending
+    ? roleFiltered.filter((i) => reviews[i.id]?.decision !== 'reviewed')
+    : roleFiltered;
 
   return (
     <>
@@ -242,11 +247,10 @@ export default function CompetitionsPage() {
                   <span style={{ color: 'var(--text-muted)' }}>
                     共 {displayItems.length} 条
                   </span>
-                  {pending > 0 && (
-                    <span className="ml-auto font-medium" style={{ color: '#b3540e' }}>
-                      请及时完成评审
-                    </span>
-                  )}
+                  <span className="ml-auto flex items-center gap-1.5">
+                    <Switch size="small" checked={onlyPending} onChange={setOnlyPending} />
+                    <span style={{ color: 'var(--text-secondary)' }}>只看未评审</span>
+                  </span>
                 </div>
               );
             })()}
