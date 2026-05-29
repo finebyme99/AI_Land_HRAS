@@ -303,10 +303,19 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
 
           {/* ⑨ 工时数据确认人 */}
           {data.verifier && data.verifier.length > 0 && (
-            <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            <div className="text-[11px] mb-1" style={{ color: 'var(--text-muted)' }}>
               <TeamOutlined className="mr-1" />
               工时数据确认人：{data.verifier.join('、')}
             </div>
+          )}
+
+          {/* ⑩ 查看源记录 */}
+          {data.recordUrl && (
+            <a href={data.recordUrl} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[11px] hover:opacity-70 transition-opacity"
+              style={{ color: 'var(--primary)' }}>
+              <LinkOutlined /> 查看源记录
+            </a>
           )}
         </div>
       </div>
@@ -343,18 +352,6 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
           </div>
         </div>
       )}
-
-      {/* 底部：源记录 */}
-      <div className="flex items-center justify-end pt-3 text-[11px]"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.4)', color: 'var(--text-muted)' }}>
-        {data.recordUrl && (
-          <a href={data.recordUrl} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1 hover:opacity-70 transition-opacity"
-            style={{ color: 'var(--primary)' }}>
-            <LinkOutlined /> 查看源记录
-          </a>
-        )}
-      </div>
 
       {/* 评委评审区域 */}
       {isReviewer && (
