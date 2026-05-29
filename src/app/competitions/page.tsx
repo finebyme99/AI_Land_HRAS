@@ -53,7 +53,10 @@ export default function CompetitionsPage() {
       clearTimeout(timer);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      message.success({ content: `已同步 ${data.synced} 条方案`, key: 'sync' });
+      const attMsg = data.attachments
+        ? `（附件：${data.attachments.downloaded} 新下载，${data.attachments.skipped} 已跳过）`
+        : '';
+      message.success({ content: `已同步 ${data.synced} 条方案${attMsg}`, key: 'sync' });
       await fetchData();
     } catch (err) {
       const msg = err instanceof DOMException && err.name === 'AbortError'
