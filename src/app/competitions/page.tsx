@@ -149,7 +149,7 @@ export default function CompetitionsPage() {
               style={{ background: 'var(--primary)', color: '#fff' }}>
               大赛主页
             </a>
-            <a href="https://ztn.feishu.cn/share/base/form/shrcn2OaxMFequUyz2E6VkJFvJg" target="_blank" rel="noopener noreferrer"
+            <a href="https://ztn.feishu.cn/share/base/form/shrcnzpkRvRFdo6359hFYfCTpZg" target="_blank" rel="noopener noreferrer"
               className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
               style={{ background: 'var(--accent)', color: '#fff' }}>
               参与提报
