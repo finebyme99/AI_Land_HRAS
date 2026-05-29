@@ -1,19 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { Tag, Button, Modal, Input, Checkbox, Tooltip, Image, App } from 'antd';
+import { Tag, Button, Input, Image, App, Radio, Modal } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
   ToolOutlined,
   LinkOutlined,
   CheckOutlined,
-  CloseOutlined,
   PaperClipOutlined,
   FileOutlined,
   PlayCircleOutlined,
   SwapOutlined,
 } from '@ant-design/icons';
+import type { ReviewScores, ReviewerRole } from '@/types';
+import { SCORE_DIMENSIONS } from '@/types';
 
 export interface Submission {
   id: string;
@@ -77,8 +78,8 @@ const STATUS_COLORS: Record<string, string> = {
 interface CompetitionCardProps {
   data: Submission;
   isReviewer?: boolean;
-  existingReview?: { decision: string; reason: string; is_benchmark?: boolean } | null;
-  onReview?: (submissionId: string, decision: 'approved' | 'rejected', reason?: string, is_benchmark?: boolean) => void;
+  existingReview?: { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null } | null;
+  onReview?: (submissionId: string, scores: ReviewScores, reviewerRole: ReviewerRole, reason?: string) => void;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -108,30 +109,52 @@ function MetricRow({ label, before, after, unit }: { label: string; before: Reac
 
 export default function CompetitionCard({ data, isReviewer, existingReview, onReview }: CompetitionCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [benchmarkChecked, setBenchmarkChecked] = useState(existingReview?.is_benchmark ?? false);
+  const [comment, setComment] = useState(existingReview?.reason ?? '');
+  const [reviewerRole, setReviewerRole] = useState<ReviewerRole | null>(existingReview?.reviewer_role ?? null);
+  const [scores, setScores] = useState<ReviewScores>(existingReview?.scores ?? {});
   const { message } = App.useApp();
 
-  const handleApprove = () => {
-    if (existingReview?.decision === 'approved') {
-      message.warning('请勿重复操作，已通过');
-      return;
-    }
-    onReview?.(data.id, 'approved', undefined, benchmarkChecked);
+  const hasExisting = existingReview?.decision === 'reviewed';
+  const activeDims = reviewerRole ? SCORE_DIMENSIONS[reviewerRole] : [];
+
+  const totalScore = activeDims.reduce((sum, dim) => {
+    const val = scores[dim.key];
+    return sum + (val != null ? val * dim.weight : 0);
+  }, 0);
+
+  const maxScore = activeDims.reduce((sum, dim) => sum + 5 * dim.weight, 0);
+
+  const allScored = activeDims.length > 0 && activeDims.every((dim) => scores[dim.key] != null);
+
+  const handleScoreChange = (key: keyof ReviewScores, value: number) => {
+    setScores((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleReject = () => {
-    if (!rejectReason.trim()) return;
-    if (existingReview?.decision === 'rejected') {
-      message.warning('请勿重复操作，已驳回');
-      setRejectModalOpen(false);
-      setRejectReason('');
+  const handleSubmit = () => {
+    if (!reviewerRole) {
+      message.warning('请先选择评委角色');
       return;
     }
-    onReview?.(data.id, 'rejected', rejectReason.trim());
-    setRejectModalOpen(false);
-    setRejectReason('');
+    if (!allScored) {
+      message.warning('请完成所有维度的评分');
+      return;
+    }
+    Modal.confirm({
+      title: '确认提交评分',
+      content: (
+        <div>
+          <p>总分 <b>{totalScore.toFixed(1)}</b> / {maxScore}，提交后不可修改。</p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            {activeDims.map((d) => `${d.label}: ${scores[d.key]}`).join('、')}
+          </p>
+        </div>
+      ),
+      okText: '确认提交',
+      cancelText: '再想想',
+      onOk: () => {
+        onReview?.(data.id, scores, reviewerRole, comment.trim() || undefined);
+      },
+    });
   };
 
   return (
@@ -355,73 +378,136 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
       {/* 评委评审区域 */}
       {isReviewer && (
         <div className="mt-3 pt-3" style={{ borderTop: '1px dashed rgba(0,0,0,0.08)' }}>
-          {existingReview ? (
-            <div className="flex items-center gap-2">
-              <Tag color={existingReview.decision === 'approved' ? 'green' : 'red'} className="text-xs">
-                {existingReview.decision === 'approved' ? '已通过' : '已驳回'}
-              </Tag>
-              {existingReview.decision === 'approved' && existingReview.is_benchmark && (
-                <Tag color="gold" className="text-xs">标杆案例</Tag>
-              )}
-              {existingReview.decision === 'rejected' && existingReview.reason && (
-                <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                  {existingReview.reason}
+          {/* 已评审：显示评分明细（不可修改） */}
+          {hasExisting && existingReview ? (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Tag color="green" className="text-xs">已评审</Tag>
+                <span className="text-xs font-semibold" style={{ color: 'var(--primary)' }}>
+                  总分 {totalScore.toFixed(1)} / {maxScore}
                 </span>
-              )}
-              <div className="ml-auto flex gap-1.5">
-                <Button size="small" type="text" icon={<CheckOutlined />}
-                  style={{ color: '#16a34a' }}
-                  onClick={handleApprove} />
-                <Button size="small" type="text" icon={<CloseOutlined />}
-                  style={{ color: '#dc2626' }}
-                  onClick={() => setRejectModalOpen(true)} />
+                <span className="text-[11px] ml-auto" style={{ color: 'var(--text-muted)' }}>
+                  {existingReview.reviewer_role === 'user' ? '用户评委' : existingReview.reviewer_role === 'business' ? '业务评委' : '技术评委'}
+                </span>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-2">
+                {activeDims.map((dim) => {
+                  const val = scores[dim.key];
+                  return (
+                    <div key={dim.key} className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg"
+                      style={{ background: 'rgba(0,0,0,0.02)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{dim.label}</span>
+                      <span className="font-semibold" style={{ color: val != null && val >= 4 ? '#16a34a' : val != null && val <= 2 ? '#dc2626' : 'var(--foreground)' }}>
+                        {val ?? '-'} <span className="text-[10px] font-normal" style={{ color: 'var(--text-muted)' }}>×{dim.weight}</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {existingReview.reason && (
+                <div className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
+                  评语：{existingReview.reason}
+                </div>
+              )}
             </div>
           ) : (
-            <div className="flex flex-col items-end gap-2">
-              <Tooltip title="广受评委认可的标杆案例，会推举在全HRAS宣讲，应具备三要素：落地成效显著、可推广复用、有启发性">
-                <Checkbox checked={benchmarkChecked} onChange={(e) => setBenchmarkChecked(e.target.checked)}>
-                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>推荐为标杆案例</span>
-                </Checkbox>
-              </Tooltip>
-              <div className="flex items-center gap-2">
-                <Button size="small" icon={<CheckOutlined />}
-                  style={{ color: '#16a34a', borderColor: '#16a34a' }}
-                  onClick={handleApprove}>
-                  通过
-                </Button>
-                <Button size="small" danger icon={<CloseOutlined />}
-                  onClick={() => setRejectModalOpen(true)}>
-                  驳回调整
+            /* 评分表单 */
+            <div>
+              {/* 角色选择 */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>评委角色</span>
+                <Radio.Group size="small" value={reviewerRole} onChange={(e) => {
+                  setReviewerRole(e.target.value);
+                  setScores({});
+                }}>
+                  <Radio.Button value="user">用户评委</Radio.Button>
+                  <Radio.Button value="business">业务评委</Radio.Button>
+                  <Radio.Button value="tech">技术评委</Radio.Button>
+                </Radio.Group>
+              </div>
+
+              {/* 评分维度 */}
+              {reviewerRole && (
+                <div className="space-y-3 mb-3">
+                  {activeDims.map((dim) => (
+                    <div key={dim.key} className="rounded-lg p-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
+                          {dim.label}
+                          <span className="text-[10px] font-normal ml-1.5" style={{ color: 'var(--text-muted)' }}>
+                            权重 ×{dim.weight}
+                          </span>
+                        </span>
+                        <span className="text-sm font-bold" style={{ color: scores[dim.key] != null ? (scores[dim.key]! >= 4 ? '#16a34a' : scores[dim.key]! <= 2 ? '#dc2626' : 'var(--primary)') : 'var(--text-muted)' }}>
+                          {scores[dim.key] ?? '-'}
+                        </span>
+                      </div>
+                      <div className="flex gap-1 mb-1.5">
+                        {[1, 2, 3, 4, 5].map((v) => (
+                          <button
+                            key={v}
+                            onClick={() => handleScoreChange(dim.key, v)}
+                            className="flex-1 h-7 rounded text-xs font-medium transition-all"
+                            style={{
+                              background: scores[dim.key] === v
+                                ? v >= 4 ? 'rgba(22,163,74,0.15)' : v <= 2 ? 'rgba(220,38,38,0.12)' : 'rgba(26,58,138,0.12)'
+                                : 'rgba(0,0,0,0.03)',
+                              color: scores[dim.key] === v
+                                ? v >= 4 ? '#16a34a' : v <= 2 ? '#dc2626' : 'var(--primary)'
+                                : 'var(--text-muted)',
+                              border: scores[dim.key] === v
+                                ? `1px solid ${v >= 4 ? 'rgba(22,163,74,0.3)' : v <= 2 ? 'rgba(220,38,38,0.25)' : 'rgba(26,58,138,0.25)'}`
+                                : '1px solid transparent',
+                            }}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        <span>1分：{dim.lowSignal}</span>
+                        <span>5分：{dim.highSignal}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 总分预览 */}
+              {reviewerRole && (
+                <div className="flex items-center justify-between mb-3 px-3 py-2 rounded-lg"
+                  style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
+                  <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>加权总分</span>
+                  <span className="text-lg font-bold" style={{ color: 'var(--primary)' }}>
+                    {totalScore.toFixed(1)}
+                    <span className="text-xs font-normal ml-1" style={{ color: 'var(--text-muted)' }}>/ {maxScore}</span>
+                  </span>
+                </div>
+              )}
+
+              {/* 评语 */}
+              <Input.TextArea
+                rows={2}
+                placeholder="评语（选填）"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                maxLength={500}
+                showCount
+                className="mb-3"
+              />
+
+              {/* 提交 */}
+              <div className="flex justify-end">
+                <Button size="small" type="primary" icon={<CheckOutlined />}
+                  disabled={!allScored}
+                  onClick={handleSubmit}>
+                  提交评分
                 </Button>
               </div>
             </div>
           )}
         </div>
       )}
-
-      <Modal
-        title="驳回调整 — 填写理由"
-        open={rejectModalOpen}
-        onOk={handleReject}
-        onCancel={() => { setRejectModalOpen(false); setRejectReason(''); }}
-        okText="确认驳回"
-        cancelText="取消"
-        okButtonProps={{ danger: true, type: 'primary', disabled: !rejectReason.trim(), style: { color: '#fff' } }}
-      >
-        <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
-          请说明需要调整的原因，以便提交人改进方案。
-        </p>
-        <Input.TextArea
-          rows={4}
-          placeholder="请输入驳回理由（必填）"
-          value={rejectReason}
-          onChange={(e) => setRejectReason(e.target.value)}
-          maxLength={500}
-          showCount
-          style={{ marginBottom: 8 }}
-        />
-      </Modal>
     </div>
   );
 }

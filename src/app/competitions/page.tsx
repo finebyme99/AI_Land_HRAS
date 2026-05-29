@@ -6,7 +6,7 @@ import { SyncOutlined, TrophyOutlined, CalendarOutlined } from '@ant-design/icon
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
 import type { Submission } from '@/components/CompetitionCard';
-import type { CompetitionReview } from '@/types';
+import type { CompetitionReview, ReviewScores, ReviewerRole } from '@/types';
 
 export default function CompetitionsPage() {
   const { isAdmin, isReviewer } = useAuth();
@@ -15,7 +15,7 @@ export default function CompetitionsPage() {
   const [syncing, setSyncing] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [period] = useState('2605');
-  const [reviews, setReviews] = useState<Record<string, { decision: string; reason: string; is_benchmark?: boolean }>>({});
+  const [reviews, setReviews] = useState<Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }>>({});
   const { message } = App.useApp();
 
   // 从 Supabase 读取已同步数据
@@ -73,9 +73,9 @@ export default function CompetitionsPage() {
       fetch('/api/competitions/reviews?mine=true')
         .then((r) => r.json())
         .then((data) => {
-          const map: Record<string, { decision: string; reason: string; is_benchmark?: boolean }> = {};
+          const map: Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }> = {};
           (data.reviews ?? []).forEach((r: CompetitionReview) => {
-            map[r.submission_id] = { decision: r.decision, reason: r.reason, is_benchmark: r.is_benchmark };
+            map[r.submission_id] = { decision: r.decision, scores: r.scores, reason: r.reason, reviewer_role: r.reviewer_role };
           });
           setReviews(map);
         })
@@ -83,7 +83,7 @@ export default function CompetitionsPage() {
     }
   }, [isReviewer]);
 
-  const handleReview = async (submissionId: string, decision: 'approved' | 'rejected', reason?: string, is_benchmark?: boolean) => {
+  const handleReview = async (submissionId: string, scores: ReviewScores, reviewerRole: ReviewerRole, reason?: string) => {
     try {
       const item = items.find((i) => i.id === submissionId);
       const res = await fetch('/api/competitions/reviews', {
@@ -91,11 +91,11 @@ export default function CompetitionsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           submission_id: submissionId,
-          decision,
+          scores,
+          reviewer_role: reviewerRole,
           reason,
           proposal_no: item?.proposalNo ?? null,
           title: item?.title ?? '',
-          is_benchmark,
         }),
       });
       if (!res.ok) {
@@ -105,9 +105,9 @@ export default function CompetitionsPage() {
       const data = await res.json();
       setReviews((prev) => ({
         ...prev,
-        [submissionId]: { decision: data.review.decision, reason: data.review.reason, is_benchmark: data.review.is_benchmark },
+        [submissionId]: { decision: data.review.decision, scores: data.review.scores, reason: data.review.reason, reviewer_role: data.review.reviewer_role },
       }));
-      message.success(decision === 'approved' ? '已通过' : '已驳回');
+      message.success('评分已提交');
     } catch (err) {
       message.error(err instanceof Error ? err.message : '评审失败');
     }
@@ -174,10 +174,8 @@ export default function CompetitionsPage() {
 
         {/* 评委评审进度 */}
         {isReviewer && loaded && items.length > 0 && (() => {
-          const reviewed = items.filter((i) => reviews[i.id]);
-          const approved = reviewed.filter((i) => reviews[i.id].decision === 'approved').length;
-          const rejected = reviewed.filter((i) => reviews[i.id].decision === 'rejected').length;
-          const pending = items.length - reviewed.length;
+          const reviewedCount = items.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
+          const pending = items.length - reviewedCount;
           return (
             <div className="flex items-center gap-4 mb-5 px-4 py-3 rounded-xl text-xs"
               style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
@@ -186,10 +184,7 @@ export default function CompetitionsPage() {
                 待审 <b style={{ color: 'var(--foreground)' }}>{pending}</b> 条
               </span>
               <span style={{ color: '#16a34a' }}>
-                已通过 <b>{approved}</b> 条
-              </span>
-              <span style={{ color: '#dc2626' }}>
-                已驳回 <b>{rejected}</b> 条
+                已评审 <b>{reviewedCount}</b> 条
               </span>
               <span style={{ color: 'var(--text-muted)' }}>
                 共 {items.length} 条
