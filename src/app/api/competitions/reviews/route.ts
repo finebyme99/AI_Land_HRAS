@@ -102,35 +102,51 @@ export async function POST(request: NextRequest) {
 
   const total = computeWeightedScore(scores, reviewer_role as ReviewerRole);
 
-  // 检查是否已有新机制评审记录（旧的 approved/rejected 不拦截）
+  const row = {
+    submission_id,
+    reviewer_id: reviewer.id,
+    decision: 'reviewed',
+    scores,
+    reviewer_role,
+    reason: reason || '',
+    proposal_no: proposal_no ?? null,
+    title: title || '',
+  };
+
+  // 检查是否已有记录（含旧机制的 approved/rejected）
   const { data: existing } = await getSupabaseAdmin()
     .from('competition_reviews')
-    .select('id')
+    .select('id, decision')
     .eq('submission_id', submission_id)
     .eq('reviewer_id', reviewer.id)
-    .eq('decision', 'reviewed')
     .maybeSingle();
 
-  if (existing) {
-    return NextResponse.json({ error: '该方案已评审，不可重复提交' }, { status: 409 });
-  }
+  let review;
+  let error;
 
-  const { data: review, error } = await getSupabaseAdmin()
-    .from('competition_reviews')
-    .insert(
-      {
-        submission_id,
-        reviewer_id: reviewer.id,
-        decision: 'reviewed',
-        scores,
-        reviewer_role,
-        reason: reason || '',
-        proposal_no: proposal_no ?? null,
-        title: title || '',
-      },
-    )
-    .select()
-    .single();
+  if (existing) {
+    // 已有旧记录 → 更新为新评分
+    if (existing.decision === 'reviewed') {
+      return NextResponse.json({ error: '该方案已评审，不可重复提交' }, { status: 409 });
+    }
+    const result = await getSupabaseAdmin()
+      .from('competition_reviews')
+      .update(row)
+      .eq('id', existing.id)
+      .select()
+      .single();
+    review = result.data;
+    error = result.error;
+  } else {
+    // 无记录 → 新建
+    const result = await getSupabaseAdmin()
+      .from('competition_reviews')
+      .insert(row)
+      .select()
+      .single();
+    review = result.data;
+    error = result.error;
+  }
 
   if (error) {
     console.error('评审写入失败:', error);
