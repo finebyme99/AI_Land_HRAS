@@ -17,7 +17,6 @@ export default function CompetitionsPage() {
   const [period] = useState('2605');
   const [reviews, setReviews] = useState<Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }>>({});
   const [reviewerRole, setReviewerRole] = useState<ReviewerRole | null>(null);
-  const [roleLocked, setRoleLocked] = useState(false);
   const { message } = App.useApp();
 
   // 从 Supabase 读取已同步数据
@@ -81,12 +80,6 @@ export default function CompetitionsPage() {
             map[r.submission_id] = { decision: r.decision, scores: r.scores, reason: r.reason, reviewer_role: r.reviewer_role };
           });
           setReviews(map);
-          // 已有新机制评审记录，锁定角色
-          const newReviews = reviewsList.filter((r) => r.decision === 'reviewed' && r.reviewer_role);
-          if (newReviews.length > 0) {
-            setReviewerRole(newReviews[0].reviewer_role!);
-            setRoleLocked(true);
-          }
         })
         .catch(() => {});
     }
@@ -187,7 +180,7 @@ export default function CompetitionsPage() {
         </div>
 
         {/* 评委角色选择 + 评审进度 */}
-        {isReviewer && loaded && displayItems.length > 0 && (
+        {isReviewer && loaded && items.length > 0 && (
           <div className="mb-5">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-xl mb-3"
               style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
@@ -200,9 +193,8 @@ export default function CompetitionsPage() {
                 ]).map((r) => (
                   <button
                     key={r.key}
-                    onClick={() => !roleLocked && setReviewerRole(r.key)}
-                    disabled={roleLocked}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    onClick={() => setReviewerRole(r.key)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
                     style={{
                       background: reviewerRole === r.key ? 'var(--primary)' : 'rgba(255,255,255,0.6)',
                       color: reviewerRole === r.key ? '#fff' : 'var(--text-secondary)',
@@ -213,13 +205,8 @@ export default function CompetitionsPage() {
                     {r.icon} {r.label}
                   </button>
                 ))}
-                {roleLocked && (
-                  <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                    角色已锁定
-                  </span>
-                )}
               </div>
-              {!reviewerRole && !roleLocked && (
+              {!reviewerRole && (
                 <span className="text-[11px]" style={{ color: '#b3540e' }}>
                   请选择评委角色后开始评分
                 </span>
