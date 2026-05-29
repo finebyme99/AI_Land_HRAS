@@ -9,7 +9,7 @@ import type { Submission } from '@/components/CompetitionCard';
 import type { CompetitionReview, ReviewScores, ReviewerRole } from '@/types';
 
 export default function CompetitionsPage() {
-  const { isAdmin, isReviewer } = useAuth();
+  const { user, isAdmin, isReviewer } = useAuth();
   const [items, setItems] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -122,6 +122,11 @@ export default function CompetitionsPage() {
     }
   };
 
+  // 用户评委只看 reviewers 包含自己的方案，其他角色看全部
+  const displayItems = reviewerRole === 'user'
+    ? items.filter((i) => i.reviewers?.includes(user?.name ?? ''))
+    : items;
+
   return (
     <>
       {/* 本月参赛方案卡片 */}
@@ -142,8 +147,8 @@ export default function CompetitionsPage() {
                 </span>
               </h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                {loaded ? `${items.length} 条方案` : '加载中...'}
-                {loaded && items.length > 0 && (
+                {loaded ? `${displayItems.length} 条方案` : '加载中...'}
+                {loaded && displayItems.length > 0 && (
                   <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
                     style={{ background: 'rgba(242, 127, 34, 0.08)', color: '#b3540e' }}>
                     按照提报人填写的月度节省工时降序排列
@@ -182,7 +187,7 @@ export default function CompetitionsPage() {
         </div>
 
         {/* 评委角色选择 + 评审进度 */}
-        {isReviewer && loaded && items.length > 0 && (
+        {isReviewer && loaded && displayItems.length > 0 && (
           <div className="mb-5">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-xl mb-3"
               style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
@@ -221,8 +226,8 @@ export default function CompetitionsPage() {
               )}
             </div>
             {(() => {
-              const reviewedCount = items.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
-              const pending = items.length - reviewedCount;
+              const reviewedCount = displayItems.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
+              const pending = displayItems.length - reviewedCount;
               return (
                 <div className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs"
                   style={{ background: 'rgba(26,58,138,0.02)', border: '1px solid rgba(26,58,138,0.05)' }}>
@@ -234,7 +239,7 @@ export default function CompetitionsPage() {
                     已评审 <b>{reviewedCount}</b> 条
                   </span>
                   <span style={{ color: 'var(--text-muted)' }}>
-                    共 {items.length} 条
+                    共 {displayItems.length} 条
                   </span>
                   {pending > 0 && (
                     <span className="ml-auto font-medium" style={{ color: '#b3540e' }}>
@@ -253,15 +258,17 @@ export default function CompetitionsPage() {
           </div>
         )}
 
-        {!loading && loaded && items.length === 0 && (
+        {!loading && loaded && displayItems.length === 0 && (
           <div className="text-center py-12 glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>暂无参赛方案，点击「从飞书同步」导入数据</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              {reviewerRole === 'user' ? '暂无分配给您的评审方案' : '暂无参赛方案，点击「从飞书同步」导入数据'}
+            </p>
           </div>
         )}
 
-        {items.length > 0 && (
+        {displayItems.length > 0 && (
           <div className="flex flex-col gap-4">
-            {items.map((item) => (
+            {displayItems.map((item) => (
               <CompetitionCard
                 key={item.id}
                 data={item}
