@@ -122,9 +122,8 @@ export default function CompetitionsPage() {
     }
   };
 
-  // 用户评委只看 reviewers 包含自己的方案，字段为空时不过滤
-  const hasReviewersData = items.some((i) => i.reviewers && i.reviewers.length > 0);
-  const displayItems = reviewerRole === 'user' && hasReviewersData
+  // 用户评委只看 reviewers 包含自己的方案，业务/技术评委看全部
+  const displayItems = reviewerRole === 'user'
     ? items.filter((i) => i.reviewers?.includes(user?.name ?? ''))
     : items;
 
@@ -261,7 +260,9 @@ export default function CompetitionsPage() {
 
         {!loading && loaded && displayItems.length === 0 && (
           <div className="text-center py-12 glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>暂无参赛方案，点击「从飞书同步」导入数据</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              {reviewerRole === 'user' ? '暂无分配给您的评审方案，请联系管理员分配' : '暂无参赛方案，点击「从飞书同步」导入数据'}
+            </p>
           </div>
         )}
 
