@@ -282,8 +282,7 @@ export default function CompetitionCard({ data, isReviewer, existingReview, onRe
               )}
               {/* AI 费用 */}
               {data.aiCost != null && data.aiCost > 0 && (
-                <div className="flex items-center justify-between text-xs pt-2 mt-1"
-                  style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                <div className="flex items-center justify-between text-xs pt-2">
                   <span style={{ color: 'var(--text-muted)' }}>AI 月均费用</span>
                   <span className="font-medium" style={{ color: 'var(--primary)' }}>¥{data.aiCost}</span>
                 </div>
