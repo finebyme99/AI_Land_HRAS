@@ -102,9 +102,21 @@ export async function POST(request: NextRequest) {
 
   const total = computeWeightedScore(scores, reviewer_role as ReviewerRole);
 
+  // 检查是否已有评审记录，已有则拒绝
+  const { data: existing } = await getSupabaseAdmin()
+    .from('competition_reviews')
+    .select('id')
+    .eq('submission_id', submission_id)
+    .eq('reviewer_id', reviewer.id)
+    .maybeSingle();
+
+  if (existing) {
+    return NextResponse.json({ error: '该方案已评审，不可重复提交' }, { status: 409 });
+  }
+
   const { data: review, error } = await getSupabaseAdmin()
     .from('competition_reviews')
-    .upsert(
+    .insert(
       {
         submission_id,
         reviewer_id: reviewer.id,
@@ -115,7 +127,6 @@ export async function POST(request: NextRequest) {
         proposal_no: proposal_no ?? null,
         title: title || '',
       },
-      { onConflict: 'submission_id,reviewer_id' }
     )
     .select()
     .single();
