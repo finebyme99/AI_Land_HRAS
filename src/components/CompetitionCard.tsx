@@ -184,28 +184,28 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
         )}
       </div>
 
-      {/* ② 提交人 + 团队 */}
-      {(data.submitter || (data.teamMembers && data.teamMembers.length > 0)) && (
-        <div className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-          <UserOutlined className="mr-1" />
-          {data.submitter?.join('、')}
-          {data.teamMembers && data.teamMembers.length > 0 && (
-            <span> · 团队：{data.teamMembers.join('、')}</span>
-          )}
-        </div>
-      )}
-
-      {/* ③ 标签 */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {data.team && (Array.isArray(data.team) ? data.team : [data.team]).map((t) => (
-          <Tag key={t} color="blue">{t}</Tag>
-        ))}
-        {data.track && (
-          <Tag color={data.track.includes('降本') ? 'geekblue' : 'orange'}>
-            {data.track.includes('降本') ? '降本提效' : '增值创新'}
-          </Tag>
+      {/* ② 提交人 + 标签 */}
+      <div className="flex items-center justify-between gap-2 mb-4">
+        {(data.submitter || (data.teamMembers && data.teamMembers.length > 0)) && (
+          <div className="text-xs min-w-0 truncate" style={{ color: 'var(--text-muted)' }}>
+            <UserOutlined className="mr-1" />
+            {data.submitter?.join('、')}
+            {data.teamMembers && data.teamMembers.length > 0 && (
+              <span> · 团队：{data.teamMembers.join('、')}</span>
+            )}
+          </div>
         )}
-        {data.sceneCategory && <Tag>{data.sceneCategory}</Tag>}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {data.team && (Array.isArray(data.team) ? data.team : [data.team]).map((t) => (
+            <Tag key={t} color="blue" className="text-[11px]">{t}</Tag>
+          ))}
+          {data.track && (
+            <Tag color={data.track.includes('降本') ? 'geekblue' : 'orange'} className="text-[11px]">
+              {data.track.includes('降本') ? '降本提效' : '增值创新'}
+            </Tag>
+          )}
+          {data.sceneCategory && <Tag className="text-[11px]">{data.sceneCategory}</Tag>}
+        </div>
       </div>
 
       {/* 主体：左右两栏 */}
