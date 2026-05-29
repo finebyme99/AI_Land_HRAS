@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Spin, App, Radio } from 'antd';
-import { SyncOutlined, TrophyOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Spin, App } from 'antd';
+import { SyncOutlined, TrophyOutlined, CalendarOutlined, UserOutlined, BankOutlined, CodeOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
 import type { Submission } from '@/components/CompetitionCard';
@@ -178,13 +178,27 @@ export default function CompetitionsPage() {
           <div className="mb-5">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-xl mb-3"
               style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
+              <span className="text-xs font-semibold" style={{ color: 'var(--primary)' }}>我的角色</span>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold" style={{ color: 'var(--primary)' }}>我的角色</span>
-                <Radio.Group size="small" value={reviewerRole} onChange={(e) => setReviewerRole(e.target.value)}>
-                  <Radio.Button value="user">用户评委</Radio.Button>
-                  <Radio.Button value="business">业务评委</Radio.Button>
-                  <Radio.Button value="tech">技术评委</Radio.Button>
-                </Radio.Group>
+                {([
+                  { key: 'user' as ReviewerRole, label: '用户评委', icon: <UserOutlined /> },
+                  { key: 'business' as ReviewerRole, label: '业务评委', icon: <BankOutlined /> },
+                  { key: 'tech' as ReviewerRole, label: '技术评委', icon: <CodeOutlined /> },
+                ]).map((r) => (
+                  <button
+                    key={r.key}
+                    onClick={() => setReviewerRole(r.key)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+                    style={{
+                      background: reviewerRole === r.key ? 'var(--primary)' : 'rgba(255,255,255,0.6)',
+                      color: reviewerRole === r.key ? '#fff' : 'var(--text-secondary)',
+                      border: reviewerRole === r.key ? 'none' : '1px solid rgba(26,58,138,0.12)',
+                      boxShadow: reviewerRole === r.key ? '0 4px 12px rgba(26,58,138,0.25)' : 'none',
+                    }}
+                  >
+                    {r.icon} {r.label}
+                  </button>
+                ))}
               </div>
               {!reviewerRole && (
                 <span className="text-[11px]" style={{ color: '#b3540e' }}>
