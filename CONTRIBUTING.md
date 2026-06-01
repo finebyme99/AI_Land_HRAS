@@ -6,32 +6,35 @@ HRAS AI Land 是 HR AI 社区平台，基于 Next.js 16 + Supabase + 飞书 OAut
 
 ## 分支策略
 
-**默认在 main 分支上开发**，除非用户特殊要求切换到 feat 分支。
-
 ```
-main (默认开发分支 + Vercel 生产部署源)
-└── feat/xxx-module  ← 仅在用户明确要求时使用
+main (稳定版，Vercel 生产部署源)
+├── feat/case-module         ← 案例库模块
+├── feat/course-module       ← 课程模块
+├── feat/competition-module  ← AI 大赛模块
+└── feat/app-module          ← 应用推荐模块
 ```
 
 ### 分支规则
 
-1. **main 分支**：默认开发分支，直接在此提交功能，触发 Vercel 自动部署
-2. **feat/xxx-module**：仅在用户明确要求隔离开发时使用，完成后 PR 合回 main
+1. **main 分支**：稳定版，feat 分支完成后 PR 合回 main，触发 Vercel 自动部署
+2. **feat/xxx-module**：按模块隔离开发，每个模块独立分支，完成后 merge 回 main
 
 ## 开发工作流
 
 ### 日常开发
 
 ```bash
-# 直接在 main 上开发，无需切换分支
+# 切换到对应模块分支开发
 cd /Users/apple/Q/AI/26AI落地/AILand
+git checkout feat/xxx-module  # 切换到目标模块分支
 ```
 
 ### 提交与推送
 
-1. 所有 commit 直接在 main 上
-2. 定期 `git push origin main` 推送到远程
-3. Vercel 自动部署生产环境
+1. 所有 commit 在 feat 分支上
+2. 完成后 merge 回 main：`git checkout main && git merge feat/xxx-module`
+3. `git push origin main` 推送到远程
+4. Vercel 自动部署生产环境
 
 ## 技术架构约束
 
@@ -60,12 +63,13 @@ src/
 │   │   ├── page.tsx       # 列表页
 │   │   └── [id]/page.tsx  # 详情页
 │   ├── courses/           # 课程
-│   ├── topics/            # 问答
 │   ├── apps/              # 应用推荐
 │   ├── competitions/      # AI 大赛
+│   ├── admin/             # 管理后台
 │   ├── profile/           # 个人中心
 │   ├── login/             # 登录
 │   └── api/               # API 路由
+│       └── resources/     # 资源管理 API
 ├── components/            # 公共组件
 │   └── Navigation.tsx     # 导航栏
 ├── lib/                   # 工具库

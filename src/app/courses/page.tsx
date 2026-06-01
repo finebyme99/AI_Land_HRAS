@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Tag, Select, Input, Spin } from 'antd';
-import { ReadOutlined, UserOutlined, StarFilled, PlusOutlined } from '@ant-design/icons';
+import { ReadOutlined, UserOutlined, StarFilled, PlusOutlined, BookOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { COURSE_DIFFICULTY_COLORS, DIFFICULTY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/constants';
@@ -127,7 +127,35 @@ export default function CoursesPage() {
                 <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity">
                   {course.title}
                 </h3>
-                <p className="text-sm mb-4 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
+                <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
+                {(course.courseware_url || course.video_url) && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {course.courseware_url && (
+                      <a
+                        href={course.courseware_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
+                        style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 2px 8px rgba(26,58,138,0.25)' }}
+                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.open(course.courseware_url, '_blank'); }}
+                      >
+                        <BookOutlined /> 课件
+                      </a>
+                    )}
+                    {course.video_url && (
+                      <a
+                        href={course.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
+                        style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 2px 8px rgba(242,127,34,0.25)' }}
+                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.open(course.video_url, '_blank'); }}
+                      >
+                        <PlayCircleOutlined /> 视频
+                      </a>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
                   <span className="flex items-center gap-1">
                     <UserOutlined /> {course.instructor} · {course.duration}
