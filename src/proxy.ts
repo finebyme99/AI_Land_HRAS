@@ -4,6 +4,10 @@ const PUBLIC_PATHS = [
   '/login',
   '/api/auth/feishu',
   '/api/auth/feishu/callback',
+  '/api/auth/email/send',
+  '/api/auth/email/verify',
+  '/api/auth/register',
+  '/api/auth/login',
   '/api/auth/logout',
   '/hras-2026',
 ];
