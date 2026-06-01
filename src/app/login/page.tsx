@@ -184,6 +184,11 @@ function PasswordAuth() {
               autoFocus
             />
           </div>
+          {mode === 'register' && (
+            <p className="text-[11px] mt-1" style={{ color: '#b3540e' }}>
+              请使用本人真实姓名或飞书名注册，否则无法正常开通权限
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-[11px] font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>密码</label>
