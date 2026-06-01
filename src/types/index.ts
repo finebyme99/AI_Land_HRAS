@@ -174,9 +174,9 @@ export type ReviewerRole = 'user' | 'business' | 'tech';
 
 /** 评审评分维度（8维） */
 export interface ReviewScores {
-  scenario?: number;        // 场景明确性（用户评委 ×1.5）
-  painPoint?: number;       // 痛点真实性（用户评委 ×1.2）
-  effectiveness?: number;   // 产品实用性（用户评委 ×1.2）
+  productEffectiveness?: number; // 产品实用性（用户评委 ×1.5）
+  dataConsistency?: number;      // 数据一致性（用户评委 ×1.2）
+  productUsability?: number;     // 产品易用性（用户评委 ×1.2）
   replicability?: number;   // 可复用性（业务评委 ×1.5）
   dataReliability?: number; // 数据详实度（业务评委 ×1.2）
   breakthrough?: number;    // 突破开创性（业务评委 ×1.2）
@@ -191,23 +191,113 @@ export interface ScoreDimension {
   weight: number;
   highSignal: string;
   lowSignal: string;
+  /** 1-5 分完整描述，供评委参考 */
+  levels: Record<1 | 2 | 3 | 4 | 5, string>;
 }
 
 /** 各角色对应的评分维度 */
 export const SCORE_DIMENSIONS: Record<ReviewerRole, ScoreDimension[]> = {
   user: [
-    { key: 'scenario', label: '场景明确性', weight: 1.5, highSignal: '场景高频刚需、描述清晰完整', lowSignal: '场景模糊或低频，描述不清' },
-    { key: 'painPoint', label: '痛点真实性', weight: 1.2, highSignal: '场景高频，大家普遍反馈痛', lowSignal: '低频场景，或已有成熟解决方案' },
-    { key: 'effectiveness', label: '产品实用性', weight: 1.2, highSignal: '显著提效/显著增值/解决长期痛点', lowSignal: '和用之前差不多，甚至更复杂' },
+    {
+      key: 'productEffectiveness', label: '产品实用性', weight: 1.5,
+      lowSignal: '和用之前差不多，甚至更复杂',
+      highSignal: '效果卓越，提效 80% 以上或实现质的飞跃',
+      levels: {
+        1: '和用之前差不多，甚至更复杂，没有实质改进',
+        2: '有一定改进但幅度有限（提效 <20%），使用仍较繁琐',
+        3: '效果明显，提效约 20-50%，日常使用有价值',
+        4: '效果显著，提效 50-80%，使用体验好，值得推广',
+        5: '效果卓越，提效 80% 以上或实现质的飞跃（从无到有、从小时到分钟）',
+      },
+    },
+    {
+      key: 'dataConsistency', label: '数据一致性', weight: 1.2,
+      lowSignal: '数据错误或自相矛盾，输出不可信',
+      highSignal: '数据高度准确，结果完全可信赖',
+      levels: {
+        1: '数据明显错误或自相矛盾，输出结果不可信',
+        2: '数据部分准确，但存在明显不一致或遗漏',
+        3: '数据基本准确一致，偶有小误差但不影响整体判断',
+        4: '数据准确一致，有明确的数据来源和校验逻辑',
+        5: '数据高度准确，有多维度交叉验证，结果完全可信赖',
+      },
+    },
+    {
+      key: 'productUsability', label: '产品易用性', weight: 1.2,
+      lowSignal: '操作复杂，学习成本极高',
+      highSignal: '操作极其简便，几乎零学习成本',
+      levels: {
+        1: '操作复杂，需要大量手动步骤，学习成本极高',
+        2: '操作较繁琐，需要一定培训才能上手',
+        3: '操作基本便捷，有基本的引导说明',
+        4: '操作简单直观，有清晰的操作指引，新手可快速上手',
+        5: '操作极其简便，几乎零学习成本，体验流畅自然',
+      },
+    },
   ],
   business: [
-    { key: 'replicability', label: '可复用性', weight: 1.5, highSignal: '覆盖面广、涉及多团队、或有战略价值', lowSignal: '影响范围极窄，依赖个人/仅个别人受益' },
-    { key: 'dataReliability', label: '数据详实度', weight: 1.2, highSignal: '量化数据可信/符合真实业务场景', lowSignal: '量化数据矛盾/不符合真实场景' },
-    { key: 'breakthrough', label: '突破开创性', weight: 1.2, highSignal: '之前没有此能力，达成了流程首创或再造', lowSignal: '无任何流程再造、突破创新' },
+    {
+      key: 'replicability', label: '可复用性', weight: 1.5,
+      lowSignal: '影响范围极窄，依赖个人/仅个别人受益',
+      highSignal: '全集团可复用，具有战略价值',
+      levels: {
+        1: '仅个人受益，无法被他人复用，强依赖个人特定环境或权限',
+        2: '个别小型团队可复用，但场景高度特定，推广价值有限',
+        3: '一个 BU 团队可复用，场景在该业务线内有通用性',
+        4: '2 个及以上 BU 团队可复用，场景跨业务线通用',
+        5: '全集团可复用，具有战略价值，可作为标杆案例推广',
+      },
+    },
+    {
+      key: 'dataReliability', label: '数据详实度', weight: 1.2,
+      lowSignal: '无量化数据，或数据明显编造/不合理',
+      highSignal: '数据非常可信，估算依据清晰，有佐证',
+      levels: {
+        1: '无量化数据，或数据明显编造/不合理（如提效 99%）',
+        2: '有量化数据但粗糙笼统，缺少计算依据或对比基准',
+        3: '有基本量化数据（工时、人数、频次），数据基本可信',
+        4: '数据可信，基于实际业务经验估算，有基本的计算依据（如工时×频次），符合真实工作场景',
+        5: '数据非常可信，估算依据清晰（如历史数据对比、实际工时记录），附有系统截图或操作录屏佐证',
+      },
+    },
+    {
+      key: 'breakthrough', label: '突破开创性', weight: 1.2,
+      lowSignal: '无任何流程再造、突破创新',
+      highSignal: '首创性突破，对流程进行底层再造',
+      levels: {
+        1: '无任何创新，仅是对现有流程的简单复制或手动操作的电子化',
+        2: '有微小改进，但本质上是已有方案的变体',
+        3: '有一定创新，在已有流程基础上做了有意义的优化或整合',
+        4: '有明显突破，实现了之前没有的能力，或对流程进行了实质性再造',
+        5: '首创性突破，对整个流程进行了底层再造，或在集团内首次实现该场景的 AI 化，具有标杆意义',
+      },
+    },
   ],
   tech: [
-    { key: 'techUsability', label: '技术可用性', weight: 1.2, highSignal: '有高度标准可用的SOP/SKILLS/代码仓库', lowSignal: '存在技术隐患/疑点，不具备技术可行性' },
-    { key: 'toolFit', label: '工具合理性', weight: 1.0, highSignal: 'AI工具匹配场景，选型有依据', lowSignal: '工具和场景明显不匹配' },
+    {
+      key: 'techUsability', label: '技术可用性', weight: 1.2,
+      lowSignal: '存在技术隐患/疑点，不具备技术可行性',
+      highSignal: '有完善的代码仓库/工具包，可直接部署',
+      levels: {
+        1: '仅有想法描述，无任何技术实现，或存在明显技术隐患不可行',
+        2: '有初步实现但不完整，缺少关键步骤，无法稳定运行',
+        3: '有基本可用的实现，能跑通主流程，但缺少标准化文档',
+        4: '有完整的 SOP/SKILLS 文档，实现标准化，他人可按文档复现',
+        5: '有完善的代码仓库/工具包，标准化程度高，可直接部署使用，含异常处理和使用说明',
+      },
+    },
+    {
+      key: 'toolFit', label: '工具合理性', weight: 1.0,
+      lowSignal: '工具和场景明显不匹配',
+      highSignal: '工具完全适配场景，是最优选择',
+      levels: {
+        1: '工具和场景明显不匹配，属于硬套 AI',
+        2: '工具勉强可用，但有更好的替代方案',
+        3: '工具基本匹配场景，选型合理但缺少说明',
+        4: '工具匹配场景，有明确的选型理由，说明了为何选该工具',
+        5: '工具完全适配场景，有充分的选型对比和依据，是最优选择',
+      },
+    },
   ],
 };
 
