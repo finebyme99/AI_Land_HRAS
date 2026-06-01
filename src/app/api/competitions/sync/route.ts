@@ -60,7 +60,7 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '原执行人数': 'oldPeopleCount',
   '原工作频率': 'oldFrequency',
   '新工作频率': 'newFrequency',
-  '用户': 'reviewers',
+  '当前用户': 'reviewers',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

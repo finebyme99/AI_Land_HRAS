@@ -48,20 +48,24 @@ type: project
 | `/api/interactions` | 点赞/收藏/取消 |
 | `/api/admin/users` | 用户管理（GET 列表/PATCH 改角色）|
 | `/api/admin/settings` | 平台设置（GET/PUT）|
-| `/api/competitions/sync` | 读取飞书 Base 赛事方案数据 |
+| `/api/competitions/sync` | 飞书 Base 赛事方案同步（服务端过滤 + 附件去重） |
+| `/api/competitions/reviews` | 评审评分（GET 查询 / POST 提交，8维加权） |
+| `/api/competitions/reviews/export` | 评审数据 CSV 导出（管理员） |
 
 ## 已完成功能
 
 - Glassmorphism 全站风格（21 个页面重写）
 - 飞书 OAuth 登录（cookie session）
-- 角色权限控制（user/contributor/moderator/admin）
+- 角色权限控制（user/contributor/moderator/admin/reviewer）
 - 精选标记功能（admin/moderator）
 - 动态数据看板（IntersectionObserver 动画计数器）
-- 管理员后台（用户管理 + 平台设置）
+- 管理员后台（用户管理 + 平台设置 + 评审管理）
 - 导航栏响应式（桌面胶囊 + 移动端抽屉 + 底部 tab）
 - HRAS Logo 集成
 - 评论/点赞/收藏 API
 - 话题/回答创建 API
+- AI大赛评审系统（8维加权评分，三类评委角色，Popconfirm 提交）
+- 飞书同步优化（服务端过滤 + 附件去重 + 并行下载）
 
 ## 待完成
 
