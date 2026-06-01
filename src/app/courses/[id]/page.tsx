@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Tag, Spin, App, Avatar, Input } from 'antd';
+import { Tag, Spin, App, Avatar, Input, Select, Form } from 'antd';
 import {
   ReadOutlined,
   ArrowLeftOutlined,
@@ -16,10 +16,13 @@ import {
   ShareAltOutlined,
   LinkOutlined,
   BookOutlined,
+  EditOutlined,
+  SaveOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
-import { COURSE_DIFFICULTY_COLORS } from '@/lib/constants';
+import { COURSE_DIFFICULTY_COLORS, DIFFICULTY_OPTIONS } from '@/lib/constants';
 import type { Course } from '@/types';
 
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,6 +36,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [comments, setComments] = useState<{ id: string; content: string; author: { name: string; avatar: string }; created_at: string }[]>([]);
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm] = Form.useForm();
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     async function fetchCourse() {
@@ -136,6 +142,47 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     message.success('链接已复制');
   };
 
+  const handleStartEdit = () => {
+    if (!course) return;
+    editForm.setFieldsValue({
+      title: course.title,
+      description: course.description,
+      instructor: course.instructor,
+      duration: course.duration,
+      difficulty: course.difficulty,
+      content_type: Array.isArray(course.content_type) ? course.content_type : [course.content_type],
+      courseware_url: course.courseware_url || '',
+      video_url: course.video_url || '',
+    });
+    setEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!course) return;
+    try {
+      const values = await editForm.validateFields();
+      setSaving(true);
+      const res = await fetch(`/api/courses?id=${course.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || '保存失败');
+      }
+      const { course: updated } = await res.json();
+      setCourse(updated);
+      setEditing(false);
+      message.success('保存成功');
+    } catch (err) {
+      if (err && typeof err === 'object' && 'errorFields' in err) return; // form validation
+      message.error(err instanceof Error ? err.message : '保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleComment = async () => {
     if (!commentText.trim()) return;
     if (!user) { message.warning('请先登录'); return; }
@@ -197,35 +244,91 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
       {/* Course info */}
       <div className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          {contentTypes.map((ct) => (
-            <Tag key={ct} color={ct === 'video' ? 'red' : 'blue'}>
-              {ct === 'video' ? '视频' : '文档'}
-            </Tag>
-          ))}
-          <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
-          {course.is_featured && <Tag color="orange">精选</Tag>}
-          {isAdmin && (
-            <button onClick={handleToggleFeatured}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all hover:opacity-80"
-              style={{ color: course.is_featured ? '#F27F22' : 'var(--text-muted)', background: course.is_featured ? 'rgba(242, 127, 34, 0.08)' : 'rgba(0,0,0,0.04)' }}>
-              <StarFilled /> {course.is_featured ? '取消精选' : '标精选'}
-            </button>
-          )}
-        </div>
+        {editing ? (
+          <Form form={editForm} layout="vertical">
+            <Form.Item name="title" label="课程标题" rules={[{ required: true }]}>
+              <Input maxLength={100} showCount />
+            </Form.Item>
+            <Form.Item name="description" label="课程描述" rules={[{ required: true }]}>
+              <Input.TextArea rows={3} maxLength={500} showCount />
+            </Form.Item>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Form.Item name="instructor" label="讲师" rules={[{ required: true }]}>
+                <Input />
+              </Form.Item>
+              <Form.Item name="duration" label="时长" rules={[{ required: true }]}>
+                <Input />
+              </Form.Item>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Form.Item name="difficulty" label="难度" rules={[{ required: true }]}>
+                <Select options={DIFFICULTY_OPTIONS} />
+              </Form.Item>
+              <Form.Item name="content_type" label="内容形式" rules={[{ required: true }]}>
+                <Select mode="multiple" options={[{ label: '视频', value: 'video' }, { label: '文档', value: 'doc' }]} />
+              </Form.Item>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Form.Item name="courseware_url" label="课件链接">
+                <Input placeholder="课件文档链接" />
+              </Form.Item>
+              <Form.Item name="video_url" label="视频链接">
+                <Input placeholder="视频链接" />
+              </Form.Item>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={handleSaveEdit} disabled={saving}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
+                style={{ background: 'var(--primary)' }}>
+                <SaveOutlined /> {saving ? '保存中...' : '保存'}
+              </button>
+              <button onClick={() => setEditing(false)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-80"
+                style={{ color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.6)' }}>
+                <CloseOutlined /> 取消
+              </button>
+            </div>
+          </Form>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              {contentTypes.map((ct) => (
+                <Tag key={ct} color={ct === 'video' ? 'red' : 'blue'}>
+                  {ct === 'video' ? '视频' : '文档'}
+                </Tag>
+              ))}
+              <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
+              {course.is_featured && <Tag color="orange">精选</Tag>}
+              {isAdmin && (
+                <>
+                  <button onClick={handleToggleFeatured}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+                    style={{ color: course.is_featured ? '#F27F22' : 'var(--text-muted)', background: course.is_featured ? 'rgba(242, 127, 34, 0.08)' : 'rgba(0,0,0,0.04)' }}>
+                    <StarFilled /> {course.is_featured ? '取消精选' : '标精选'}
+                  </button>
+                  <button onClick={handleStartEdit}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+                    style={{ color: 'var(--primary)', background: 'rgba(26, 58, 138, 0.06)' }}>
+                    <EditOutlined /> 编辑
+                  </button>
+                </>
+              )}
+            </div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight">
-          {course.title}
-        </h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-5 leading-tight">
+              {course.title}
+            </h1>
 
-        <div className="flex flex-wrap items-center gap-5 mb-5 text-sm" style={{ color: 'var(--text-muted)' }}>
-          <span className="flex items-center gap-1.5"><UserOutlined /> {course.instructor}</span>
-          <span className="flex items-center gap-1.5"><ClockCircleOutlined /> {course.duration}</span>
-          <span className="flex items-center gap-1.5" style={{ color: '#c4883a' }}><StarFilled /> {course.rating}</span>
-          <span>{course.student_count} 人学习</span>
-        </div>
+            <div className="flex flex-wrap items-center gap-5 mb-5 text-sm" style={{ color: 'var(--text-muted)' }}>
+              <span className="flex items-center gap-1.5"><UserOutlined /> {course.instructor}</span>
+              <span className="flex items-center gap-1.5"><ClockCircleOutlined /> {course.duration}</span>
+              <span className="flex items-center gap-1.5" style={{ color: '#c4883a' }}><StarFilled /> {course.rating}</span>
+              <span>{course.student_count} 人学习</span>
+            </div>
 
-        <p className="mb-6 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
+            <p className="mb-6 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
+          </>
+        )}
       </div>
 
       {/* Course Links */}

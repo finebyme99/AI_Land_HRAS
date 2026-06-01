@@ -56,3 +56,44 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// PATCH /api/courses?id=xxx — 更新课程（admin only）
+export async function PATCH(request: NextRequest) {
+  const admin = await requireAdmin(request);
+  if (!admin) {
+    return NextResponse.json({ error: '仅管理员可编辑课程' }, { status: 403 });
+  }
+
+  const id = request.nextUrl.searchParams.get('id');
+  if (!id) {
+    return NextResponse.json({ error: '缺少课程 ID' }, { status: 400 });
+  }
+
+  try {
+    const body = await request.json();
+    const updates: Record<string, unknown> = {};
+    const allowed = ['title', 'description', 'instructor', 'duration', 'difficulty', 'content_type', 'cover_image', 'courseware_url', 'video_url'];
+    for (const key of allowed) {
+      if (key in body) updates[key] = body[key];
+    }
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: '没有可更新的字段' }, { status: 400 });
+    }
+
+    const { data, error } = await getSupabaseAdmin()
+      .from('courses')
+      .update(updates)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ course: data });
+  } catch (err: unknown) {
+    console.error('Course update error:', err);
+    const msg = err && typeof err === 'object' && 'message' in err
+      ? String((err as { message: unknown }).message)
+      : '更新失败';
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
