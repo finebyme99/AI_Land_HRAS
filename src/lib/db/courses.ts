@@ -1,9 +1,8 @@
 import { getSupabase } from '../supabase';
-import type { Course, CourseCategory, CourseDifficulty, ContentType } from '@/types';
+import type { Course, CourseDifficulty, ContentType } from '@/types';
 
 // 获取课程列表
 export async function getCourses(options?: {
-  category?: CourseCategory;
   difficulty?: CourseDifficulty;
   contentType?: ContentType;
   search?: string;
@@ -16,7 +15,6 @@ export async function getCourses(options?: {
     `)
     .order('created_at', { ascending: false });
 
-  if (options?.category) query = query.eq('category', options.category);
   if (options?.difficulty) query = query.eq('difficulty', options.difficulty);
   if (options?.contentType) query = query.eq('content_type', options.contentType);
   if (options?.search) query = query.or(`title.ilike.%${options.search}%`);

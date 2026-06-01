@@ -66,15 +66,30 @@ export interface Case {
   updated_at: string;
 }
 
-// ============ 应用推荐 ============
-export type AppCategory = '对话类' | '写作类' | '设计类' | '数据分析' | '自动化' | 'HR专属';
+// ============ 资源推荐 ============
+export type ResourceType = 'ai_tool' | 'guide' | 'skill';
 
-export interface AppRecommendation {
+export type AIToolCategory = '对话类' | '写作类' | '设计类' | '数据分析' | '自动化' | 'HR专属';
+export type GuideCategory = '入门指引' | '场景实操' | '进阶技巧' | '最佳实践';
+export type SkillCategory = '效率提升' | '数据分析' | '内容创作' | '流程自动化' | 'HR专用';
+
+export type ResourceCategory = AIToolCategory | GuideCategory | SkillCategory;
+
+/** 资源分类按类型分组 */
+export const RESOURCE_CATEGORIES: Record<ResourceType, ResourceCategory[]> = {
+  ai_tool: ['对话类', '写作类', '设计类', '数据分析', '自动化', 'HR专属'],
+  guide: ['入门指引', '场景实操', '进阶技巧', '最佳实践'],
+  skill: ['效率提升', '数据分析', '内容创作', '流程自动化', 'HR专用'],
+};
+
+export interface Resource {
   id: string;
+  resource_type: ResourceType;
   name: string;
   logo: string;
   description: string;
-  category: AppCategory;
+  content: string;
+  category: ResourceCategory;
   scenarios: string[];
   official_url: string;
   rating: number;
@@ -82,12 +97,16 @@ export interface AppRecommendation {
   like_count: number;
   dislike_count: number;
   is_featured?: boolean;
+  status: ContentStatus;
+  author_id: string | null;
   created_at: string;
 }
 
+/** @deprecated 兼容旧代码，等同于 Resource */
+export type AppRecommendation = Resource;
+
 // ============ 课程 ============
-export type CourseCategory = 'AI工具基础' | 'HR场景实操' | 'AI工具进阶';
-export type CourseDifficulty = '入门' | '基础' | '进阶';
+export type CourseDifficulty = '初阶' | '进阶' | '高阶';
 export type ContentType = 'video' | 'doc';
 
 export interface Course {
@@ -96,7 +115,6 @@ export interface Course {
   description: string;
   cover_image: string;
   instructor: string;
-  category: CourseCategory | CourseCategory[];
   difficulty: CourseDifficulty;
   duration: string;
   content_type: ContentType | ContentType[];

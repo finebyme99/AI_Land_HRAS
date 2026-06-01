@@ -6,55 +6,32 @@ HRAS AI Land 是 HR AI 社区平台，基于 Next.js 16 + Supabase + 飞书 OAut
 
 ## 分支策略
 
+**默认在 main 分支上开发**，除非用户特殊要求切换到 feat 分支。
+
 ```
-main (稳定版，Vercel 生产部署源)
-├── feat/case-module         ← 案例库模块
-├── feat/course-module       ← 课程模块
-├── feat/competition-module  ← AI 大赛模块
-├── feat/app-module          ← 应用推荐模块
-└── feat/xxx-module          ← 按需创建新模块
+main (默认开发分支 + Vercel 生产部署源)
+└── feat/xxx-module  ← 仅在用户明确要求时使用
 ```
 
 ### 分支规则
 
-1. **main 分支**：稳定版，所有功能合并后才更新，触发 Vercel 自动部署
-2. **feat/xxx-module**：功能分支，每个模块独立开发，互不干扰
-3. **禁止直接在 main 上开发功能**：所有功能必须在 feat 分支完成后再 PR 合并
+1. **main 分支**：默认开发分支，直接在此提交功能，触发 Vercel 自动部署
+2. **feat/xxx-module**：仅在用户明确要求隔离开发时使用，完成后 PR 合回 main
 
 ## 开发工作流
 
-### 启动新窗口
+### 日常开发
 
 ```bash
-# 1. 进入项目目录
+# 直接在 main 上开发，无需切换分支
 cd /Users/apple/Q/AI/26AI落地/AILand
-
-# 2. 切到目标分支
-git checkout feat/case-module
-
-# 3. 启动 Claude Code
-claude
 ```
 
-### 开发过程中
+### 提交与推送
 
-1. 所有 commit 自动在当前 feat 分支上
-2. 定期 `git push origin feat/xxx-module` 推送到远程备份
-3. 遇到冲突或跨模块改动，先暂停并同步
-
-### 完成后合并
-
-```bash
-# 1. 推送分支
-git push origin feat/case-module
-
-# 2. 在 GitHub 创建 PR: feat/case-module → main
-
-# 3. Review 后合并
-
-# 4. 合并后删除远程分支（可选）
-git push origin --delete feat/case-module
-```
+1. 所有 commit 直接在 main 上
+2. 定期 `git push origin main` 推送到远程
+3. Vercel 自动部署生产环境
 
 ## 技术架构约束
 

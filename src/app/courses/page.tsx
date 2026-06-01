@@ -6,8 +6,8 @@ import { Tag, Select, Input, Spin } from 'antd';
 import { ReadOutlined, UserOutlined, StarFilled, PlusOutlined } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
-import { COURSE_DIFFICULTY_COLORS, COURSE_CATEGORY_OPTIONS, DIFFICULTY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/constants';
-import type { Course, CourseCategory, CourseDifficulty, ContentType } from '@/types';
+import { COURSE_DIFFICULTY_COLORS, DIFFICULTY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/constants';
+import type { Course, CourseDifficulty, ContentType } from '@/types';
 
 export default function CoursesPage() {
   const { isAdmin } = useAuth();
@@ -15,7 +15,6 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [category, setCategory] = useState<CourseCategory | ''>('');
   const [difficulty, setDifficulty] = useState<CourseDifficulty | ''>('');
   const [contentType, setContentType] = useState<ContentType | ''>('');
 
@@ -33,7 +32,6 @@ export default function CoursesPage() {
         .order('created_at', { ascending: false });
 
       if (debouncedSearch) query = query.or(`title.ilike.%${debouncedSearch}%`);
-      if (category) query = query.contains('category', [category]);
       if (difficulty) query = query.eq('difficulty', difficulty);
       if (contentType) query = query.contains('content_type', [contentType]);
 
@@ -46,7 +44,7 @@ export default function CoursesPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, category, difficulty, contentType]);
+  }, [debouncedSearch, difficulty, contentType]);
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
@@ -82,14 +80,6 @@ export default function CoursesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             allowClear
-          />
-          <Select
-            placeholder="分类"
-            className="w-full sm:w-36"
-            value={category || undefined}
-            onChange={(v) => setCategory(v || '')}
-            allowClear
-            options={COURSE_CATEGORY_OPTIONS}
           />
           <Select
             placeholder="难度"
@@ -132,9 +122,6 @@ export default function CoursesPage() {
                     </Tag>
                   ))}
                   <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
-                  {(Array.isArray(course.category) ? course.category : [course.category]).map((cat) => (
-                    <Tag key={cat}>{cat}</Tag>
-                  ))}
                   {course.is_featured && <Tag color="orange">精选</Tag>}
                 </div>
                 <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity">

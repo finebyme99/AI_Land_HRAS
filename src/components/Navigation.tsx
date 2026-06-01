@@ -23,7 +23,7 @@ const navItems = [
   { key: '/cases', label: '案例库', icon: <BookOutlined /> },
   { key: '/competitions', label: 'AI大赛', icon: <TrophyOutlined /> },
   { key: '/courses', label: '公开课', icon: <ReadOutlined /> },
-  { key: '/apps', label: '应用推荐', icon: <AppstoreOutlined /> },
+  { key: '/apps', label: '资源推荐', icon: <AppstoreOutlined /> },
 ];
 
 const userMenuItems = [

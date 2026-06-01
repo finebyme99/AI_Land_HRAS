@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Form, Input, Select, App } from 'antd';
 import { ArrowLeftOutlined, ReadOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
-import { COURSE_CATEGORY_OPTIONS, DIFFICULTY_OPTIONS } from '@/lib/constants';
+import { DIFFICULTY_OPTIONS } from '@/lib/constants';
 
 export default function CreateCoursePage() {
   const { isAdmin } = useAuth();
@@ -40,7 +40,6 @@ export default function CreateCoursePage() {
           description: values.description,
           instructor: values.instructor,
           duration: values.duration,
-          category: values.category || [],
           difficulty: values.difficulty,
           content_type: values.content_type || [],
           cover_image: values.cover_image || '',
@@ -95,14 +94,6 @@ export default function CreateCoursePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
-              <Select
-                mode="multiple"
-                placeholder="选择分类（可多选）"
-                options={COURSE_CATEGORY_OPTIONS}
-                maxTagCount={3}
-              />
-            </Form.Item>
             <Form.Item name="difficulty" label="难度" rules={[{ required: true, message: '请选择难度' }]}>
               <Select placeholder="选择难度" options={DIFFICULTY_OPTIONS} />
             </Form.Item>

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   try {
     const {
       title, description, instructor, duration,
-      category, difficulty, content_type,
+      difficulty, content_type,
       cover_image, courseware_url, video_url,
     } = await request.json();
 
@@ -36,7 +36,6 @@ export async function POST(request: NextRequest) {
         description,
         instructor,
         duration,
-        category: category || [],
         difficulty,
         content_type: content_type || [],
         cover_image: cover_image || '',

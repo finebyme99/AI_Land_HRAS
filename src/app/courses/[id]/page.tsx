@@ -186,8 +186,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  // Normalize category and content_type to arrays
-  const categories = Array.isArray(course.category) ? course.category : [course.category];
+  // Normalize content_type to array
   const contentTypes = Array.isArray(course.content_type) ? course.content_type : [course.content_type];
 
   return (
@@ -205,9 +204,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             </Tag>
           ))}
           <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
-          {categories.map((cat) => (
-            <Tag key={cat}>{cat}</Tag>
-          ))}
           {course.is_featured && <Tag color="orange">精选</Tag>}
           {isAdmin && (
             <button onClick={handleToggleFeatured}
