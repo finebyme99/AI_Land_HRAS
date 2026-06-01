@@ -1,9 +1,11 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY!);
+}
 
 export async function sendMagicLink(email: string, link: string) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'HRAS AI岛 <onboarding@resend.dev>',
     to: email,
     subject: '登录 HRAS AI岛',
