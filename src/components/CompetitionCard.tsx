@@ -231,10 +231,10 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
             </div>
           )}
 
-          {/* ⑥ 解决方案/最新流程 */}
+          {/* ⑥ 解决方案 */}
           {(data.afterProcess || data.implementation || (data.aiTools && data.aiTools.length > 0)) && (
             <div className="mb-4">
-              <SectionLabel>解决方案/最新流程</SectionLabel>
+              <SectionLabel>解决方案</SectionLabel>
               {data.afterProcess && (
                 <div className="text-xs leading-relaxed mb-2 whitespace-pre-line" style={{ color: 'var(--text-primary)' }}>
                   {data.afterProcess}
@@ -260,9 +260,9 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
 
         {/* 右栏：过程对比 + 结果 */}
         <div>
-          {/* ⑦ 量化数据对比 */}
+          {/* ⑦ 量化数据 */}
           <div className="mb-4">
-            <SectionLabel>量化数据对比</SectionLabel>
+            <SectionLabel>量化数据</SectionLabel>
             <div className="rounded-lg p-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
               {/* 表头 */}
               <div className="grid grid-cols-[120px_1fr_40px_1fr] gap-2 text-[10px] font-semibold uppercase tracking-wider pb-1.5 mb-1"
