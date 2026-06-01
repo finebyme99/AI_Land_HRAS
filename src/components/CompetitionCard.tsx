@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Tag, Input, Image, App, Popconfirm } from 'antd';
+import { useState, useEffect } from 'react';
+import { Tag, Input, Image, App, Popover } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -114,6 +114,15 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
   const [scores, setScores] = useState<ReviewScores>(existingReview?.scores ?? {});
   const { message } = App.useApp();
 
+  // existingReview 异步加载到达后，同步评分与评语到本地状态
+  useEffect(() => {
+    if (existingReview) {
+      setScores(existingReview.scores ?? {});
+      setComment(existingReview.reason ?? '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(existingReview?.scores), existingReview?.reason]);
+
   const hasExisting = existingReview?.decision === 'reviewed';
   // 已评审用当时的角色决定维度，未评审用页面顶部选择的角色
   const effectiveRole = hasExisting ? existingReview?.reviewer_role ?? reviewerRole : reviewerRole;
@@ -222,10 +231,10 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
             </div>
           )}
 
-          {/* ⑥ 解决方案/最新流程 */}
+          {/* ⑥ 解决方案 */}
           {(data.afterProcess || data.implementation || (data.aiTools && data.aiTools.length > 0)) && (
             <div className="mb-4">
-              <SectionLabel>解决方案/最新流程</SectionLabel>
+              <SectionLabel>解决方案</SectionLabel>
               {data.afterProcess && (
                 <div className="text-xs leading-relaxed mb-2 whitespace-pre-line" style={{ color: 'var(--text-primary)' }}>
                   {data.afterProcess}
@@ -251,9 +260,9 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
 
         {/* 右栏：过程对比 + 结果 */}
         <div>
-          {/* ⑦ 量化数据对比 */}
+          {/* ⑦ 量化数据 */}
           <div className="mb-4">
-            <SectionLabel>量化数据对比</SectionLabel>
+            <SectionLabel>量化数据</SectionLabel>
             <div className="rounded-lg p-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
               {/* 表头 */}
               <div className="grid grid-cols-[120px_1fr_40px_1fr] gap-2 text-[10px] font-semibold uppercase tracking-wider pb-1.5 mb-1"
@@ -380,88 +389,98 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
       {isReviewer && (
         <div className="mt-4 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 px-5 sm:px-6 pt-4 pb-5 rounded-b-2xl"
           style={{ background: 'rgba(26,58,138,0.03)', borderTop: '1px solid rgba(26,58,138,0.08)' }}>
-          {/* 已评审：显示评分明细（不可修改） */}
-          {hasExisting && existingReview ? (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Tag color="green" className="text-xs">已评审</Tag>
-                <span className="text-xs font-semibold" style={{ color: 'var(--primary)' }}>
-                  总分 {totalScore.toFixed(1)} / {maxScore}
-                </span>
-                <span className="text-[11px] ml-auto" style={{ color: 'var(--text-muted)' }}>
-                  {existingReview.reviewer_role === 'user' ? '用户评委' : existingReview.reviewer_role === 'business' ? '业务评委' : '技术评委'}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-2">
-                {activeDims.map((dim) => {
-                  const val = scores[dim.key];
-                  return (
-                    <div key={dim.key} className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg"
-                      style={{ background: 'rgba(0,0,0,0.02)' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>{dim.label}</span>
-                      <span className="font-semibold" style={{ color: val != null && val >= 4 ? '#16a34a' : val != null && val <= 2 ? '#dc2626' : 'var(--foreground)' }}>
-                        {val ?? '-'} <span className="text-[10px] font-normal" style={{ color: 'var(--text-muted)' }}>×{dim.weight}</span>
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              {existingReview.reason && (
-                <div className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
-                  评语：{existingReview.reason}
-                </div>
-              )}
-            </div>
-          ) : !reviewerRole ? (
+          {/* 评分表单 */}
+          {!reviewerRole ? (
             <div className="text-center py-4 text-xs" style={{ color: 'var(--text-muted)' }}>
               请先在页面顶部选择评委角色后再评分
             </div>
           ) : (
-            /* 评分表单 */
             <div>
               {/* 评分维度 */}
               <div className="space-y-3 mb-3">
-                {activeDims.map((dim) => (
-                  <div key={dim.key} className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.5)' }}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
-                        {dim.label}
-                        <span className="text-[10px] font-normal ml-1.5" style={{ color: 'var(--text-muted)' }}>
-                          权重 ×{dim.weight}
+                {activeDims.map((dim) => {
+                  const currentScore = scores[dim.key];
+                  return (
+                    <div key={dim.key} className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.5)' }}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
+                            {dim.label}
+                            <span className="text-[10px] font-normal ml-1.5" style={{ color: 'var(--text-muted)' }}>
+                              权重 ×{dim.weight}
+                            </span>
+                          </span>
+                          <Popover
+                            trigger="hover"
+                            placement="top"
+                            arrow={false}
+                            overlayClassName="scoring-levels-popover"
+                            content={
+                              <div style={{ maxWidth: 320 }}>
+                                <div className="text-xs font-semibold mb-2" style={{ color: 'var(--foreground)' }}>{dim.label} · 评分参考</div>
+                                {(Object.entries(dim.levels) as [string, string][]).map(([score, desc]) => (
+                                  <div key={score} className="flex gap-2 mb-1.5 last:mb-0">
+                                    <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                                      style={{
+                                        background: Number(score) >= 4 ? 'rgba(22,163,74,0.12)' : Number(score) <= 2 ? 'rgba(220,38,38,0.1)' : 'rgba(26,58,138,0.08)',
+                                        color: Number(score) >= 4 ? '#16a34a' : Number(score) <= 2 ? '#dc2626' : 'var(--primary)',
+                                      }}>
+                                      {score}
+                                    </span>
+                                    <span className="text-[11px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{desc}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            }
+                          >
+                            <span className="text-[10px] cursor-help flex-shrink-0 px-1.5 py-0.5 rounded" style={{ color: 'var(--text-muted)', background: 'rgba(0,0,0,0.03)' }}>
+                              评分参考
+                            </span>
+                          </Popover>
+                        </div>
+                        <span className="text-sm font-bold flex-shrink-0" style={{ color: currentScore != null ? (currentScore >= 4 ? '#16a34a' : currentScore <= 2 ? '#dc2626' : 'var(--primary)') : 'var(--text-muted)' }}>
+                          {currentScore ?? '-'}
                         </span>
-                      </span>
-                      <span className="text-sm font-bold" style={{ color: scores[dim.key] != null ? (scores[dim.key]! >= 4 ? '#16a34a' : scores[dim.key]! <= 2 ? '#dc2626' : 'var(--primary)') : 'var(--text-muted)' }}>
-                        {scores[dim.key] ?? '-'}
-                      </span>
+                      </div>
+                      <div className="flex gap-1 mb-1.5">
+                        {[1, 2, 3, 4, 5].map((v) => (
+                          <button
+                            key={v}
+                            onClick={() => handleScoreChange(dim.key, v)}
+                            className="flex-1 h-7 rounded text-xs font-medium transition-all"
+                            style={{
+                              background: currentScore === v
+                                ? v >= 4 ? 'rgba(22,163,74,0.15)' : v <= 2 ? 'rgba(220,38,38,0.12)' : 'rgba(26,58,138,0.12)'
+                                : 'rgba(0,0,0,0.03)',
+                              color: currentScore === v
+                                ? v >= 4 ? '#16a34a' : v <= 2 ? '#dc2626' : 'var(--primary)'
+                                : 'var(--text-muted)',
+                              border: currentScore === v
+                                ? `1px solid ${v >= 4 ? 'rgba(22,163,74,0.3)' : v <= 2 ? 'rgba(220,38,38,0.25)' : 'rgba(26,58,138,0.25)'}`
+                                : '1px solid transparent',
+                            }}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                      {/* 选中分值的评分参考 */}
+                      {currentScore != null && (
+                        <div className="flex items-start gap-2 px-2 py-1.5 rounded-md text-[11px]"
+                          style={{ background: currentScore >= 4 ? 'rgba(22,163,74,0.06)' : currentScore <= 2 ? 'rgba(220,38,38,0.05)' : 'rgba(26,58,138,0.04)' }}>
+                          <span className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold mt-0.5"
+                            style={{
+                              background: currentScore >= 4 ? 'rgba(22,163,74,0.15)' : currentScore <= 2 ? 'rgba(220,38,38,0.12)' : 'rgba(26,58,138,0.1)',
+                              color: currentScore >= 4 ? '#16a34a' : currentScore <= 2 ? '#dc2626' : 'var(--primary)',
+                            }}>
+                            {currentScore}
+                          </span>
+                          <span style={{ color: 'var(--text-secondary)' }}>{dim.levels[currentScore as 1|2|3|4|5]}</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-1 mb-1.5">
-                      {[1, 2, 3, 4, 5].map((v) => (
-                        <button
-                          key={v}
-                          onClick={() => handleScoreChange(dim.key, v)}
-                          className="flex-1 h-7 rounded text-xs font-medium transition-all"
-                          style={{
-                            background: scores[dim.key] === v
-                              ? v >= 4 ? 'rgba(22,163,74,0.15)' : v <= 2 ? 'rgba(220,38,38,0.12)' : 'rgba(26,58,138,0.12)'
-                              : 'rgba(0,0,0,0.03)',
-                            color: scores[dim.key] === v
-                              ? v >= 4 ? '#16a34a' : v <= 2 ? '#dc2626' : 'var(--primary)'
-                              : 'var(--text-muted)',
-                            border: scores[dim.key] === v
-                              ? `1px solid ${v >= 4 ? 'rgba(22,163,74,0.3)' : v <= 2 ? 'rgba(220,38,38,0.25)' : 'rgba(26,58,138,0.25)'}`
-                              : '1px solid transparent',
-                          }}
-                        >
-                          {v}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex justify-between text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                      <span>1分：{dim.lowSignal}</span>
-                      <span>5分：{dim.highSignal}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* 总分预览 */}
@@ -483,20 +502,19 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
                 maxLength={100}
                 style={{ marginBottom: 8 }}
               />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
                   {comment.length}/100
                 </span>
-                <Popconfirm
-                  title="确认提交评分"
-                  description={<span>总分 <b>{totalScore.toFixed(1)}</b> / {maxScore}，提交后不可修改</span>}
-                  onConfirm={handleConfirmSubmit}
-                  okText="确认提交"
-                  cancelText="再想想"
-                  disabled={!allScored}
-                >
+                <div className="flex items-center gap-2">
+                  {hasExisting && (
+                    <span className="text-[11px]" style={{ color: '#16a34a' }}>
+                      已评审 · 总分 {totalScore.toFixed(1)}/{maxScore}
+                    </span>
+                  )}
                   <button
                     disabled={!allScored}
+                    onClick={handleConfirmSubmit}
                     className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
                     style={{
                       background: allScored ? 'var(--primary)' : 'rgba(0,0,0,0.08)',
@@ -504,9 +522,9 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
                       boxShadow: allScored ? '0 4px 12px rgba(26,58,138,0.25)' : 'none',
                     }}
                   >
-                    <CheckOutlined className="mr-1" /> 提交评分
+                    <CheckOutlined className="mr-1" /> {hasExisting ? '更新评分' : '提交评分'}
                   </button>
-                </Popconfirm>
+                </div>
               </div>
             </div>
           )}

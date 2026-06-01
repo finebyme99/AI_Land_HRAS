@@ -1,23 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-import type { ReviewerRole, ReviewScores, ScoreDimension } from '@/types';
-
-const SCORE_DIMENSIONS: Record<ReviewerRole, ScoreDimension[]> = {
-  user: [
-    { key: 'scenario', label: '场景明确性', weight: 1.5, highSignal: '', lowSignal: '' },
-    { key: 'painPoint', label: '痛点真实性', weight: 1.2, highSignal: '', lowSignal: '' },
-    { key: 'effectiveness', label: '产品实用性', weight: 1.2, highSignal: '', lowSignal: '' },
-  ],
-  business: [
-    { key: 'replicability', label: '可复用性', weight: 1.5, highSignal: '', lowSignal: '' },
-    { key: 'dataReliability', label: '数据详实度', weight: 1.2, highSignal: '', lowSignal: '' },
-    { key: 'breakthrough', label: '突破开创性', weight: 1.2, highSignal: '', lowSignal: '' },
-  ],
-  tech: [
-    { key: 'techUsability', label: '技术可用性', weight: 1.2, highSignal: '', lowSignal: '' },
-    { key: 'toolFit', label: '工具合理性', weight: 1.0, highSignal: '', lowSignal: '' },
-  ],
-};
+import type { ReviewerRole, ReviewScores } from '@/types';
+import { SCORE_DIMENSIONS } from '@/types';
 
 function computeWeightedScore(scores: ReviewScores, role: ReviewerRole): number {
   const dims = SCORE_DIMENSIONS[role];
@@ -68,7 +52,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '查询失败' }, { status: 500 });
   }
 
-  return NextResponse.json({ reviews });
+  return NextResponse.json({ reviews }, {
+    headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
+  });
 }
 
 // POST /api/competitions/reviews
@@ -125,10 +111,7 @@ export async function POST(request: NextRequest) {
   let error;
 
   if (existing) {
-    // 已有旧记录 → 更新为新评分
-    if (existing.decision === 'reviewed') {
-      return NextResponse.json({ error: '该方案已评审，不可重复提交' }, { status: 409 });
-    }
+    // 已有记录 → 更新评分
     const result = await getSupabaseAdmin()
       .from('competition_reviews')
       .update(row)
@@ -149,7 +132,10 @@ export async function POST(request: NextRequest) {
   }
 
   if (error) {
-    return NextResponse.json({ error: '评审失败' }, { status: 500 });
+    return NextResponse.json({ error: `评审失败: ${error.message}` }, { status: 500 });
+  }
+  if (!review) {
+    return NextResponse.json({ error: '评审保存失败，未返回数据' }, { status: 500 });
   }
 
   return NextResponse.json({ review, total });
