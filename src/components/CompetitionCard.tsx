@@ -282,6 +282,26 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
               {data.oldPeopleCount != null && (
                 <MetricRow label="执行人数" before={data.oldPeopleCount} after={data.newPeopleCount} unit="人" />
               )}
+              {/* 合计节省工时 + 提效% */}
+              {(data.monthlySavedHours != null || data.efficiencyRate != null) && (
+                <div className="flex items-center justify-between gap-3 pt-2 mt-1">
+                  <div className="flex-1 grid grid-cols-[120px_1fr] gap-2 items-center text-xs">
+                    <span className="font-semibold" style={{ color: 'var(--foreground)' }}>月均节省工时</span>
+                    <span className="font-bold" style={{ color: '#16a34a' }}>
+                      {data.monthlySavedHours != null ? <>{data.monthlySavedHours}<span className="text-[10px] ml-0.5" style={{ color: 'var(--text-muted)' }}>h/月</span></> : '-'}
+                    </span>
+                  </div>
+                  {data.efficiencyRate != null && (
+                    <div className="flex-shrink-0 px-3 py-1.5 rounded-lg text-center"
+                      style={{ background: 'rgba(22,163,74,0.1)' }}>
+                      <div className="text-[10px] font-medium mb-0.5" style={{ color: 'var(--text-muted)' }}>提效</div>
+                      <div className="text-lg font-extrabold leading-none" style={{ color: '#16a34a' }}>
+                        +{(data.efficiencyRate * 100).toFixed(2)}%
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {/* AI 费用 */}
               {data.aiCost != null && data.aiCost > 0 && (
                 <div className="grid grid-cols-[120px_1fr_40px_1fr] gap-2 items-center text-xs pt-2">

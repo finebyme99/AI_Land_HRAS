@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Spin, App, Switch } from 'antd';
-import { SyncOutlined, TrophyOutlined, CalendarOutlined, UserOutlined, BankOutlined, CodeOutlined } from '@ant-design/icons';
+import { SyncOutlined, TrophyOutlined, CalendarOutlined, UserOutlined, BankOutlined, CodeOutlined, BookOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
 import type { Submission } from '@/components/CompetitionCard';
@@ -127,9 +127,10 @@ export default function CompetitionsPage() {
     }
   };
 
-  // 用户评委只看 reviewers 包含自己的方案，业务/技术评委看全部
+  // 用户评委只看 reviewers 包含自己的方案（模糊匹配），业务/技术评委看全部
+  const userName = user?.name ?? '';
   const roleFiltered = reviewerRole === 'user'
-    ? items.filter((i) => i.reviewers?.includes(user?.name ?? ''))
+    ? items.filter((i) => userName && i.reviewers?.some((r: string) => r.includes(userName) || userName.includes(r)))
     : items;
   // 只看未评审
   const displayItems = onlyPending
@@ -238,23 +239,33 @@ export default function CompetitionsPage() {
               const reviewedCount = displayItems.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
               const pending = displayItems.length - reviewedCount;
               return (
-                <div className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs"
-                  style={{ background: 'rgba(26,58,138,0.02)', border: '1px solid rgba(26,58,138,0.05)' }}>
-                  <span className="font-semibold" style={{ color: 'var(--primary)' }}>评审进度</span>
-                  <span style={{ color: 'var(--text-secondary)' }}>
-                    待审 <b style={{ color: 'var(--foreground)' }}>{pending}</b> 条
-                  </span>
-                  <span style={{ color: '#16a34a' }}>
-                    已评审 <b>{reviewedCount}</b> 条
-                  </span>
-                  <span style={{ color: 'var(--text-muted)' }}>
-                    共 {displayItems.length} 条
-                  </span>
-                  <span className="ml-auto flex items-center gap-1.5">
-                    <Switch size="small" checked={onlyPending} onChange={setOnlyPending} />
-                    <span style={{ color: 'var(--text-secondary)' }}>只看未评审</span>
-                  </span>
-                </div>
+                <>
+                  <div className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs"
+                    style={{ background: 'rgba(26,58,138,0.02)', border: '1px solid rgba(26,58,138,0.05)' }}>
+                    <span className="font-semibold" style={{ color: 'var(--primary)' }}>评审进度</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      待审 <b style={{ color: 'var(--foreground)' }}>{pending}</b> 条
+                    </span>
+                    <span style={{ color: '#16a34a' }}>
+                      已评审 <b>{reviewedCount}</b> 条
+                    </span>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      共 {displayItems.length} 条
+                    </span>
+                    <span className="ml-auto flex items-center gap-1.5">
+                      <Switch size="small" checked={onlyPending} onChange={setOnlyPending} />
+                      <span style={{ color: 'var(--text-secondary)' }}>只看未评审</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center px-4 py-2 rounded-xl text-xs mt-1.5"
+                    style={{ background: 'rgba(26,58,138,0.015)', border: '1px solid rgba(26,58,138,0.04)' }}>
+                    <a href="https://ztn.feishu.cn/docx/NvPAdv4MhojKAxxMHAlctD9knhc" target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+                      style={{ color: 'var(--primary)' }}>
+                      <BookOutlined /> 点击查看评审指南
+                    </a>
+                  </div>
+                </>
               );
             })()}
           </div>
