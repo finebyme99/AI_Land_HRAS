@@ -32,21 +32,26 @@ export async function POST(request: NextRequest) {
       // Remove
       await getSupabaseAdmin().from(table).delete().eq('id', existing.id);
       if (countTable) {
-        const { data: item } = await getSupabaseAdmin().from(countTable).select(countField).eq('id', target_id).single();
+        const { data: item, error: fetchErr } = await getSupabaseAdmin().from(countTable).select(countField).eq('id', target_id).single();
+        if (fetchErr) console.error('Fetch count error:', fetchErr);
         if (item) {
           const val = (item as Record<string, number>)[countField] || 0;
-          await getSupabaseAdmin().from(countTable).update({ [countField]: Math.max(0, val - 1) }).eq('id', target_id);
+          const { error: updateErr } = await getSupabaseAdmin().from(countTable).update({ [countField]: Math.max(0, val - 1) }).eq('id', target_id);
+          if (updateErr) console.error('Update count error:', updateErr);
         }
       }
       return NextResponse.json({ active: false });
     } else {
       // Add
-      await getSupabaseAdmin().from(table).insert({ user_id: userId, target_type, target_id });
+      const { error: insertErr } = await getSupabaseAdmin().from(table).insert({ user_id: userId, target_type, target_id });
+      if (insertErr) console.error('Insert interaction error:', insertErr);
       if (countTable) {
-        const { data: item } = await getSupabaseAdmin().from(countTable).select(countField).eq('id', target_id).single();
+        const { data: item, error: fetchErr } = await getSupabaseAdmin().from(countTable).select(countField).eq('id', target_id).single();
+        if (fetchErr) console.error('Fetch count error:', fetchErr);
         if (item) {
           const val = (item as Record<string, number>)[countField] || 0;
-          await getSupabaseAdmin().from(countTable).update({ [countField]: val + 1 }).eq('id', target_id);
+          const { error: updateErr } = await getSupabaseAdmin().from(countTable).update({ [countField]: val + 1 }).eq('id', target_id);
+          if (updateErr) console.error('Update count error:', updateErr);
         }
       }
       return NextResponse.json({ active: true });
@@ -57,14 +62,35 @@ export async function POST(request: NextRequest) {
 }
 
 // GET /api/interactions?target_type=case&target_id=xxx — 查询交互状态
+// GET /api/interactions?target_type=course&target_id=xxx&action=count — 查询计数
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   const { searchParams } = new URL(request.url);
   const target_type = searchParams.get('target_type');
   const target_id = searchParams.get('target_id');
+  const action = searchParams.get('action');
 
   if (!target_type || !target_id) {
     return NextResponse.json({ error: '参数不完整' }, { status: 400 });
+  }
+
+  // Return actual counts from database
+  if (action === 'count') {
+    const countTable = target_type === 'course' ? 'courses' : target_type === 'case' ? 'cases' : null;
+    if (!countTable) {
+      return NextResponse.json({ error: '不支持的类型' }, { status: 400 });
+    }
+    const { data, error } = await getSupabaseAdmin()
+      .from(countTable)
+      .select('like_count, bookmark_count')
+      .eq('id', target_id)
+      .maybeSingle();
+    if (error) {
+      console.error('Fetch count error:', error);
+      return NextResponse.json({ like_count: 0, bookmark_count: 0 });
+    }
+    console.log('Count data from DB:', data);
+    return NextResponse.json(data || { like_count: 0, bookmark_count: 0 });
   }
 
   const result: Record<string, boolean> = {};

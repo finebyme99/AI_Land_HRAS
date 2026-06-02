@@ -3,20 +3,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Tag, Select, Input, Spin } from 'antd';
-import { ReadOutlined, UserOutlined, StarFilled, PlusOutlined, BookOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { ReadOutlined, UserOutlined, PlusOutlined, BookOutlined, PlayCircleOutlined, LikeFilled, LikeOutlined, BookFilled } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { COURSE_DIFFICULTY_COLORS, DIFFICULTY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/constants';
 import type { Course, CourseDifficulty, ContentType } from '@/types';
 
 export default function CoursesPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [difficulty, setDifficulty] = useState<CourseDifficulty | ''>('');
   const [contentType, setContentType] = useState<ContentType | ''>('');
+  const [interactions, setInteractions] = useState<Record<string, { liked: boolean; bookmarked: boolean }>>({});
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -47,6 +48,56 @@ export default function CoursesPage() {
   }, [debouncedSearch, difficulty, contentType]);
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
+
+  // Fetch interaction states for all courses
+  useEffect(() => {
+    if (!user || courses.length === 0) return;
+    const fetchInteractions = async () => {
+      const results: Record<string, { liked: boolean; bookmarked: boolean }> = {};
+      await Promise.all(
+        courses.map(async (course) => {
+          try {
+            const res = await fetch(`/api/interactions?target_type=course&target_id=${course.id}`);
+            if (res.ok) {
+              const data = await res.json();
+              results[course.id] = { liked: data.liked, bookmarked: data.bookmarked };
+            }
+          } catch {}
+        })
+      );
+      setInteractions(results);
+    };
+    fetchInteractions();
+  }, [courses, user]);
+
+  const toggleInteraction = async (courseId: string, action: 'like' | 'bookmark') => {
+    if (!user) return;
+    try {
+      const res = await fetch('/api/interactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, target_type: 'course', target_id: courseId }),
+      });
+      if (res.ok) {
+        const { active } = await res.json();
+        setInteractions((prev) => ({
+          ...prev,
+          [courseId]: { ...prev[courseId], [action === 'like' ? 'liked' : 'bookmarked']: active },
+        }));
+        // Refetch actual count from database
+        const countRes = await fetch(`/api/interactions?target_type=course&target_id=${courseId}&action=count`);
+        if (countRes.ok) {
+          const countData = await countRes.json();
+          setCourses((prev) =>
+            prev.map((c) => {
+              if (c.id !== courseId) return c;
+              return { ...c, like_count: countData.like_count ?? c.like_count, bookmark_count: countData.bookmark_count ?? c.bookmark_count };
+            })
+          );
+        }
+      }
+    } catch {}
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -160,11 +211,21 @@ export default function CoursesPage() {
                   <span className="flex items-center gap-1">
                     <UserOutlined /> {course.instructor} · {course.duration}
                   </span>
-                  <span className="flex items-center gap-2">
-                    <span className="flex items-center gap-1" style={{ color: '#c4883a' }}>
-                      <StarFilled /> {course.rating}
+                  <span className="flex items-center gap-3">
+                    <span
+                      className="flex items-center gap-1 cursor-pointer transition-colors hover:text-red-500"
+                      style={{ color: interactions[course.id]?.liked ? '#e74c3c' : undefined }}
+                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleInteraction(course.id, 'like'); }}
+                    >
+                      {interactions[course.id]?.liked ? <LikeFilled /> : <LikeOutlined />} {course.like_count ?? 0}
                     </span>
-                    <span>{course.student_count} 人学习</span>
+                    <span
+                      className="flex items-center gap-1 cursor-pointer transition-colors hover:text-yellow-500"
+                      style={{ color: interactions[course.id]?.bookmarked ? '#f59e0b' : undefined }}
+                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleInteraction(course.id, 'bookmark'); }}
+                    >
+                      {interactions[course.id]?.bookmarked ? <BookFilled /> : <BookOutlined />} {course.bookmark_count ?? 0}
+                    </span>
                   </span>
                 </div>
               </div>

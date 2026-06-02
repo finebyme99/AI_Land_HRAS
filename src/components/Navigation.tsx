@@ -118,6 +118,7 @@ export default function Navigation() {
                     ] : []),
                     ...(isAdmin ? [
                       { key: '/admin/users', label: <Link href="/admin/users">用户管理</Link> },
+                      { key: '/admin/reminders', label: <Link href="/admin/reminders">提醒管理</Link> },
                       { key: '/admin/settings', label: <Link href="/admin/settings">平台设置</Link> },
                     ] : []),
                     { type: 'divider' as const },
@@ -216,6 +217,7 @@ export default function Navigation() {
                   ] : []),
                   ...(isAdmin ? [
                     { key: '/admin/users', label: <Link href="/admin/users" onClick={() => setDrawerOpen(false)}>用户管理</Link> },
+                    { key: '/admin/reminders', label: <Link href="/admin/reminders" onClick={() => setDrawerOpen(false)}>提醒管理</Link> },
                     { key: '/admin/settings', label: <Link href="/admin/settings" onClick={() => setDrawerOpen(false)}>平台设置</Link> },
                   ] : []),
                   { type: 'divider' as const } as const,

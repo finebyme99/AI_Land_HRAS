@@ -3,7 +3,6 @@ import "./globals.css";
 import AntdProvider from "@/lib/antd-registry";
 import { AuthProvider } from "@/lib/auth-context";
 import Navigation from "@/components/Navigation";
-import CursorBot from "@/components/CursorBot";
 
 export const metadata: Metadata = {
   title: "HRAS AI岛 — HR 的 AI 社区",
@@ -30,7 +29,6 @@ export default function RootLayout({
           <div className="blob blob-3" />
           <div className="blob blob-4" />
         </div>
-        <CursorBot />
         <AntdProvider>
           <AuthProvider>
             <Navigation />
