@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Spin, App, Switch } from 'antd';
-import { SyncOutlined, TrophyOutlined, CalendarOutlined, UserOutlined, BankOutlined, CodeOutlined, BookOutlined } from '@ant-design/icons';
+import { Spin, App, Switch, Button } from 'antd';
+import { SyncOutlined, TrophyOutlined, CalendarOutlined, UserOutlined, BankOutlined, CodeOutlined, BookOutlined, CheckCircleOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
 import type { Submission } from '@/components/CompetitionCard';
@@ -18,6 +18,7 @@ export default function CompetitionsPage() {
   const [reviews, setReviews] = useState<Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }>>({});
   const [reviewerRole, setReviewerRole] = useState<ReviewerRole | null>(null);
   const [roleLocked, setRoleLocked] = useState(false);
+  const [finalized, setFinalized] = useState(false);
   const [onlyPending, setOnlyPending] = useState(false);
   const { message } = App.useApp();
 
@@ -77,12 +78,30 @@ export default function CompetitionsPage() {
   useEffect(() => {
     if (isReviewer) {
       fetch('/api/competitions/reviews?mine=true')
-        .then((r) => r.json())
+        .then(async (r) => {
+          const data = await r.json();
+          if (!r.ok) throw new Error(data.error || '加载评审记录失败');
+          return data;
+        })
         .then((data) => {
           const reviewsList: CompetitionReview[] = data.reviews ?? [];
+          // 兼容旧字段名迁移
+          const LEGACY_MAP: Record<string, keyof ReviewScores> = {
+            scenario: 'productEffectiveness',
+            painPoint: 'dataConsistency',
+            effectiveness: 'productUsability',
+          };
           const map: Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }> = {};
           reviewsList.forEach((r) => {
-            map[r.submission_id] = { decision: r.decision, scores: r.scores, reason: r.reason, reviewer_role: r.reviewer_role };
+            let scores = r.scores;
+            if (scores) {
+              const migrated: ReviewScores = {};
+              for (const [k, v] of Object.entries(scores)) {
+                migrated[LEGACY_MAP[k] ?? (k as keyof ReviewScores)] = v as number;
+              }
+              scores = migrated;
+            }
+            map[r.submission_id] = { decision: r.decision, scores, reason: r.reason, reviewer_role: r.reviewer_role };
           });
           setReviews(map);
           // 已有新机制评审记录，锁定角色
@@ -92,7 +111,10 @@ export default function CompetitionsPage() {
             setRoleLocked(true);
           }
         })
-        .catch(() => {});
+        .catch((err) => {
+          console.error('[评审加载失败]', err);
+          message.error(err.message || '加载评审记录失败');
+        });
     }
   }, [isReviewer]);
 
@@ -121,7 +143,7 @@ export default function CompetitionsPage() {
         [submissionId]: { decision: data.review.decision, scores: data.review.scores, reason: data.review.reason, reviewer_role: data.review.reviewer_role },
       }));
       setRoleLocked(true);
-      message.success('评分已提交');
+      message.success('评分已保存');
     } catch (err) {
       message.error(err instanceof Error ? err.message : '评审失败');
     }
@@ -132,8 +154,10 @@ export default function CompetitionsPage() {
   const roleFiltered = reviewerRole === 'user'
     ? items.filter((i) => userName && i.reviewers?.some((r: string) => r.includes(userName) || userName.includes(r)))
     : items;
-  // 只看未评审
-  const displayItems = onlyPending
+  // 只看未评审（全部评完时自动取消筛选，展示所有已评审方案；评审记录未加载完时不过滤）
+  const reviewsLoaded = Object.keys(reviews).length > 0;
+  const pendingCount = roleFiltered.filter((i) => reviews[i.id]?.decision !== 'reviewed').length;
+  const displayItems = onlyPending && reviewsLoaded && pendingCount > 0
     ? roleFiltered.filter((i) => reviews[i.id]?.decision !== 'reviewed')
     : roleFiltered;
 
@@ -235,41 +259,44 @@ export default function CompetitionsPage() {
                 </span>
               )}
             </div>
-            {(() => {
-              const reviewedCount = displayItems.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
-              const pending = displayItems.length - reviewedCount;
-              return (
-                <>
-                  <div className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs"
-                    style={{ background: 'rgba(26,58,138,0.02)', border: '1px solid rgba(26,58,138,0.05)' }}>
-                    <span className="font-semibold" style={{ color: 'var(--primary)' }}>评审进度</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>
-                      待审 <b style={{ color: 'var(--foreground)' }}>{pending}</b> 条
-                    </span>
-                    <span style={{ color: '#16a34a' }}>
-                      已评审 <b>{reviewedCount}</b> 条
-                    </span>
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      共 {displayItems.length} 条
-                    </span>
-                    <span className="ml-auto flex items-center gap-1.5">
-                      <Switch size="small" checked={onlyPending} onChange={setOnlyPending} />
-                      <span style={{ color: 'var(--text-secondary)' }}>只看未评审</span>
-                    </span>
-                  </div>
-                  <div className="flex items-center px-4 py-2 rounded-xl text-xs mt-1.5"
-                    style={{ background: 'rgba(26,58,138,0.015)', border: '1px solid rgba(26,58,138,0.04)' }}>
-                    <a href="https://ztn.feishu.cn/docx/NvPAdv4MhojKAxxMHAlctD9knhc" target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 hover:opacity-70 transition-opacity"
-                      style={{ color: 'var(--primary)' }}>
-                      <BookOutlined /> 点击查看评审指南
-                    </a>
-                  </div>
-                </>
-              );
-            })()}
+            <div className="flex items-center px-4 py-2 rounded-xl text-xs"
+              style={{ background: 'rgba(26,58,138,0.015)', border: '1px solid rgba(26,58,138,0.04)' }}>
+              <a href="https://ztn.feishu.cn/docx/NvPAdv4MhojKAxxMHAlctD9knhc" target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+                style={{ color: 'var(--primary)' }}>
+                <BookOutlined /> 点击查看评审指南
+              </a>
+            </div>
           </div>
         )}
+
+        {/* 评审进度条 - 固定在导航栏下方 */}
+        {isReviewer && loaded && displayItems.length > 0 && (() => {
+          const reviewedCount = roleFiltered.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
+          const pending = roleFiltered.length - reviewedCount;
+          return (
+            <div className="fixed left-0 right-0 z-40 flex justify-center pointer-events-none"
+              style={{ top: '56px' }}>
+              <div className="flex items-center gap-4 px-5 py-2 rounded-full text-xs pointer-events-auto max-w-3xl mx-4"
+                style={{ background: 'rgba(245,240,235,0.9)', backdropFilter: 'blur(16px)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(255,255,255,0.6)' }}>
+                <span className="font-semibold" style={{ color: 'var(--primary)' }}>评审进度</span>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  待审 <b style={{ color: 'var(--foreground)' }}>{pending}</b>
+                </span>
+                <span style={{ color: '#16a34a' }}>
+                  已评 <b>{reviewedCount}</b>
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  共 {displayItems.length}
+                </span>
+                <span className="flex items-center gap-1.5 border-l pl-3" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+                  <Switch size="small" checked={onlyPending} onChange={setOnlyPending} />
+                  <span style={{ color: 'var(--text-secondary)' }}>未评审</span>
+                </span>
+              </div>
+            </div>
+          );
+        })()}
 
         {loading && (
           <div className="flex justify-center py-12">
@@ -297,6 +324,33 @@ export default function CompetitionsPage() {
                 onReview={handleReview}
               />
             ))}
+            {/* 定稿按钮：评委角色 + 所有方案已评审时显示 */}
+            {isReviewer && reviewerRole && (() => {
+              const reviewedCount = displayItems.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
+              const allDone = reviewedCount === displayItems.length;
+              const canFinalize = allDone && !finalized;
+              return (
+                <div className="flex items-center justify-center gap-3 pt-2 pb-1">
+                  <button
+                    disabled={!canFinalize}
+                    onClick={() => {
+                      setFinalized(true);
+                      setRoleLocked(true);
+                      message.success('评分已定稿，角色已锁定');
+                    }}
+                    className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                    style={{
+                      background: finalized ? 'rgba(22,163,74,0.1)' : canFinalize ? 'var(--primary)' : 'rgba(0,0,0,0.06)',
+                      color: finalized ? '#16a34a' : canFinalize ? '#fff' : 'var(--text-muted)',
+                      boxShadow: canFinalize ? '0 4px 16px rgba(26,58,138,0.3)' : 'none',
+                      border: finalized ? '1px solid rgba(22,163,74,0.2)' : 'none',
+                    }}
+                  >
+                    {finalized ? <><CheckCircleOutlined className="mr-1.5" />已定稿</> : allDone ? <><LockOutlined className="mr-1.5" />提交定稿</> : `待评审完成 (${reviewedCount}/${displayItems.length})`}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         )}
       </section>

@@ -1,23 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import type { ReviewScores, ReviewerRole } from '@/types';
-
-const SCORE_DIMENSIONS: Record<ReviewerRole, { key: keyof ReviewScores; label: string; weight: number }[]> = {
-  user: [
-    { key: 'scenario', label: '场景明确性', weight: 1.5 },
-    { key: 'painPoint', label: '痛点真实性', weight: 1.2 },
-    { key: 'effectiveness', label: '产品实用性', weight: 1.2 },
-  ],
-  business: [
-    { key: 'replicability', label: '可复用性', weight: 1.5 },
-    { key: 'dataReliability', label: '数据详实度', weight: 1.2 },
-    { key: 'breakthrough', label: '突破开创性', weight: 1.2 },
-  ],
-  tech: [
-    { key: 'techUsability', label: '技术可用性', weight: 1.2 },
-    { key: 'toolFit', label: '工具合理性', weight: 1.0 },
-  ],
-};
+import { SCORE_DIMENSIONS } from '@/types';
 
 function computeWeightedScore(scores: ReviewScores, role: ReviewerRole): number {
   const dims = SCORE_DIMENSIONS[role];
