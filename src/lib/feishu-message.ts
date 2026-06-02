@@ -28,28 +28,22 @@ export async function sendFeishuMessage(params: SendMessageParams): Promise<Mess
   try {
     const token = await getTenantAccessToken();
 
-    // 根据接收人类型构建请求体
+    // receive_id_type 必须作为 URL 查询参数
+    const url = new URL(`${FEISHU_API_BASE}/im/v1/messages`);
+    url.searchParams.set('receive_id_type', recipientType);
+
     const requestBody: any = {
       receive_id: recipientId,
       msg_type: messageType,
       content: typeof content === 'string' ? content : JSON.stringify(content),
     };
 
-    // 设置接收人类型
-    if (recipientType === 'user_id') {
-      requestBody.receive_id_type = 'user_id';
-    } else if (recipientType === 'open_id') {
-      requestBody.receive_id_type = 'open_id';
-    } else if (recipientType === 'chat_id') {
-      requestBody.receive_id_type = 'chat_id';
-    }
-
     // 根据优先级设置消息紧急程度
     if (priority === 'high') {
       requestBody.urgent = true;
     }
 
-    const response = await fetch(`${FEISHU_API_BASE}/im/v1/messages`, {
+    const response = await fetch(url.toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
