@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Table, Tag, Button, Modal, Form, Input, Select, Switch, message,
+  Table, Tag, Button, Modal, Form, Input, Select, Switch, App,
   Space, Popconfirm, TimePicker, Tooltip,
 } from 'antd';
 import {
@@ -53,6 +53,7 @@ const WEEKDAY_OPTIONS = [
 export default function AdminRemindersPage() {
   const router = useRouter();
   const { isAdmin, loading: authLoading } = useAuth();
+  const { message } = App.useApp();
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [loading, setLoading] = useState(true);
