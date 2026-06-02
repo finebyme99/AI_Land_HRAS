@@ -17,6 +17,7 @@ export default function CoursesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [difficulty, setDifficulty] = useState<CourseDifficulty | ''>('');
   const [contentType, setContentType] = useState<ContentType | ''>('');
+  const [instructor, setInstructor] = useState('');
   const [interactions, setInteractions] = useState<Record<string, { liked: boolean; bookmarked: boolean }>>({});
   const [counts, setCounts] = useState<Record<string, { like_count: number; bookmark_count: number }>>({});
 
@@ -107,6 +108,15 @@ export default function CoursesPage() {
     } catch {}
   };
 
+  // Client-side instructor filter + options
+  const instructorOptions = [...new Set(courses.map((c) => c.instructor).filter(Boolean))]
+    .sort()
+    .map((name) => ({ label: name, value: name }));
+
+  const displayCourses = instructor
+    ? courses.filter((c) => c.instructor === instructor)
+    : courses;
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Header */}
@@ -156,6 +166,16 @@ export default function CoursesPage() {
             allowClear
             options={CONTENT_TYPE_OPTIONS}
           />
+          <Select
+            placeholder="讲师"
+            className="w-full sm:w-36"
+            value={instructor || undefined}
+            onChange={(v) => setInstructor(v || '')}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            options={instructorOptions}
+          />
         </div>
       </div>
 
@@ -167,9 +187,14 @@ export default function CoursesPage() {
           <ReadOutlined className="text-3xl mb-3" style={{ color: 'var(--text-muted)' }} />
           <p style={{ color: 'var(--text-muted)' }}>暂无课程</p>
         </div>
+      ) : displayCourses.length === 0 ? (
+        <div className="text-center py-16 glass rounded-[20px]" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          <ReadOutlined className="text-3xl mb-3" style={{ color: 'var(--text-muted)' }} />
+          <p style={{ color: 'var(--text-muted)' }}>没有符合条件的课程</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {courses.map((course) => (
+          {displayCourses.map((course) => (
             <div key={course.id} className="glass relative overflow-hidden rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
               style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
               <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 hover:opacity-100 transition-opacity" style={{ background: 'var(--gradient-primary)' }} />
