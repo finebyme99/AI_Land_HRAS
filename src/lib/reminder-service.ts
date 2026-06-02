@@ -26,18 +26,22 @@ export interface ReminderTarget {
 
 /**
  * 计算下次发送时间
+ * @param sendDate - 仅 once 类型使用，格式 "YYYY-MM-DD"，为空则默认明天
  */
-export function calcNextSendAt(frequency: string, sendTime: string, sendDay?: number | null): Date {
+export function calcNextSendAt(frequency: string, sendTime: string, sendDay?: number | null, sendDate?: string | null): Date {
   const [h, m] = sendTime.split(':').map(Number);
   const now = new Date();
-  const next = new Date();
-  next.setHours(h, m, 0, 0);
 
   if (frequency === 'once') {
-    // 如果今天的时间已过，设为明天
-    if (next <= now) next.setDate(next.getDate() + 1);
+    // once: 用指定日期，没指定则默认明天
+    const next = sendDate ? new Date(sendDate + 'T00:00:00') : new Date();
+    if (!sendDate) next.setDate(next.getDate() + 1);
+    next.setHours(h, m, 0, 0);
     return next;
   }
+
+  const next = new Date();
+  next.setHours(h, m, 0, 0);
 
   if (frequency === 'daily') {
     if (next <= now) next.setDate(next.getDate() + 1);
@@ -106,7 +110,7 @@ export async function sendPreviewToUser(
   feishuOpenId: string,
   title: string,
   content: string
-): Promise<{ status: string; error?: string }> {
+): Promise<{ status: string; error?: string; messageId?: string }> {
   const messageContent = JSON.stringify({ text: `📌 [预览] ${title}\n\n${content}` });
 
   const result = await sendFeishuMessage({
@@ -116,7 +120,7 @@ export async function sendPreviewToUser(
     content: messageContent,
   });
 
-  return { status: result.status, error: result.error };
+  return { status: result.status, error: result.error, messageId: result.messageId };
 }
 
 /**

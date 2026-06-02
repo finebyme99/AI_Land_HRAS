@@ -34,7 +34,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
   const body = await request.json();
-  const { title, content, frequency, send_time, send_day, is_active, user_ids } = body;
+  const { title, content, frequency, send_time, send_day, send_date, is_active, user_ids } = body;
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (title !== undefined) updates.title = title;
@@ -45,14 +45,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     updates.frequency = frequency;
     updates.send_time = send_time || '09:00';
     updates.send_day = frequency === 'weekly' ? (send_day || 1) : null;
-    updates.next_send_at = calcNextSendAt(frequency, send_time || '09:00', send_day).toISOString();
+    updates.send_date = frequency === 'once' ? send_date : null;
+    updates.next_send_at = calcNextSendAt(frequency, send_time || '09:00', send_day, send_date).toISOString();
   } else if (send_time !== undefined) {
     updates.send_time = send_time;
-    // 重新获取当前 frequency 来算 next_send_at
     const { data: current } = await getSupabaseAdmin()
-      .from('reminders').select('frequency, send_day').eq('id', id).single();
+      .from('reminders').select('frequency, send_day, send_date').eq('id', id).single();
     if (current) {
-      updates.next_send_at = calcNextSendAt(current.frequency, send_time, current.send_day).toISOString();
+      updates.next_send_at = calcNextSendAt(current.frequency, send_time, current.send_day, current.send_date).toISOString();
     }
   }
 

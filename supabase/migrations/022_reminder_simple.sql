@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS reminders (
   frequency TEXT NOT NULL DEFAULT 'once',       -- once / daily / weekly
   send_time TIME NOT NULL DEFAULT '09:00',      -- 每天发送时间
   send_day INT,                                  -- weekly 时: 1=周一 ... 7=周日
+  send_date DATE,                                -- once 时: 指定发送日期
   next_send_at TIMESTAMPTZ,                      -- 下次发送时间（cron 扫描用）
   is_active BOOLEAN DEFAULT true,
   created_by UUID REFERENCES users(id),

@@ -35,16 +35,19 @@ export async function POST(request: NextRequest) {
   if (!admin) return NextResponse.json({ error: '仅管理员可创建' }, { status: 403 });
 
   const body = await request.json();
-  const { title, content, frequency, send_time, send_day, user_ids } = body;
+  const { title, content, frequency, send_time, send_day, send_date, user_ids } = body;
 
   if (!title || !frequency || !send_time) {
     return NextResponse.json({ error: '缺少必填字段' }, { status: 400 });
+  }
+  if (frequency === 'once' && !send_date) {
+    return NextResponse.json({ error: '仅一次类型需要选择发送日期' }, { status: 400 });
   }
   if (user_ids && !Array.isArray(user_ids)) {
     return NextResponse.json({ error: 'user_ids 应为数组' }, { status: 400 });
   }
 
-  const nextSendAt = calcNextSendAt(frequency, send_time, send_day);
+  const nextSendAt = calcNextSendAt(frequency, send_time, send_day, send_date);
 
   const { data: reminder, error } = await getSupabaseAdmin()
     .from('reminders')
@@ -54,6 +57,7 @@ export async function POST(request: NextRequest) {
       frequency,
       send_time,
       send_day: frequency === 'weekly' ? send_day || 1 : null,
+      send_date: frequency === 'once' ? send_date : null,
       next_send_at: nextSendAt.toISOString(),
       is_active: true,
       created_by: admin.id,

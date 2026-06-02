@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Table, Tag, Button, Modal, Form, Input, Select, Switch, App,
-  Space, Popconfirm, TimePicker, Tooltip,
+  Space, Popconfirm, TimePicker, DatePicker, Tooltip,
 } from 'antd';
 import {
   BellOutlined, PlusOutlined, EditOutlined, DeleteOutlined,
@@ -27,6 +27,7 @@ interface ReminderItem {
   frequency: string;
   send_time: string;
   send_day: number | null;
+  send_date: string | null;
   next_send_at: string | null;
   is_active: boolean;
   created_at: string;
@@ -115,6 +116,7 @@ export default function AdminRemindersPage() {
       frequency: item.frequency,
       send_time: dayjs(item.send_time, 'HH:mm'),
       send_day: item.send_day,
+      send_date: item.send_date ? dayjs(item.send_date) : null,
       is_active: item.is_active,
       user_ids: item.reminder_targets?.map((t) => t.user_id) || [],
     });
@@ -130,6 +132,7 @@ export default function AdminRemindersPage() {
         frequency: values.frequency,
         send_time: values.send_time.format('HH:mm'),
         send_day: values.frequency === 'weekly' ? values.send_day : null,
+        send_date: values.frequency === 'once' ? values.send_date?.format('YYYY-MM-DD') : null,
         is_active: values.is_active ?? true,
         user_ids: values.user_ids || [],
       };
@@ -169,7 +172,14 @@ export default function AdminRemindersPage() {
       const res = await fetch('/api/admin/reminders/send?mode=preview', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '预览失败');
-      message.success(`预览已发送到你的飞书（${data.sent_to}），请查看`);
+      if (data.status === 'failed') {
+        Modal.error({
+          title: '飞书发送失败',
+          content: `错误信息: ${data.error || '未知错误'}\n\n请检查飞书应用权限（需要 im:message 权限）`,
+        });
+      } else {
+        message.success(`预览已发送到你的飞书（${data.sent_to}），请查看飞书消息`);
+      }
     } catch (e) {
       message.error(e instanceof Error ? e.message : '预览失败');
     } finally {
@@ -238,6 +248,9 @@ export default function AdminRemindersPage() {
       key: 'time',
       width: 140,
       render: (_: any, record: ReminderItem) => {
+        if (record.frequency === 'once') {
+          return <span>{record.send_date} {record.send_time?.slice(0, 5)}</span>;
+        }
         const day = record.send_day ? WEEKDAY_OPTIONS.find((d) => d.value === record.send_day)?.label : '';
         return <span>{day} {record.send_time?.slice(0, 5)}</span>;
       },
@@ -345,6 +358,11 @@ export default function AdminRemindersPage() {
               <Form.Item name="send_time" label="发送时间" rules={[{ required: true }]}>
                 <TimePicker format="HH:mm" minuteStep={15} />
               </Form.Item>
+              {frequency === 'once' && (
+                <Form.Item name="send_date" label="发送日期" rules={[{ required: true, message: '请选择发送日期' }]}>
+                  <DatePicker className="w-full" />
+                </Form.Item>
+              )}
               {frequency === 'weekly' && (
                 <Form.Item name="send_day" label="周几" rules={[{ required: true }]}>
                   <Select options={WEEKDAY_OPTIONS} className="w-24" />
