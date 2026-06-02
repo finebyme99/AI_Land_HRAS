@@ -60,6 +60,7 @@ export default function AdminRemindersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ReminderItem | null>(null);
   const [sending, setSending] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [form] = Form.useForm();
 
   const frequency = Form.useWatch('frequency', form);
@@ -162,36 +163,42 @@ export default function AdminRemindersPage() {
     fetchReminders();
   };
 
-  const handleSend = async (dryRun: boolean) => {
+  const handlePreview = async () => {
+    setPreviewing(true);
+    try {
+      const res = await fetch('/api/admin/reminders/send?mode=preview', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '预览失败');
+      message.success(`预览已发送到你的飞书（${data.sent_to}），请查看`);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '预览失败');
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
+  const handleSend = async () => {
     setSending(true);
     try {
-      const res = await fetch(`/api/admin/reminders/send?dry_run=${dryRun}`, { method: 'POST' });
+      const res = await fetch('/api/admin/reminders/send?mode=send', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '发送失败');
 
-      if (dryRun) {
-        Modal.info({
-          title: '预览结果（未实际发送）',
-          content: (
-            <div>
-              <p>到期提醒: {data.total} 条</p>
-              <p>可发送: {data.sent} 条</p>
-              <p>无飞书ID: {data.noFeishuId} 条</p>
-              {data.details?.length > 0 && (
-                <div className="mt-2 max-h-40 overflow-auto text-xs">
-                  {data.details.map((d: any, i: number) => (
-                    <div key={i}>{d.title} → {d.userId.slice(0, 8)}… [{d.status}]</div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ),
-          width: 500,
-        });
+      const parts = [`✅ ${data.sent} 成功`];
+      if (data.failed > 0) parts.push(`❌ ${data.failed} 失败`);
+      if (data.noFeishuId > 0) parts.push(`⚠️ ${data.noFeishuId} 无飞书ID`);
+      if (data.skipped > 0) parts.push(`⏭ ${data.skipped} 跳过`);
+
+      // 显示失败详情
+      const failedDetails = data.details?.filter((d: any) => d.status === 'failed') || [];
+      if (failedDetails.length > 0) {
+        const errors = failedDetails.map((d: any) => `${d.title}: ${d.error || '未知错误'}`).join('\n');
+        Modal.error({ title: '发送失败详情', content: <pre className="text-xs whitespace-pre-wrap">{errors}</pre> });
       } else {
-        message.success(`发送完成: ${data.sent} 成功, ${data.failed} 失败, ${data.noFeishuId} 无飞书ID`);
-        fetchReminders();
+        message.success(parts.join('，'));
       }
+
+      fetchReminders();
     } catch (e) {
       message.error(e instanceof Error ? e.message : '发送失败');
     } finally {
@@ -293,10 +300,10 @@ export default function AdminRemindersPage() {
             </div>
           </div>
           <Space>
-            <Button icon={<ExperimentOutlined />} onClick={() => handleSend(true)} loading={sending}>
-              预览（不发送）
+            <Button icon={<ExperimentOutlined />} onClick={handlePreview} loading={previewing}>
+              预览（发给自己）
             </Button>
-            <Button type="primary" danger icon={<SendOutlined />} onClick={() => handleSend(false)} loading={sending}>
+            <Button type="primary" danger icon={<SendOutlined />} onClick={handleSend} loading={sending}>
               立即发送
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>

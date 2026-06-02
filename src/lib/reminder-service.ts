@@ -78,7 +78,7 @@ export async function sendReminderToUser(
     return { status: 'skipped', error: '1分钟内已发送过' };
   }
 
-  const messageContent = `📌 **${title}**\n\n${content}`;
+  const messageContent = JSON.stringify({ text: `📌 ${title}\n\n${content}` });
 
   const result = await sendFeishuMessage({
     recipientId: feishuOpenId,
@@ -94,6 +94,26 @@ export async function sendReminderToUser(
     feishu_open_id: feishuOpenId,
     status: result.status === 'sent' ? 'sent' : 'failed',
     error_message: result.error || null,
+  });
+
+  return { status: result.status, error: result.error };
+}
+
+/**
+ * 发送预览消息给指定用户（不记录日志，不更新下次发送时间）
+ */
+export async function sendPreviewToUser(
+  feishuOpenId: string,
+  title: string,
+  content: string
+): Promise<{ status: string; error?: string }> {
+  const messageContent = JSON.stringify({ text: `📌 [预览] ${title}\n\n${content}` });
+
+  const result = await sendFeishuMessage({
+    recipientId: feishuOpenId,
+    recipientType: 'open_id',
+    messageType: 'text',
+    content: messageContent,
   });
 
   return { status: result.status, error: result.error };
