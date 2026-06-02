@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import type { ReviewerRole, ReviewScores } from '@/types';
 import { SCORE_DIMENSIONS } from '@/types';
+import { getReminderRulesByEvent, sendReviewCompletedNotification } from '@/lib/reminder-service';
 
 function computeWeightedScore(scores: ReviewScores, role: ReviewerRole): number {
   const dims = SCORE_DIMENSIONS[role];
@@ -136,6 +137,39 @@ export async function POST(request: NextRequest) {
   }
   if (!review) {
     return NextResponse.json({ error: '评审保存失败，未返回数据' }, { status: 500 });
+  }
+
+  // 异步触发评审完成提醒（不阻塞响应）
+  if (title) {
+    getReminderRulesByEvent('review_completed')
+      .then(async (rules) => {
+        for (const rule of rules) {
+          try {
+            // 查询方案提交人
+            const { data: submission } = await getSupabaseAdmin()
+              .from('competition_submissions')
+              .select('submitter_id')
+              .eq('id', submission_id)
+              .single();
+
+            if (submission?.submitter_id) {
+              await sendReviewCompletedNotification({
+                submissionId: submission_id,
+                title: title,
+                submitterId: submission.submitter_id,
+                score: total,
+                maxScore: dims.reduce((sum, dim) => sum + 5 * dim.weight, 0),
+                result: '已完成评审',
+              });
+            }
+          } catch (err) {
+            console.error('发送评审完成提醒失败:', err);
+          }
+        }
+      })
+      .catch((err) => {
+        console.error('获取提醒规则失败:', err);
+      });
   }
 
   return NextResponse.json({ review, total });
