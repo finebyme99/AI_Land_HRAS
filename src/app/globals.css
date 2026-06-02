@@ -267,6 +267,14 @@ h1, h2, h3 {
   background: transparent !important;
 }
 
+.ant-input-search .ant-input {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm) !important;
+}
+
+.ant-input-search .ant-input-search-button {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
+}
+
 .ant-input:focus,
 .ant-input-focused,
 .ant-select-focused .ant-select-selector {
