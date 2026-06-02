@@ -81,27 +81,27 @@ ALTER TABLE scheduled_reminders ENABLE ROW LEVEL SECURITY;
 -- 管理员可以访问所有提醒相关表
 CREATE POLICY "Admins can manage message_templates" ON message_templates
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.roles ? 'admin')
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND 'admin' = ANY(users.roles))
   );
 
 CREATE POLICY "Admins can manage reminder_rules" ON reminder_rules
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.roles ? 'admin')
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND 'admin' = ANY(users.roles))
   );
 
 CREATE POLICY "Admins can manage reminder_recipients" ON reminder_recipients
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.roles ? 'admin')
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND 'admin' = ANY(users.roles))
   );
 
 CREATE POLICY "Admins can view reminder_logs" ON reminder_logs
   FOR SELECT USING (
-    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.roles ? 'admin')
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND 'admin' = ANY(users.roles))
   );
 
 CREATE POLICY "Admins can manage scheduled_reminders" ON scheduled_reminders
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.roles ? 'admin')
+    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND 'admin' = ANY(users.roles))
   );
 
 -- 插入默认消息模板
