@@ -1,6 +1,13 @@
 -- 022_reminder_simple.sql
 -- 提醒模块重构 — 精简版：标题 + 频次 + 时间 + 对象
 
+-- 清理旧表（021 遗留）
+DROP TABLE IF EXISTS reminder_logs CASCADE;
+DROP TABLE IF EXISTS scheduled_reminders CASCADE;
+DROP TABLE IF EXISTS reminder_recipients CASCADE;
+DROP TABLE IF EXISTS reminder_rules CASCADE;
+DROP TABLE IF EXISTS message_templates CASCADE;
+
 -- 1. 提醒主表
 CREATE TABLE IF NOT EXISTS reminders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
