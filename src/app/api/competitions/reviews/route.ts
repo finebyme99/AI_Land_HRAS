@@ -140,3 +140,38 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ review, total });
 }
+
+// DELETE /api/competitions/reviews?reviewer_id=xxx
+// 清空指定评委的全部评分（仅 admin/moderator）
+export async function DELETE(request: NextRequest) {
+  const userId = request.cookies.get('feishu_user_id')?.value;
+  if (!userId) {
+    return NextResponse.json({ error: '未登录' }, { status: 401 });
+  }
+
+  const { data: user } = await getSupabaseAdmin()
+    .from('users')
+    .select('id, roles')
+    .eq('id', userId)
+    .single();
+
+  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) {
+    return NextResponse.json({ error: '仅管理员可清空评分' }, { status: 403 });
+  }
+
+  const reviewerId = request.nextUrl.searchParams.get('reviewer_id');
+  if (!reviewerId) {
+    return NextResponse.json({ error: '缺少 reviewer_id 参数' }, { status: 400 });
+  }
+
+  const { data, error, count } = await getSupabaseAdmin()
+    .from('competition_reviews')
+    .delete({ count: 'exact' })
+    .eq('reviewer_id', reviewerId);
+
+  if (error) {
+    return NextResponse.json({ error: `清空失败: ${error.message}` }, { status: 500 });
+  }
+
+  return NextResponse.json({ deleted: count ?? 0 });
+}
