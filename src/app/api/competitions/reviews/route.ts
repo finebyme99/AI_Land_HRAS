@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import type { ReviewerRole, ReviewScores } from '@/types';
 import { SCORE_DIMENSIONS } from '@/types';
-import { getReminderRulesByEvent, sendReviewCompletedNotification } from '@/lib/reminder-service';
+import { sendFeishuCardMessage } from '@/lib/feishu-message';
 
 function computeWeightedScore(scores: ReviewScores, role: ReviewerRole): number {
   const dims = SCORE_DIMENSIONS[role];
@@ -139,37 +139,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '评审保存失败，未返回数据' }, { status: 500 });
   }
 
-  // 异步触发评审完成提醒（不阻塞响应）
+  // 异步发送评审完成飞书通知（不阻塞响应）
   if (title) {
-    getReminderRulesByEvent('review_completed')
-      .then(async (rules) => {
-        for (const rule of rules) {
-          try {
-            // 查询方案提交人
-            const { data: submission } = await getSupabaseAdmin()
-              .from('competition_submissions')
-              .select('submitter_id')
-              .eq('id', submission_id)
-              .single();
+    (async () => {
+      try {
+        const { data: submission } = await getSupabaseAdmin()
+          .from('competition_submissions')
+          .select('submitter_id')
+          .eq('id', submission_id)
+          .single();
 
-            if (submission?.submitter_id) {
-              await sendReviewCompletedNotification({
-                submissionId: submission_id,
-                title: title,
-                submitterId: submission.submitter_id,
-                score: total,
-                maxScore: dims.reduce((sum, dim) => sum + 5 * dim.weight, 0),
-                result: '已完成评审',
-              });
-            }
-          } catch (err) {
-            console.error('发送评审完成提醒失败:', err);
+        if (submission?.submitter_id) {
+          const { data: submitter } = await getSupabaseAdmin()
+            .from('users')
+            .select('feishu_open_id')
+            .eq('id', submission.submitter_id)
+            .single();
+
+          if (submitter?.feishu_open_id) {
+            const maxScore = dims.reduce((sum, dim) => sum + 5 * dim.weight, 0);
+            await sendFeishuCardMessage(submitter.feishu_open_id, 'open_id', {
+              config: { wide_screen_mode: true },
+              header: { title: { tag: 'plain_text', content: '✅ 评审完成通知' }, template: 'green' },
+              elements: [
+                { tag: 'div', text: { tag: 'lark_md', content: `✅ **评审完成通知**\n\n**方案名称**: ${title}\n**总分**: ${total.toFixed(1)}/${maxScore}` } },
+                { tag: 'hr' },
+                { tag: 'action', actions: [{ tag: 'button', text: { tag: 'plain_text', content: '查看详情' }, type: 'primary', url: `${process.env.NEXT_PUBLIC_APP_URL}/competitions/${submission_id}` }] },
+              ],
+            }, 'medium');
           }
         }
-      })
-      .catch((err) => {
-        console.error('获取提醒规则失败:', err);
-      });
+      } catch (err) {
+        console.error('发送评审完成提醒失败:', err);
+      }
+    })();
   }
 
   return NextResponse.json({ review, total });
