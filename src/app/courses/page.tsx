@@ -170,70 +170,70 @@ export default function CoursesPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {courses.map((course) => (
-            <Link key={course.id} href={`/courses/${course.id}`} className="block group">
-              <div className="glass relative overflow-hidden rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1"
-                style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-                <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'var(--gradient-primary)' }} />
-                <div className="flex items-center gap-2 mb-3 flex-wrap">
-                  {(Array.isArray(course.content_type) ? course.content_type : [course.content_type]).map((ct) => (
-                    <Tag key={ct} color={ct === 'video' ? 'red' : 'blue'}>
-                      {ct === 'video' ? '视频' : '文档'}
-                    </Tag>
-                  ))}
-                  <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
-                  {course.is_featured && <Tag color="orange">精选</Tag>}
-                </div>
-                <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity">
-                  {course.title}
-                </h3>
-                <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
-                {(course.courseware_url || course.video_url) && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {course.courseware_url && (
-                      <span
-                        role="link"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5 cursor-pointer"
-                        style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 2px 8px rgba(26,58,138,0.25)' }}
-                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.open(course.courseware_url, '_blank'); }}
-                      >
-                        <BookOutlined /> 课件
-                      </span>
-                    )}
-                    {course.video_url && (
-                      <span
-                        role="link"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5 cursor-pointer"
-                        style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 2px 8px rgba(242,127,34,0.25)' }}
-                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.open(course.video_url, '_blank'); }}
-                      >
-                        <PlayCircleOutlined /> 视频
-                      </span>
-                    )}
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
-                  <span className="flex items-center gap-1">
-                    <UserOutlined /> {course.instructor} · {course.duration}
-                  </span>
-                  <span className="flex items-center gap-3">
-                    <span
-                      className="flex items-center gap-1 cursor-pointer transition-colors hover:text-red-500"
-                      style={{ color: interactions[course.id]?.liked ? '#e74c3c' : undefined }}
-                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleInteraction(course.id, 'like'); }}
-                    >
-                      {interactions[course.id]?.liked ? <LikeFilled /> : <LikeOutlined />} {counts[course.id]?.like_count ?? 0}
-                    </span>
-                    <span
-                      className="flex items-center gap-1 cursor-pointer transition-colors hover:text-yellow-500"
-                      style={{ color: interactions[course.id]?.bookmarked ? '#f59e0b' : undefined }}
-                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleInteraction(course.id, 'bookmark'); }}
-                    >
-                      {interactions[course.id]?.bookmarked ? <BookFilled /> : <BookOutlined />} {counts[course.id]?.bookmark_count ?? 0}
-                    </span>
-                  </span>
-                </div>
+            <div key={course.id} className="glass relative overflow-hidden rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+              style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+              <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 hover:opacity-100 transition-opacity" style={{ background: 'var(--gradient-primary)' }} />
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                {(Array.isArray(course.content_type) ? course.content_type : [course.content_type]).map((ct) => (
+                  <Tag key={ct} color={ct === 'video' ? 'red' : 'blue'}>
+                    {ct === 'video' ? '视频' : '文档'}
+                  </Tag>
+                ))}
+                <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
+                {course.is_featured && <Tag color="orange">精选</Tag>}
               </div>
-            </Link>
+              <h3 className="text-base font-semibold mb-2 line-clamp-2">
+                {course.title}
+              </h3>
+              <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
+              {(course.courseware_url || course.video_url) && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {course.courseware_url && (
+                    <a
+                      href={course.courseware_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
+                      style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 2px 8px rgba(26,58,138,0.25)' }}
+                    >
+                      <BookOutlined /> 课件
+                    </a>
+                  )}
+                  {course.video_url && (
+                    <a
+                      href={course.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
+                      style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 2px 8px rgba(242,127,34,0.25)' }}
+                    >
+                      <PlayCircleOutlined /> 视频
+                    </a>
+                  )}
+                </div>
+              )}
+              <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
+                <span className="flex items-center gap-1">
+                  <UserOutlined /> {course.instructor} · {course.duration}
+                </span>
+                <span className="flex items-center gap-3">
+                  <span
+                    className="flex items-center gap-1 cursor-pointer transition-colors hover:text-red-500"
+                    style={{ color: interactions[course.id]?.liked ? '#e74c3c' : undefined }}
+                    onClick={() => toggleInteraction(course.id, 'like')}
+                  >
+                    {interactions[course.id]?.liked ? <LikeFilled /> : <LikeOutlined />} {counts[course.id]?.like_count ?? 0}
+                  </span>
+                  <span
+                    className="flex items-center gap-1 cursor-pointer transition-colors hover:text-yellow-500"
+                    style={{ color: interactions[course.id]?.bookmarked ? '#f59e0b' : undefined }}
+                    onClick={() => toggleInteraction(course.id, 'bookmark')}
+                  >
+                    {interactions[course.id]?.bookmarked ? <BookFilled /> : <BookOutlined />} {counts[course.id]?.bookmark_count ?? 0}
+                  </span>
+                </span>
+              </div>
+            </div>
           ))}
         </div>
       )}

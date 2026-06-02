@@ -82,7 +82,7 @@ export default function BookmarksPage() {
 
   const getLink = (item: BookmarkItem) => {
     switch (item.target_type) {
-      case 'course': return `/courses/${item.target_id}`;
+      case 'course': return '/courses';
       case 'case': return `/cases/${item.target_id}`;
       default: return '#';
     }

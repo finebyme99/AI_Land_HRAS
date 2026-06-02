@@ -292,10 +292,10 @@ export default function Home() {
   }
 
   const statItems = [
-    { label: '案例总数', value: stats.cases, icon: <BookOutlined />, iconBg: 'rgba(26, 58, 138, 0.12)', iconColor: '#1a3a8a' },
-    { label: '大赛获奖', value: dashboard.awardCount, icon: <TrophyOutlined />, iconBg: 'rgba(242, 127, 34, 0.12)', iconColor: '#F27F22' },
-    { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a' },
-    { label: '注册用户', value: stats.users, icon: <TeamOutlined />, iconBg: 'rgba(34, 197, 94, 0.12)', iconColor: '#22c55e' },
+    { label: '案例总数', value: stats.cases, icon: <BookOutlined />, iconBg: 'rgba(26, 58, 138, 0.12)', iconColor: '#1a3a8a', href: '/cases' },
+    { label: '大赛获奖', value: dashboard.awardCount, icon: <TrophyOutlined />, iconBg: 'rgba(242, 127, 34, 0.12)', iconColor: '#F27F22', href: '/competitions' },
+    { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a', href: '/courses' },
+    { label: '注册用户', value: stats.users, icon: <TeamOutlined />, iconBg: 'rgba(34, 197, 94, 0.12)', iconColor: '#22c55e', href: '/admin/users' },
   ];
 
   return (
@@ -351,14 +351,16 @@ export default function Home() {
       <section className="mb-6 -mt-2">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {statItems.map((stat) => (
-            <div key={stat.label} className="glass rounded-[20px] p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2.5 text-lg"
-                style={{ background: stat.iconBg, color: stat.iconColor }}>
-                {stat.icon}
+            <Link key={stat.label} href={stat.href} className="block group">
+              <div className="glass rounded-[20px] p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2.5 text-lg transition-transform duration-300 group-hover:scale-110"
+                  style={{ background: stat.iconBg, color: stat.iconColor }}>
+                  {stat.icon}
+                </div>
+                <div className="text-2xl font-bold mb-0.5" style={{ color: 'var(--foreground)' }}>{stat.value}</div>
+                <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{stat.label}</div>
               </div>
-              <div className="text-2xl font-bold mb-0.5" style={{ color: 'var(--foreground)' }}>{stat.value}</div>
-              <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{stat.label}</div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -407,29 +409,25 @@ export default function Home() {
           <SectionHeader icon={<ReadOutlined />} title="推荐课程" href="/courses" iconBg="rgba(232, 101, 10, 0.1)" iconColor="#e8650a" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {courses.map((course) => (
-              <Link key={course.id} href={`/courses/${course.id}`} className="block group">
-                <div className="glass rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-md relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{ background: 'var(--gradient-primary)' }} />
-                  <div className="flex items-center gap-2 mb-3 flex-wrap">
-                    {(Array.isArray(course.content_type) ? course.content_type : [course.content_type]).map((ct) => (
-                      <Tag key={ct} color={ct === 'video' ? 'red' : 'blue'}>
-                        {ct === 'video' ? '视频' : '文档'}
-                      </Tag>
-                    ))}
-                    <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
-                    {course.is_featured && <Tag color="orange">精选</Tag>}
-                  </div>
-                  <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity">
-                    {course.title}
-                  </h3>
-                  <p className="text-sm mb-4 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
-                  <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
-                    <span>{course.instructor} · {course.duration}</span>
-                    <span>{course.student_count} 人学习</span>
-                  </div>
+              <div key={course.id} className="glass rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-md relative overflow-hidden">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  {(Array.isArray(course.content_type) ? course.content_type : [course.content_type]).map((ct) => (
+                    <Tag key={ct} color={ct === 'video' ? 'red' : 'blue'}>
+                      {ct === 'video' ? '视频' : '文档'}
+                    </Tag>
+                  ))}
+                  <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
+                  {course.is_featured && <Tag color="orange">精选</Tag>}
                 </div>
-              </Link>
+                <h3 className="text-base font-semibold mb-2 line-clamp-2">
+                  {course.title}
+                </h3>
+                <p className="text-sm mb-4 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
+                <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <span>{course.instructor} · {course.duration}</span>
+                  <span>{course.student_count} 人学习</span>
+                </div>
+              </div>
             ))}
           </div>
         </section>
