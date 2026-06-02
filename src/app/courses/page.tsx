@@ -190,28 +190,24 @@ export default function CoursesPage() {
                 {(course.courseware_url || course.video_url) && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {course.courseware_url && (
-                      <a
-                        href={course.courseware_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
+                      <span
+                        role="link"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5 cursor-pointer"
                         style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 2px 8px rgba(26,58,138,0.25)' }}
                         onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.open(course.courseware_url, '_blank'); }}
                       >
                         <BookOutlined /> 课件
-                      </a>
+                      </span>
                     )}
                     {course.video_url && (
-                      <a
-                        href={course.video_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
+                      <span
+                        role="link"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5 cursor-pointer"
                         style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 2px 8px rgba(242,127,34,0.25)' }}
                         onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.open(course.video_url, '_blank'); }}
                       >
                         <PlayCircleOutlined /> 视频
-                      </a>
+                      </span>
                     )}
                   </div>
                 )}
