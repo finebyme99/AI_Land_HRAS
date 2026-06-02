@@ -12,6 +12,7 @@ import {
   FileOutlined,
   PlayCircleOutlined,
   SwapOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import type { ReviewScores, ReviewerRole } from '@/types';
 import { SCORE_DIMENSIONS } from '@/types';
@@ -360,21 +361,21 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
           </SectionLabel>
           <div className="flex flex-wrap items-center gap-2">
             <Image.PreviewGroup>
-              {data.attachments.filter((a) => a.type?.startsWith('image/')).map((img) => (
+              {data.attachments.filter((a) => a.type?.startsWith('image/')).map((img, idx) => (
                 <Image
-                  key={img.name}
+                  key={`${img.name}-${idx}`}
                   src={img.url}
                   alt={img.name}
                   width={48}
                   height={48}
                   className="rounded-lg object-cover cursor-pointer"
                   style={{ border: '1px solid rgba(0,0,0,0.06)' }}
-                  preview={{ mask: <span style={{ fontSize: 11 }}>预览</span> }}
+                  preview={{ cover: <span style={{ fontSize: 11 }}>预览</span> }}
                 />
               ))}
             </Image.PreviewGroup>
-            {data.attachments.filter((a) => !a.type?.startsWith('image/')).map((f) => (
-              <a key={f.name} href={f.url} target="_blank" rel="noopener noreferrer"
+            {data.attachments.filter((a) => !a.type?.startsWith('image/')).map((f, idx) => (
+              <a key={`${f.name}-${idx}`} href={f.url} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg hover:opacity-70 transition-opacity"
                 style={{ background: 'rgba(0,0,0,0.03)', color: f.type?.startsWith('video/') ? 'var(--primary)' : 'var(--text-secondary)' }}>
                 {f.type?.startsWith('video/') ? <PlayCircleOutlined /> : <FileOutlined />}
@@ -433,8 +434,9 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
                               </div>
                             }
                           >
-                            <span className="text-[10px] cursor-help flex-shrink-0 px-1.5 py-0.5 rounded" style={{ color: 'var(--text-muted)', background: 'rgba(0,0,0,0.03)' }}>
-                              评分参考
+                            <span className="text-[10px] cursor-help flex-shrink-0 px-1.5 py-0.5 rounded flex items-center gap-1" style={{ color: 'var(--text-muted)', background: 'rgba(0,0,0,0.03)' }}>
+                              <QuestionCircleOutlined />
+                              查看评分参考
                             </span>
                           </Popover>
                         </div>

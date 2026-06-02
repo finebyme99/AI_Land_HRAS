@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Table, Tag, Select, Input, Button, Spin, message } from 'antd';
-import { SearchOutlined, DownloadOutlined, AuditOutlined, TeamOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Table, Tag, Select, Input, Button, Spin, Popconfirm, message } from 'antd';
+import { SearchOutlined, DownloadOutlined, AuditOutlined, TeamOutlined, CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import type { CompetitionReview, ReviewScores, ReviewerRole } from '@/types';
 import { SCORE_DIMENSIONS, computeWeightedScore } from '@/types';
@@ -25,6 +25,7 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [clearingReviewerId, setClearingReviewerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isReviewer) {
@@ -54,6 +55,21 @@ export default function AdminReviewsPage() {
       message.error('获取评审记录失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClearReviewer = async (reviewerId: string, reviewerName: string) => {
+    setClearingReviewerId(reviewerId);
+    try {
+      const res = await fetch(`/api/competitions/reviews?reviewer_id=${reviewerId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '清空失败');
+      message.success(`已清空 ${reviewerName} 的 ${data.deleted} 条评审记录`);
+      fetchReviews();
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '清空失败');
+    } finally {
+      setClearingReviewerId(null);
     }
   };
 
@@ -239,6 +255,10 @@ export default function AdminReviewsPage() {
               }
             }
           }
+          const reviewerIdMap: Record<string, string> = {};
+          for (const r of reviews) {
+            reviewerIdMap[r.reviewer?.name || r.reviewer_id] = r.reviewer_id;
+          }
           const reviewerList = Object.values(byReviewer);
           return (
             <div className="mb-6">
@@ -259,6 +279,27 @@ export default function AdminReviewsPage() {
                         <TeamOutlined style={{ color: 'var(--primary)' }} />
                         <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{rv.name}</span>
                         <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{rv.department}</span>
+                        {isAdmin && (
+                          <Popconfirm
+                            title={`确认清空 ${rv.name} 的全部评分？`}
+                            description="此操作不可撤销，该评委的所有评审记录将被删除。"
+                            onConfirm={() => handleClearReviewer(reviewerIdMap[rv.name], rv.name)}
+                            okText="确认清空"
+                            cancelText="取消"
+                            okButtonProps={{ danger: true }}
+                          >
+                            <Button
+                              type="text"
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              loading={clearingReviewerId === reviewerIdMap[rv.name]}
+                              className="ml-auto"
+                            >
+                              清空评分
+                            </Button>
+                          </Popconfirm>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 text-xs">
                         <span style={{ color: '#16a34a' }}><CheckCircleOutlined /> {rv.reviewed}</span>
