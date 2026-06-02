@@ -5,11 +5,14 @@ import Link from 'next/link';
 import { Tag, Spin } from 'antd';
 import {
   BookOutlined,
+  BookFilled,
   TrophyOutlined,
   ReadOutlined,
   ArrowRightOutlined,
   EyeOutlined,
   LikeOutlined,
+  LikeFilled,
+  PlayCircleOutlined,
   TeamOutlined,
   PlusOutlined,
   ClockCircleOutlined,
@@ -236,13 +239,15 @@ function SectionHeader({ icon, title, href, iconBg, iconColor, linkText = '查�
 }
 
 export default function Home() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [stats, setStats] = useState({ cases: 0, users: 0, courses: 0 });
   const [dashboard, setDashboard] = useState({ savedHours: 0, participantCount: 0, awardCount: 0 });
   const [loading, setLoading] = useState(true);
+  const [courseInteractions, setCourseInteractions] = useState<Record<string, { liked: boolean; bookmarked: boolean }>>({});
+  const [courseCounts, setCourseCounts] = useState<Record<string, { like_count: number; bookmark_count: number }>>({});
 
   useEffect(() => {
     async function fetchData() {
@@ -280,6 +285,62 @@ export default function Home() {
     }
     fetchData();
   }, []);
+
+  // Fetch course interactions and counts
+  useEffect(() => {
+    if (courses.length === 0) return;
+    const fetchCourseData = async () => {
+      const interactionResults: Record<string, { liked: boolean; bookmarked: boolean }> = {};
+      const countResults: Record<string, { like_count: number; bookmark_count: number }> = {};
+      await Promise.all(
+        courses.map(async (course) => {
+          try {
+            const [stateRes, countRes] = await Promise.all([
+              user ? fetch(`/api/interactions?target_type=course&target_id=${course.id}`) : null,
+              fetch(`/api/interactions?target_type=course&target_id=${course.id}&action=count`),
+            ]);
+            if (stateRes?.ok) {
+              const data = await stateRes.json();
+              interactionResults[course.id] = { liked: data.liked, bookmarked: data.bookmarked };
+            }
+            if (countRes.ok) {
+              const data = await countRes.json();
+              countResults[course.id] = { like_count: data.like_count ?? 0, bookmark_count: data.bookmark_count ?? 0 };
+            }
+          } catch {}
+        })
+      );
+      setCourseInteractions(interactionResults);
+      setCourseCounts(countResults);
+    };
+    fetchCourseData();
+  }, [courses, user]);
+
+  const toggleCourseInteraction = async (courseId: string, action: 'like' | 'bookmark') => {
+    if (!user) return;
+    try {
+      const res = await fetch('/api/interactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, target_type: 'course', target_id: courseId }),
+      });
+      if (res.ok) {
+        const { active } = await res.json();
+        setCourseInteractions((prev) => ({
+          ...prev,
+          [courseId]: { ...prev[courseId], [action === 'like' ? 'liked' : 'bookmarked']: active },
+        }));
+        const countRes = await fetch(`/api/interactions?target_type=course&target_id=${courseId}&action=count`);
+        if (countRes.ok) {
+          const countData = await countRes.json();
+          setCourseCounts((prev) => ({
+            ...prev,
+            [courseId]: { like_count: countData.like_count ?? 0, bookmark_count: countData.bookmark_count ?? 0 },
+          }));
+        }
+      }
+    } catch {}
+  };
 
   const ongoingEvents = events.filter((e) => e.status === 'ongoing');
 
@@ -425,10 +486,51 @@ export default function Home() {
                 <h3 className="text-base font-semibold mb-2 line-clamp-2">
                   {course.title}
                 </h3>
-                <p className="text-sm mb-4 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
+                <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
+                {(course.courseware_url || course.video_url) && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {course.courseware_url && (
+                      <a
+                        href={course.courseware_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
+                        style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 2px 8px rgba(26,58,138,0.25)' }}
+                      >
+                        <BookOutlined /> 课件
+                      </a>
+                    )}
+                    {course.video_url && (
+                      <a
+                        href={course.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
+                        style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 2px 8px rgba(242,127,34,0.25)' }}
+                      >
+                        <PlayCircleOutlined /> 视频
+                      </a>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
                   <span>{course.instructor} · {course.duration}</span>
-                  <span>{course.student_count} 人学习</span>
+                  <span className="flex items-center gap-3">
+                    <span
+                      className="flex items-center gap-1 cursor-pointer transition-colors hover:text-red-500"
+                      style={{ color: courseInteractions[course.id]?.liked ? '#e74c3c' : undefined }}
+                      onClick={() => toggleCourseInteraction(course.id, 'like')}
+                    >
+                      {courseInteractions[course.id]?.liked ? <LikeFilled /> : <LikeOutlined />} {courseCounts[course.id]?.like_count ?? 0}
+                    </span>
+                    <span
+                      className="flex items-center gap-1 cursor-pointer transition-colors hover:text-yellow-500"
+                      style={{ color: courseInteractions[course.id]?.bookmarked ? '#f59e0b' : undefined }}
+                      onClick={() => toggleCourseInteraction(course.id, 'bookmark')}
+                    >
+                      {courseInteractions[course.id]?.bookmarked ? <BookFilled /> : <BookOutlined />} {courseCounts[course.id]?.bookmark_count ?? 0}
+                    </span>
+                  </span>
                 </div>
               </div>
             ))}
