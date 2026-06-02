@@ -295,7 +295,7 @@ export default function Home() {
     { label: '案例总数', value: stats.cases, icon: <BookOutlined />, iconBg: 'rgba(26, 58, 138, 0.12)', iconColor: '#1a3a8a', href: '/cases' },
     { label: '大赛获奖', value: dashboard.awardCount, icon: <TrophyOutlined />, iconBg: 'rgba(242, 127, 34, 0.12)', iconColor: '#F27F22', href: '/competitions' },
     { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a', href: '/courses' },
-    { label: '注册用户', value: stats.users, icon: <TeamOutlined />, iconBg: 'rgba(34, 197, 94, 0.12)', iconColor: '#22c55e', href: '/admin/users' },
+    { label: '注册用户', value: stats.users, icon: <TeamOutlined />, iconBg: 'rgba(34, 197, 94, 0.12)', iconColor: '#22c55e', href: isAdmin ? '/admin/users' : '' },
   ];
 
   return (
@@ -350,9 +350,9 @@ export default function Home() {
       {/* Stats */}
       <section className="mb-6 -mt-2">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {statItems.map((stat) => (
-            <Link key={stat.label} href={stat.href} className="block group">
-              <div className="glass rounded-[20px] p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+          {statItems.map((stat) => {
+            const card = (
+              <div className={`glass rounded-[20px] p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${stat.href ? 'cursor-pointer' : 'cursor-default'}`}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2.5 text-lg transition-transform duration-300 group-hover:scale-110"
                   style={{ background: stat.iconBg, color: stat.iconColor }}>
                   {stat.icon}
@@ -360,8 +360,11 @@ export default function Home() {
                 <div className="text-2xl font-bold mb-0.5" style={{ color: 'var(--foreground)' }}>{stat.value}</div>
                 <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{stat.label}</div>
               </div>
-            </Link>
-          ))}
+            );
+            return stat.href
+              ? <Link key={stat.label} href={stat.href} className="block group">{card}</Link>
+              : <div key={stat.label}>{card}</div>;
+          })}
         </div>
       </section>
 
