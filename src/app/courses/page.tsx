@@ -18,6 +18,7 @@ export default function CoursesPage() {
   const [difficulty, setDifficulty] = useState<CourseDifficulty | ''>('');
   const [contentType, setContentType] = useState<ContentType | ''>('');
   const [interactions, setInteractions] = useState<Record<string, { liked: boolean; bookmarked: boolean }>>({});
+  const [counts, setCounts] = useState<Record<string, { like_count: number; bookmark_count: number }>>({});
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -49,23 +50,32 @@ export default function CoursesPage() {
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
-  // Fetch interaction states for all courses
+  // Fetch interaction states and counts for all courses
   useEffect(() => {
-    if (!user || courses.length === 0) return;
+    if (courses.length === 0) return;
     const fetchInteractions = async () => {
-      const results: Record<string, { liked: boolean; bookmarked: boolean }> = {};
+      const interactionResults: Record<string, { liked: boolean; bookmarked: boolean }> = {};
+      const countResults: Record<string, { like_count: number; bookmark_count: number }> = {};
       await Promise.all(
         courses.map(async (course) => {
           try {
-            const res = await fetch(`/api/interactions?target_type=course&target_id=${course.id}`);
-            if (res.ok) {
-              const data = await res.json();
-              results[course.id] = { liked: data.liked, bookmarked: data.bookmarked };
+            const [stateRes, countRes] = await Promise.all([
+              user ? fetch(`/api/interactions?target_type=course&target_id=${course.id}`) : null,
+              fetch(`/api/interactions?target_type=course&target_id=${course.id}&action=count`),
+            ]);
+            if (stateRes?.ok) {
+              const data = await stateRes.json();
+              interactionResults[course.id] = { liked: data.liked, bookmarked: data.bookmarked };
+            }
+            if (countRes.ok) {
+              const data = await countRes.json();
+              countResults[course.id] = { like_count: data.like_count ?? 0, bookmark_count: data.bookmark_count ?? 0 };
             }
           } catch {}
         })
       );
-      setInteractions(results);
+      setInteractions(interactionResults);
+      setCounts(countResults);
     };
     fetchInteractions();
   }, [courses, user]);
@@ -88,12 +98,10 @@ export default function CoursesPage() {
         const countRes = await fetch(`/api/interactions?target_type=course&target_id=${courseId}&action=count`);
         if (countRes.ok) {
           const countData = await countRes.json();
-          setCourses((prev) =>
-            prev.map((c) => {
-              if (c.id !== courseId) return c;
-              return { ...c, like_count: countData.like_count ?? c.like_count, bookmark_count: countData.bookmark_count ?? c.bookmark_count };
-            })
-          );
+          setCounts((prev) => ({
+            ...prev,
+            [courseId]: { like_count: countData.like_count ?? 0, bookmark_count: countData.bookmark_count ?? 0 },
+          }));
         }
       }
     } catch {}
@@ -217,14 +225,14 @@ export default function CoursesPage() {
                       style={{ color: interactions[course.id]?.liked ? '#e74c3c' : undefined }}
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleInteraction(course.id, 'like'); }}
                     >
-                      {interactions[course.id]?.liked ? <LikeFilled /> : <LikeOutlined />} {course.like_count ?? 0}
+                      {interactions[course.id]?.liked ? <LikeFilled /> : <LikeOutlined />} {counts[course.id]?.like_count ?? 0}
                     </span>
                     <span
                       className="flex items-center gap-1 cursor-pointer transition-colors hover:text-yellow-500"
                       style={{ color: interactions[course.id]?.bookmarked ? '#f59e0b' : undefined }}
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleInteraction(course.id, 'bookmark'); }}
                     >
-                      {interactions[course.id]?.bookmarked ? <BookFilled /> : <BookOutlined />} {course.bookmark_count ?? 0}
+                      {interactions[course.id]?.bookmarked ? <BookFilled /> : <BookOutlined />} {counts[course.id]?.bookmark_count ?? 0}
                     </span>
                   </span>
                 </div>

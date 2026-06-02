@@ -16,8 +16,6 @@ export async function POST(request: NextRequest) {
     }
 
     const table = action === 'like' ? 'likes' : action === 'bookmark' ? 'bookmarks' : 'dislikes';
-    const countTable = target_type === 'case' ? 'cases' : target_type === 'topic' ? 'topics' : target_type === 'course' ? 'courses' : null;
-    const countField = action === 'like' ? 'like_count' : action === 'bookmark' ? 'bookmark_count' : 'dislike_count';
 
     // Check if exists
     const { data: existing } = await getSupabaseAdmin()
@@ -31,31 +29,28 @@ export async function POST(request: NextRequest) {
     if (existing) {
       // Remove
       await getSupabaseAdmin().from(table).delete().eq('id', existing.id);
-      if (countTable) {
-        const { data: item, error: fetchErr } = await getSupabaseAdmin().from(countTable).select(countField).eq('id', target_id).single();
-        if (fetchErr) console.error('Fetch count error:', fetchErr);
-        if (item) {
-          const val = (item as Record<string, number>)[countField] || 0;
-          const { error: updateErr } = await getSupabaseAdmin().from(countTable).update({ [countField]: Math.max(0, val - 1) }).eq('id', target_id);
-          if (updateErr) console.error('Update count error:', updateErr);
-        }
-      }
-      return NextResponse.json({ active: false });
     } else {
       // Add
       const { error: insertErr } = await getSupabaseAdmin().from(table).insert({ user_id: userId, target_type, target_id });
       if (insertErr) console.error('Insert interaction error:', insertErr);
-      if (countTable) {
-        const { data: item, error: fetchErr } = await getSupabaseAdmin().from(countTable).select(countField).eq('id', target_id).single();
-        if (fetchErr) console.error('Fetch count error:', fetchErr);
-        if (item) {
-          const val = (item as Record<string, number>)[countField] || 0;
-          const { error: updateErr } = await getSupabaseAdmin().from(countTable).update({ [countField]: val + 1 }).eq('id', target_id);
-          if (updateErr) console.error('Update count error:', updateErr);
-        }
-      }
-      return NextResponse.json({ active: true });
     }
+
+    // Sync denormalized count columns from actual records
+    const countTable = target_type === 'case' ? 'cases' : target_type === 'course' ? 'courses' : null;
+    if (countTable) {
+      const { count: likeCount } = await getSupabaseAdmin()
+        .from('likes').select('*', { count: 'exact', head: true })
+        .eq('target_type', target_type).eq('target_id', target_id);
+      const { count: bookmarkCount } = await getSupabaseAdmin()
+        .from('bookmarks').select('*', { count: 'exact', head: true })
+        .eq('target_type', target_type).eq('target_id', target_id);
+      await getSupabaseAdmin().from(countTable).update({
+        like_count: likeCount ?? 0,
+        bookmark_count: bookmarkCount ?? 0,
+      }).eq('id', target_id);
+    }
+
+    return NextResponse.json({ active: !existing });
   } catch {
     return NextResponse.json({ error: '操作失败' }, { status: 500 });
   }
@@ -74,23 +69,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '参数不完整' }, { status: 400 });
   }
 
-  // Return actual counts from database
+  // Return actual counts — count from likes/bookmarks tables directly
   if (action === 'count') {
-    const countTable = target_type === 'course' ? 'courses' : target_type === 'case' ? 'cases' : null;
-    if (!countTable) {
-      return NextResponse.json({ error: '不支持的类型' }, { status: 400 });
-    }
-    const { data, error } = await getSupabaseAdmin()
-      .from(countTable)
-      .select('like_count, bookmark_count')
-      .eq('id', target_id)
-      .maybeSingle();
-    if (error) {
-      console.error('Fetch count error:', error);
-      return NextResponse.json({ like_count: 0, bookmark_count: 0 });
-    }
-    console.log('Count data from DB:', data);
-    return NextResponse.json(data || { like_count: 0, bookmark_count: 0 });
+    const [{ count: likeCount }, { count: bookmarkCount }] = await Promise.all([
+      getSupabaseAdmin()
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('target_type', target_type)
+        .eq('target_id', target_id),
+      getSupabaseAdmin()
+        .from('bookmarks')
+        .select('*', { count: 'exact', head: true })
+        .eq('target_type', target_type)
+        .eq('target_id', target_id),
+    ]);
+    return NextResponse.json({ like_count: likeCount ?? 0, bookmark_count: bookmarkCount ?? 0 });
   }
 
   const result: Record<string, boolean> = {};
