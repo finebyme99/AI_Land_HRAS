@@ -29,9 +29,10 @@ export default function CompetitionsPage() {
       const res = await fetch(`/api/competitions/sync?period=${period}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      setItems((data.items ?? []).sort(
-        (a: Submission, b: Submission) => (b.monthlySavedHours ?? 0) - (a.monthlySavedHours ?? 0),
-      ));
+      setItems((data.items ?? [])
+        .filter((i: Submission) => i.status === '评审中')
+        .sort((a: Submission, b: Submission) => (b.monthlySavedHours ?? 0) - (a.monthlySavedHours ?? 0)),
+      );
       setLoaded(true);
     } catch (err) {
       message.error(err instanceof Error ? err.message : '加载失败');
