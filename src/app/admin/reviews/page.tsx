@@ -9,10 +9,18 @@ import type { CompetitionReview, ReviewScores, ReviewerRole } from '@/types';
 import { SCORE_DIMENSIONS, computeWeightedScore } from '@/types';
 import type { ColumnsType } from 'antd/es/table';
 
-const filterOptions = [
+const reviewFilterOptions = [
   { value: 'all', label: '全部' },
   { value: 'reviewed', label: '已评审' },
   { value: 'pending', label: '待评审' },
+];
+
+const statusOptions = [
+  { value: '评审中', label: '评审中' },
+  { value: '终审通过', label: '终审通过' },
+  { value: '待提交人补充方案', label: '待补充' },
+  { value: '待提交人调整方案', label: '待调整' },
+  { value: '并入其他方案', label: '并入其他' },
 ];
 
 const ROLE_LABELS: Record<ReviewerRole, string> = { user: '用户评委', business: '业务评委', tech: '技术评委' };
@@ -32,7 +40,7 @@ interface SubmissionScore {
   techCount: number;
 }
 
-function ScoreCalculation({ reviews, submissions, loading }: { reviews: CompetitionReview[]; submissions: { id: string }[]; loading: boolean }) {
+function ScoreCalculation({ reviews, submissions, loading }: { reviews: CompetitionReview[]; submissions: { id: string; status?: string }[]; loading: boolean }) {
   const [search, setSearch] = useState('');
 
   const scoreData = useMemo(() => {
@@ -98,6 +106,24 @@ function ScoreCalculation({ reviews, submissions, loading }: { reviews: Competit
       key: 'title',
       width: 200,
       ellipsis: true,
+    },
+    {
+      title: '赛事进展',
+      key: 'status',
+      width: 100,
+      render: (_, r) => {
+        const submission = submissions.find((s) => s.id === r.submissionId);
+        const status = submission?.status;
+        if (!status) return '-';
+        const colorMap: Record<string, string> = {
+          '评审中': 'blue',
+          '终审通过': 'green',
+          '待提交人补充方案': 'orange',
+          '待提交人调整方案': 'orange',
+          '并入其他方案': 'default',
+        };
+        return <Tag color={colorMap[status] ?? 'default'} className="text-[11px]">{status}</Tag>;
+      },
     },
     {
       title: '综合得分',
@@ -183,15 +209,17 @@ function ScoreCalculation({ reviews, submissions, loading }: { reviews: Competit
 }
 
 /* ─── 评审明细（原有内容） ─── */
-function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search, setSearch, statusFilter, setStatusFilter, isAdmin, clearingReviewerId, syncing, onClearReviewer, onExport, onSync, fetchReviews }: {
+function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search, setSearch, selectedStatuses, setSelectedStatuses, reviewStatusFilter, setReviewStatusFilter, isAdmin, clearingReviewerId, syncing, onClearReviewer, onExport, onSync, fetchReviews }: {
   reviews: CompetitionReview[];
-  submissions: { id: string; reviewers?: string[] }[];
+  submissions: { id: string; reviewers?: string[]; status?: string }[];
   totalSubmissions: number;
   loading: boolean;
   search: string;
   setSearch: (v: string) => void;
-  statusFilter: string;
-  setStatusFilter: (v: string) => void;
+  selectedStatuses: string[];
+  setSelectedStatuses: (v: string[] | ((prev: string[]) => string[])) => void;
+  reviewStatusFilter: string;
+  setReviewStatusFilter: (v: string) => void;
   isAdmin: boolean;
   clearingReviewerId: string | null;
   syncing: boolean;
@@ -201,8 +229,14 @@ function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search,
   fetchReviews: () => void;
 }) {
   const filtered = reviews.filter((r) => {
-    if (statusFilter === 'reviewed' && r.decision !== 'reviewed') return false;
-    if (statusFilter === 'pending' && r.decision === 'reviewed') return false;
+    // 赛事进展筛选
+    if (selectedStatuses.length > 0) {
+      const submission = submissions.find((s) => s.id === r.submission_id);
+      if (!submission || !selectedStatuses.includes(submission.status ?? '')) return false;
+    }
+    // 评审状态筛选
+    if (reviewStatusFilter === 'reviewed' && r.decision !== 'reviewed') return false;
+    if (reviewStatusFilter === 'pending' && r.decision === 'reviewed') return false;
     if (search) {
       const q = search.toLowerCase();
       return (
@@ -230,6 +264,24 @@ function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search,
       key: 'title',
       width: 180,
       ellipsis: true,
+    },
+    {
+      title: '赛事进展',
+      key: 'status',
+      width: 100,
+      render: (_, record) => {
+        const submission = submissions.find((s) => s.id === record.submission_id);
+        const status = submission?.status;
+        if (!status) return '-';
+        const colorMap: Record<string, string> = {
+          '评审中': 'blue',
+          '终审通过': 'green',
+          '待提交人补充方案': 'orange',
+          '待提交人调整方案': 'orange',
+          '并入其他方案': 'default',
+        };
+        return <Tag color={colorMap[status] ?? 'default'} className="text-[11px]">{status}</Tag>;
+      },
     },
     {
       title: '评审人',
@@ -383,23 +435,44 @@ function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search,
       })()}
 
       {/* 搜索和筛选 */}
-      <div className="flex items-center gap-2 mb-4">
-        <Select
-          value={statusFilter}
-          onChange={setStatusFilter}
-          options={filterOptions}
-          style={{ width: 100 }}
-          size="small"
-        />
-        <Input
-          placeholder="搜索方案ID或评审人"
-          prefix={<SearchOutlined />}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: 200 }}
-          allowClear
-          size="small"
-        />
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>赛事进展：</span>
+          {statusOptions.map((opt) => (
+            <Tag
+              key={opt.value}
+              color={selectedStatuses.includes(opt.value) ? 'blue' : 'default'}
+              className="cursor-pointer text-xs"
+              onClick={() => {
+                setSelectedStatuses((prev) =>
+                  prev.includes(opt.value)
+                    ? prev.filter((s) => s !== opt.value)
+                    : [...prev, opt.value]
+                );
+              }}
+            >
+              {opt.label}
+            </Tag>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Select
+            value={reviewStatusFilter}
+            onChange={setReviewStatusFilter}
+            options={reviewFilterOptions}
+            style={{ width: 100 }}
+            size="small"
+          />
+          <Input
+            placeholder="搜索方案ID或评审人"
+            prefix={<SearchOutlined />}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: 200 }}
+            allowClear
+            size="small"
+          />
+        </div>
       </div>
 
       <Table
@@ -420,10 +493,11 @@ export default function AdminReviewsPage() {
   const { isAdmin, isReviewer, loading: authLoading } = useAuth();
   const [reviews, setReviews] = useState<CompetitionReview[]>([]);
   const [totalSubmissions, setTotalSubmissions] = useState(0);
-  const [submissions, setSubmissions] = useState<{ id: string; reviewers?: string[] }[]>([]);
+  const [submissions, setSubmissions] = useState<{ id: string; reviewers?: string[]; status?: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [reviewStatusFilter, setReviewStatusFilter] = useState('all');
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['评审中']);
   const [clearingReviewerId, setClearingReviewerId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
@@ -579,8 +653,10 @@ export default function AdminReviewsPage() {
                   loading={loading}
                   search={search}
                   setSearch={setSearch}
-                  statusFilter={statusFilter}
-                  setStatusFilter={setStatusFilter}
+                  selectedStatuses={selectedStatuses}
+                  setSelectedStatuses={setSelectedStatuses}
+                  reviewStatusFilter={reviewStatusFilter}
+                  setReviewStatusFilter={setReviewStatusFilter}
                   isAdmin={isAdmin}
                   clearingReviewerId={clearingReviewerId}
                   syncing={syncing}
