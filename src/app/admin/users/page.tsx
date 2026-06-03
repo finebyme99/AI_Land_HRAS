@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Table, Avatar, Tag, Select, Input, Spin, message } from 'antd';
+import { Table, Avatar, Tag, Select, Input, Spin, App } from 'antd';
 import { UserOutlined, SearchOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import type { User } from '@/types';
@@ -41,6 +41,7 @@ const levelColors: Record<string, string> = {
 
 export default function AdminUsersPage() {
   const router = useRouter();
+  const { message } = App.useApp();
   const { user, isAdmin, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
