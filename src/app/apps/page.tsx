@@ -343,7 +343,7 @@ export default function AppsPage() {
                 </span>
                 {res.author?.name && (
                   <span className="flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                    <Avatar src={res.author.avatar} icon={<UserOutlined />} size={18} />
+                    <Avatar src={res.author.avatar || undefined} icon={<UserOutlined />} size={18} />
                     <span className="text-[11px]">{res.author.name}</span>
                   </span>
                 )}

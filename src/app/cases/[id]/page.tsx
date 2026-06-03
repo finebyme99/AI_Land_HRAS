@@ -258,7 +258,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
 
         <div className="flex items-center gap-4 mb-6 text-sm flex-wrap" style={{ color: 'var(--text-muted)' }}>
           <div className="flex items-center gap-2">
-            <Avatar size="small" src={caseItem.author.avatar} icon={<UserOutlined />} />
+            <Avatar size="small" src={caseItem.author.avatar || undefined} icon={<UserOutlined />} />
             <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{caseItem.author.name}</span>
             <span style={{ color: 'var(--border)' }}>·</span>
             <span>{caseItem.author.department}</span>
@@ -367,7 +367,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
           <div className="mt-5 pt-5 flex flex-col gap-4" style={{ borderTop: '1px solid var(--border-light)' }}>
             {comments.map((c) => (
               <div key={c.id} className="flex gap-3">
-                <Avatar size="small" src={c.author.avatar} icon={<UserOutlined />} />
+                <Avatar size="small" src={c.author.avatar || undefined} icon={<UserOutlined />} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm font-medium">{c.author.name}</span>

@@ -105,7 +105,7 @@ export default function SettingsPage() {
         {/* 头像区域 */}
         <div className="flex items-center gap-4 mb-6 pb-6" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
           <div className="relative cursor-pointer group" onClick={handleAvatarClick}>
-            <Avatar size={72} src={previewUrl || user.avatar} icon={<UserOutlined />}
+            <Avatar size={72} src={previewUrl || user.avatar || undefined} icon={<UserOutlined />}
               style={{ border: '3px solid var(--border-light)' }} />
             <div className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               style={{ background: 'rgba(0,0,0,0.45)' }}>

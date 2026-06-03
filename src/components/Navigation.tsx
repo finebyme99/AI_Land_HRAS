@@ -138,7 +138,7 @@ export default function Navigation() {
               >
                 <div className="flex items-center gap-2 cursor-pointer py-1.5 px-2.5 transition-all"
                   style={{ borderRadius: 'var(--radius-pill)', border: '1px solid rgba(255, 255, 255, 0.6)', background: 'rgba(255, 255, 255, 0.4)' }}>
-                  <Avatar src={user.avatar} icon={<UserOutlined />} size="small" />
+                  <Avatar src={user.avatar || undefined} icon={<UserOutlined />} size="small" />
                   <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{user.name}</span>
                 </div>
               </Dropdown>
@@ -198,7 +198,7 @@ export default function Navigation() {
       >
         {user && (
           <div className="flex items-center gap-3 mb-4 pb-4 px-4" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
-            <Avatar src={user.avatar} icon={<UserOutlined />} />
+            <Avatar src={user.avatar || undefined} icon={<UserOutlined />} />
             <div>
               <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{user.name}</div>
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{user.department}</div>

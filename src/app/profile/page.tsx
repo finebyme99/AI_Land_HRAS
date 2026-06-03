@@ -49,7 +49,7 @@ export default function ProfilePage() {
       {/* Profile card */}
       <div className="glass rounded-2xl p-6 sm:p-8 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex items-center gap-4 mb-6">
-          <Avatar size={72} src={user.avatar} icon={<UserOutlined />}
+          <Avatar size={72} src={user.avatar || undefined} icon={<UserOutlined />}
             style={{ border: '3px solid var(--border-light)' }} />
           <div>
             <h1 className="text-xl font-bold">{user.name}</h1>

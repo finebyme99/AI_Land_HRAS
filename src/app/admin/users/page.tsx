@@ -116,7 +116,7 @@ export default function AdminUsersPage() {
       key: 'user',
       render: (_, record) => (
         <div className="flex items-center gap-3">
-          <Avatar src={record.avatar} icon={<UserOutlined />} />
+          <Avatar src={record.avatar || undefined} icon={<UserOutlined />} />
           <div>
             <div className="font-medium text-sm">{record.name}</div>
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{record.department || '未设置部门'}</div>
