@@ -334,6 +334,27 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
             </div>
           )}
 
+          {/* SOP / GitHub 链接 */}
+          {data.sourceUrl && (
+            <div className="mb-3">
+              <SectionLabel>SOP文档 / 仓库地址</SectionLabel>
+              <div className="text-xs leading-relaxed break-all" style={{ color: 'var(--text-secondary)' }}>
+                {data.sourceUrl.split(/[\s,，、;；\n]+/).filter(Boolean).map((url, i) => {
+                  const href = url.startsWith('http') ? url : `https://${url}`;
+                  return (
+                    <span key={i}>
+                      {i > 0 && <span className="mx-1" style={{ color: 'var(--text-muted)' }}>·</span>}
+                      <a href={href} target="_blank" rel="noopener noreferrer"
+                        className="hover:underline" style={{ color: 'var(--primary)' }}>
+                        {url}
+                      </a>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ⑨ 工时数据确认人 */}
           {data.verifier && data.verifier.length > 0 && (
             <div className="text-[11px] mb-1" style={{ color: 'var(--text-muted)' }}>

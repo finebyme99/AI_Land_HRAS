@@ -43,7 +43,7 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '月均任务消耗AI费用': 'aiCost',
   '其他价值：准确率提升 / 质量提升 / 员工体验提升 等': 'extraValue',
   '工时数据真实性确认人': 'verifier',
-  '补充说明：方案说明SOP文档链接、GitHub仓库地址等': 'sourceUrl',
+  'SOP文档链接、GitHub仓库地址等': 'sourceUrl',
   '评审周期': 'period',
   '组队团队成员': 'teamMembers',
   '赛事进展': 'status',

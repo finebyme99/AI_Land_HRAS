@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Table, Tag, Select, Input, Button, Spin, Popconfirm, message } from 'antd';
-import { SearchOutlined, DownloadOutlined, AuditOutlined, TeamOutlined, CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined } from '@ant-design/icons';
+import { SearchOutlined, DownloadOutlined, AuditOutlined, TeamOutlined, CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import type { CompetitionReview, ReviewScores, ReviewerRole } from '@/types';
 import { SCORE_DIMENSIONS, computeWeightedScore } from '@/types';
@@ -22,10 +22,12 @@ export default function AdminReviewsPage() {
   const { isAdmin, isReviewer, loading: authLoading } = useAuth();
   const [reviews, setReviews] = useState<CompetitionReview[]>([]);
   const [totalSubmissions, setTotalSubmissions] = useState(0);
+  const [submissions, setSubmissions] = useState<{ id: string; reviewers?: string[] }[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [clearingReviewerId, setClearingReviewerId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isReviewer) {
@@ -51,6 +53,7 @@ export default function AdminReviewsPage() {
       setReviews(reviewsData.reviews ?? []);
       const syncData = await syncRes.json();
       setTotalSubmissions(syncData.total ?? 0);
+      setSubmissions(syncData.items ?? []);
     } catch {
       message.error('获取评审记录失败');
     } finally {
@@ -86,6 +89,21 @@ export default function AdminReviewsPage() {
       URL.revokeObjectURL(url);
     } catch {
       message.error('导出失败');
+    }
+  };
+
+  const handleSyncToFeishu = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/admin/reviews/sync-progress', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '同步失败');
+      message.success(`同步完成：新增 ${data.created} 条，更新 ${data.updated} 条`);
+      if (data.tableUrl) window.open(data.tableUrl, '_blank');
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '同步失败');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -220,14 +238,25 @@ export default function AdminReviewsPage() {
               size="small"
             />
             {isAdmin && (
-              <Button
-                icon={<DownloadOutlined />}
-                onClick={handleExport}
-                size="small"
-                style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
-              >
-                导出 CSV
-              </Button>
+              <>
+                <Button
+                  icon={<DownloadOutlined />}
+                  onClick={handleExport}
+                  size="small"
+                  style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
+                >
+                  导出 CSV
+                </Button>
+                <Button
+                  icon={<SyncOutlined spin={syncing} />}
+                  onClick={handleSyncToFeishu}
+                  loading={syncing}
+                  size="small"
+                  type="primary"
+                >
+                  同步到飞书
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -235,13 +264,14 @@ export default function AdminReviewsPage() {
         {/* 评委评审进度汇总 */}
         {!loading && reviews.length > 0 && (() => {
           const reviewedSubmissionIds = new Set(reviews.filter((r) => r.decision === 'reviewed').map((r) => r.submission_id));
-          const byReviewer: Record<string, { name: string; department: string; reviewed: number; avgScore: number; scoreCount: number }> = {};
+          const byReviewer: Record<string, { name: string; department: string; role: ReviewerRole | null; reviewed: number; avgScore: number; scoreCount: number }> = {};
           for (const r of reviews) {
             const key = r.reviewer_id;
             if (!byReviewer[key]) {
               byReviewer[key] = {
                 name: r.reviewer?.name || r.reviewer_id,
                 department: r.reviewer?.department || '-',
+                role: r.reviewer_role ?? null,
                 reviewed: 0,
                 avgScore: 0,
                 scoreCount: 0,
@@ -271,13 +301,22 @@ export default function AdminReviewsPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {reviewerList.map((rv) => {
-                  const pct = totalSubmissions > 0 ? Math.round((rv.reviewed / totalSubmissions) * 100) : 0;
+                  // 用户评委：按 reviewers 字段模糊匹配计算分配方案数；业务/技术评委：全部方案
+                  const denominator = rv.role === 'user'
+                    ? submissions.filter((s) => s.reviewers?.some((r: string) => r.includes(rv.name) || rv.name.includes(r))).length
+                    : totalSubmissions;
+                  const pct = denominator > 0 ? Math.min(Math.round((rv.reviewed / denominator) * 100), 100) : 0;
                   const avg = rv.scoreCount > 0 ? (rv.avgScore / rv.scoreCount).toFixed(1) : '-';
                   return (
                     <div key={rv.name} className="rounded-xl p-3" style={{ background: 'rgba(26,58,138,0.03)', border: '1px solid rgba(26,58,138,0.06)' }}>
                       <div className="flex items-center gap-2 mb-2">
                         <TeamOutlined style={{ color: 'var(--primary)' }} />
                         <span className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{rv.name}</span>
+                        {rv.role && (
+                          <Tag color={rv.role === 'user' ? 'blue' : rv.role === 'business' ? 'orange' : 'green'} className="text-[11px]">
+                            {ROLE_LABELS[rv.role]}
+                          </Tag>
+                        )}
                         <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{rv.department}</span>
                         {isAdmin && (
                           <Popconfirm
