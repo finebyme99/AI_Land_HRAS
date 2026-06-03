@@ -69,10 +69,10 @@ function ScoreCalculation({ reviews, submissions, loading }: { reviews: Competit
       else s.businessScore = null;
       if (s.techCount > 0) s.techScore = Math.round((s.techScore! / s.techCount) * 10) / 10;
       else s.techScore = null;
-      // 加权总分 = 用户40% + 业务30% + 技术30%（按有分的角色）
+      // 综合得分 = 用户均分 + 业务均分 + 技术均分（满分50）
       const scores = [s.userScore, s.businessScore, s.techScore].filter((v): v is number => v != null);
       if (scores.length > 0) {
-        s.totalScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10;
+        s.totalScore = Math.round(scores.reduce((a, b) => a + b, 0) * 10) / 10;
       }
     }
     return Array.from(map.values()).sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
