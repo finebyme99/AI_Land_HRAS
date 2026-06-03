@@ -67,12 +67,12 @@ export async function POST(request: NextRequest) {
           content_title: title,
           target_chat_id: chat_id,
           card_json: card,
-          status: result.message_id ? 'sent' : 'failed',
-          error_message: result.message_id ? null : '发送失败',
+          status: result.messageId ? 'sent' : 'failed',
+          error_message: result.messageId ? null : '发送失败',
           pushed_by: userId,
         });
 
-        if (result.message_id) success++;
+        if (result.messageId) success++;
         else {
           failed++;
           errors.push(`${item.content_type}:${item.content_id} 发送失败`);
