@@ -3,6 +3,7 @@ import "./globals.css";
 import AntdProvider from "@/lib/antd-registry";
 import { AuthProvider } from "@/lib/auth-context";
 import Navigation from "@/components/Navigation";
+import WelcomeModal from "@/components/WelcomeModal";
 
 export const metadata: Metadata = {
   title: "HRAS AI岛 — HR 的 AI 社区",
@@ -32,6 +33,7 @@ export default function RootLayout({
         <AntdProvider>
           <AuthProvider>
             <Navigation />
+            <WelcomeModal />
             <main className="flex-1 pb-16 md:pb-0">{children}</main>
           </AuthProvider>
         </AntdProvider>
