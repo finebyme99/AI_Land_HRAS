@@ -96,13 +96,24 @@ function ScoreCalculation({ reviews, submissions, loading }: { reviews: Competit
       title: '方案名称',
       dataIndex: 'title',
       key: 'title',
-      width: 220,
+      width: 200,
       ellipsis: true,
+    },
+    {
+      title: '综合得分',
+      key: 'total',
+      width: 90,
+      align: 'center',
+      render: (_, r) => r.totalScore != null
+        ? <span className="text-base font-bold" style={{ color: r.totalScore >= 35 ? '#16a34a' : r.totalScore >= 20 ? 'var(--primary)' : '#dc2626' }}>{r.totalScore}</span>
+        : <span style={{ color: 'var(--text-muted)' }}>-</span>,
+      sorter: (a, b) => (a.totalScore ?? -1) - (b.totalScore ?? -1),
+      defaultSortOrder: 'descend',
     },
     {
       title: '用户评委',
       key: 'user',
-      width: 120,
+      width: 110,
       align: 'center',
       render: (_, r) => r.userScore != null
         ? <span className="font-semibold" style={{ color: 'var(--primary)' }}>{r.userScore}</span>
@@ -112,7 +123,7 @@ function ScoreCalculation({ reviews, submissions, loading }: { reviews: Competit
     {
       title: '业务评委',
       key: 'business',
-      width: 120,
+      width: 110,
       align: 'center',
       render: (_, r) => r.businessScore != null
         ? <span className="font-semibold" style={{ color: '#F27F22' }}>{r.businessScore}</span>
@@ -122,23 +133,12 @@ function ScoreCalculation({ reviews, submissions, loading }: { reviews: Competit
     {
       title: '技术评委',
       key: 'tech',
-      width: 120,
+      width: 110,
       align: 'center',
       render: (_, r) => r.techScore != null
         ? <span className="font-semibold" style={{ color: '#16a34a' }}>{r.techScore}</span>
         : <span style={{ color: 'var(--text-muted)' }}>-</span>,
       sorter: (a, b) => (a.techScore ?? -1) - (b.techScore ?? -1),
-    },
-    {
-      title: '综合得分',
-      key: 'total',
-      width: 100,
-      align: 'center',
-      render: (_, r) => r.totalScore != null
-        ? <span className="text-base font-bold" style={{ color: r.totalScore >= 35 ? '#16a34a' : r.totalScore >= 20 ? 'var(--primary)' : '#dc2626' }}>{r.totalScore}</span>
-        : <span style={{ color: 'var(--text-muted)' }}>-</span>,
-      sorter: (a, b) => (a.totalScore ?? -1) - (b.totalScore ?? -1),
-      defaultSortOrder: 'descend',
     },
     {
       title: '评审人数',
