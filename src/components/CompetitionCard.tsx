@@ -54,6 +54,8 @@ export interface Submission {
   newFrequency?: string;
   reviewers?: string[];
   demoLink?: string;
+  dataSource?: string;
+  dataSourceNote?: string;
 }
 
 export interface AttachmentFile {
@@ -334,6 +336,23 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
               )}
             </div>
           </div>
+
+          {/* 量化数据来源 */}
+          {(data.dataSource || data.dataSourceNote) && (
+            <div className="mb-3">
+              <SectionLabel>量化数据来源</SectionLabel>
+              {data.dataSource && (
+                <div className="text-xs leading-relaxed mb-1" style={{ color: 'var(--text-primary)' }}>
+                  {data.dataSource}
+                </div>
+              )}
+              {data.dataSourceNote && (
+                <div className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  {data.dataSourceNote}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ⑧ 附加价值 */}
           {data.extraValue && (

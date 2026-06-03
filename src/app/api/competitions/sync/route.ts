@@ -61,6 +61,8 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '新工作频率': 'newFrequency',
   '当前用户': 'reviewers',
   'Demo链接': 'demoLink',
+  '量化数据来源': 'dataSource',
+  '量化数据来源说明': 'dataSourceNote',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -159,6 +161,8 @@ export async function GET(request: NextRequest) {
       newFrequency: row.new_frequency,
       reviewers: row.reviewers,
       demoLink: row.demo_link,
+      dataSource: row.data_source,
+      dataSourceNote: row.data_source_note,
     }));
 
     return NextResponse.json({ items, total: items.length, period });
@@ -380,6 +384,8 @@ export async function POST(request: NextRequest) {
         new_frequency: mapped.newFrequency ?? null,
         reviewers: toArray(mapped.reviewers),
         demo_link: mapped.demoLink ?? null,
+        data_source: mapped.dataSource ?? null,
+        data_source_note: mapped.dataSourceNote ?? null,
       });
     }
 
