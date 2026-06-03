@@ -40,7 +40,7 @@ interface SubmissionScore {
   techCount: number;
 }
 
-function ScoreCalculation({ reviews, submissions, loading }: { reviews: CompetitionReview[]; submissions: { id: string; status?: string }[]; loading: boolean }) {
+function ScoreCalculation({ reviews, submissions, loading, selectedStatuses }: { reviews: CompetitionReview[]; submissions: { id: string; status?: string }[]; loading: boolean; selectedStatuses: string[] }) {
   const [search, setSearch] = useState('');
 
   const scoreData = useMemo(() => {
@@ -87,6 +87,11 @@ function ScoreCalculation({ reviews, submissions, loading }: { reviews: Competit
   }, [reviews]);
 
   const filtered = scoreData.filter((s) => {
+    // 赛事进展筛选
+    if (selectedStatuses.length > 0) {
+      const submission = submissions.find((sub) => sub.id === s.submissionId);
+      if (!submission || !selectedStatuses.includes(submission.status ?? '')) return false;
+    }
     if (!search) return true;
     const q = search.toLowerCase();
     return s.title.toLowerCase().includes(q) || String(s.proposalNo ?? '').includes(q);
@@ -436,25 +441,6 @@ function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search,
 
       {/* 搜索和筛选 */}
       <div className="mb-4">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>赛事进展：</span>
-          {statusOptions.map((opt) => (
-            <Tag
-              key={opt.value}
-              color={selectedStatuses.includes(opt.value) ? 'blue' : 'default'}
-              className="cursor-pointer text-xs"
-              onClick={() => {
-                setSelectedStatuses((prev) =>
-                  prev.includes(opt.value)
-                    ? prev.filter((s) => s !== opt.value)
-                    : [...prev, opt.value]
-                );
-              }}
-            >
-              {opt.label}
-            </Tag>
-          ))}
-        </div>
         <div className="flex items-center gap-2">
           <Select
             value={reviewStatusFilter}
@@ -631,6 +617,27 @@ export default function AdminReviewsPage() {
           </div>
         </div>
 
+        {/* 赛事进展筛选 */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>赛事进展：</span>
+          {statusOptions.map((opt) => (
+            <Tag
+              key={opt.value}
+              color={selectedStatuses.includes(opt.value) ? 'blue' : 'default'}
+              className="cursor-pointer text-xs"
+              onClick={() => {
+                setSelectedStatuses((prev) =>
+                  prev.includes(opt.value)
+                    ? prev.filter((s) => s !== opt.value)
+                    : [...prev, opt.value]
+                );
+              }}
+            >
+              {opt.label}
+            </Tag>
+          ))}
+        </div>
+
         {/* Tab 切换 */}
         <Tabs
           defaultActiveKey="score"
@@ -639,7 +646,7 @@ export default function AdminReviewsPage() {
               key: 'score',
               label: <span><BarChartOutlined className="mr-1" />得分计算</span>,
               children: (
-                <ScoreCalculation reviews={reviews} submissions={submissions} loading={loading} />
+                <ScoreCalculation reviews={reviews} submissions={submissions} loading={loading} selectedStatuses={selectedStatuses} />
               ),
             },
             {
