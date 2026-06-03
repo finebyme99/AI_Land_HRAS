@@ -17,6 +17,7 @@ import {
   PlusOutlined,
   ClockCircleOutlined,
   RocketOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
@@ -243,23 +244,30 @@ export default function Home() {
   const [cases, setCases] = useState<Case[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [stats, setStats] = useState({ cases: 0, users: 0, courses: 0 });
+  const [stats, setStats] = useState({ cases: 0, users: 0, courses: 0, apps: 0 });
   const [dashboard, setDashboard] = useState({ savedHours: 0, participantCount: 0, awardCount: 0 });
   const [loading, setLoading] = useState(true);
   const [courseInteractions, setCourseInteractions] = useState<Record<string, { liked: boolean; bookmarked: boolean }>>({});
   const [courseCounts, setCourseCounts] = useState<Record<string, { like_count: number; bookmark_count: number }>>({});
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem('welcome_dismissed');
+    if (!dismissed) setShowWelcome(true);
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       try {
-        const [casesRes, eventsRes, coursesRes, caseCount, userCount, courseCount, settingsRes] = await Promise.all([
+        const [casesRes, eventsRes, coursesRes, caseCount, userCount, courseCount, appCount, settingsRes] = await Promise.all([
           getSupabase().from('cases').select('*, author:users!author_id(id, name, avatar, department)').eq('status', 'published').order('view_count', { ascending: false }).limit(6),
           getSupabase().from('events').select('*').in('status', ['ongoing', 'upcoming']).order('start_time', { ascending: false }),
           getSupabase().from('courses').select('*').order('created_at', { ascending: false }).limit(6),
           getSupabase().from('cases').select('id', { count: 'exact', head: true }).eq('status', 'published'),
           getSupabase().from('users').select('id', { count: 'exact', head: true }),
           getSupabase().from('courses').select('id', { count: 'exact', head: true }),
+          getSupabase().from('apps').select('id', { count: 'exact', head: true }).eq('status', 'published'),
           fetch('/api/admin/settings').then(r => r.json()).catch(() => ({ saved_hours: 0, participant_count: 0, award_count: 0 })),
         ]);
 
@@ -271,6 +279,7 @@ export default function Home() {
           cases: caseCount.count || 0,
           users: userCount.count || 0,
           courses: courseCount.count || 0,
+          apps: appCount.count || 0,
         });
         setDashboard({
           savedHours: settingsRes.saved_hours || 0,
@@ -354,13 +363,66 @@ export default function Home() {
 
   const statItems = [
     { label: '案例总数', value: stats.cases, icon: <BookOutlined />, iconBg: 'rgba(26, 58, 138, 0.12)', iconColor: '#1a3a8a', href: '/cases' },
-    { label: '大赛获奖', value: dashboard.awardCount, icon: <TrophyOutlined />, iconBg: 'rgba(242, 127, 34, 0.12)', iconColor: '#F27F22', href: '/competitions' },
     { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a', href: '/courses' },
+    { label: '资源总数', value: stats.apps, icon: <AppstoreOutlined />, iconBg: 'rgba(120, 80, 160, 0.12)', iconColor: '#7850a0', href: '/apps' },
     { label: '注册用户', value: stats.users, icon: <TeamOutlined />, iconBg: 'rgba(34, 197, 94, 0.12)', iconColor: '#22c55e', href: isAdmin ? '/admin/users' : '' },
   ];
 
   return (
     <div className="max-w-[1100px] mx-auto px-6">
+      {/* 欢迎弹窗 */}
+      {showWelcome && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4"
+          style={{ background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(6px)' }}>
+          <div className="relative w-full max-w-[420px] rounded-2xl p-8 text-center animate-fade-up"
+            style={{
+              background: 'rgba(255,255,255,0.75)',
+              backdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255,255,255,0.7)',
+              boxShadow: '0 20px 60px rgba(26,58,138,0.15), 0 8px 20px rgba(0,0,0,0.06)',
+            }}>
+            {/* 图标 */}
+            <div className="w-14 h-14 mx-auto mb-5 rounded-2xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #1a3a8a, #F27F22)' }}>
+              <span className="text-2xl">💬</span>
+            </div>
+            {/* 标题 */}
+            <h3 className="text-xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
+              欢迎来到 HRAS AI Land
+            </h3>
+            {/* 描述 */}
+            <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--text-secondary)' }}>
+              点击下方链接，加入<strong>HRAS AI岛</strong>飞书话题群，与大家畅聊 AI 标杆案例、赛事活动、课程工具资源、日常使用。
+            </p>
+            {/* 加入按钮 */}
+            <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b02nd8af-35c6-4b90-83c3-6e19cf850fca"
+              target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-7 py-2.5 rounded-full text-[15px] font-bold transition-all mb-4"
+              style={{
+                color: '#ffffff',
+                background: 'linear-gradient(135deg, #1a3a8a, #F27F22)',
+                boxShadow: '0 4px 14px rgba(26,58,138,0.3)',
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-1px)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}>
+              🚀 立即加入飞书群
+            </a>
+            {/* 我已加入 */}
+            <div>
+              <button
+                className="text-xs transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+                onClick={() => { localStorage.setItem('welcome_dismissed', '1'); setShowWelcome(false); }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}>
+                我已加入，不再提示
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section — Two Column */}
       <section className="pt-10 pb-8 animate-fade-up">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-center">

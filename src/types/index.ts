@@ -66,25 +66,13 @@ export interface Case {
   updated_at: string;
 }
 
-// ============ 资源推荐 ============
-export type ResourceType = 'ai_tool' | 'guide' | 'skill';
+// ============ 工具推荐 ============
+export type ResourceCategory = 'AI Agent/大模型' | '好用 Skills';
 
-export type AIToolCategory = '对话类' | '写作类' | '设计类' | '数据分析' | '自动化' | 'HR专属';
-export type GuideCategory = '入门指引' | '场景实操' | '进阶技巧' | '最佳实践';
-export type SkillCategory = '效率提升' | '数据分析' | '内容创作' | '流程自动化' | 'HR专用';
-
-export type ResourceCategory = AIToolCategory | GuideCategory | SkillCategory;
-
-/** 资源分类按类型分组 */
-export const RESOURCE_CATEGORIES: Record<ResourceType, ResourceCategory[]> = {
-  ai_tool: ['对话类', '写作类', '设计类', '数据分析', '自动化', 'HR专属'],
-  guide: ['入门指引', '场景实操', '进阶技巧', '最佳实践'],
-  skill: ['效率提升', '数据分析', '内容创作', '流程自动化', 'HR专用'],
-};
+export const RESOURCE_CATEGORIES: ResourceCategory[] = ['AI Agent/大模型', '好用 Skills'];
 
 export interface Resource {
   id: string;
-  resource_type: ResourceType;
   name: string;
   logo: string;
   description: string;
@@ -99,7 +87,9 @@ export interface Resource {
   is_featured?: boolean;
   status: ContentStatus;
   author_id: string | null;
+  author?: { id: string; name: string; avatar: string } | null;
   created_at: string;
+  updated_at?: string;
 }
 
 /** @deprecated 兼容旧代码，等同于 Resource */

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-import type { ResourceType, ResourceCategory } from '@/types';
 
-/** GET /api/resources?type=ai_tool&category=对话类&search=xxx */
+type ResourceCategory = string;
+
+/** GET /api/resources?category=AI工具&search=xxx */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const resourceType = searchParams.get('type') as ResourceType | null;
-  const category = searchParams.get('category') as ResourceCategory | null;
+  const category = searchParams.get('category');
   const search = searchParams.get('search') || '';
 
   const db = getSupabaseAdmin();
@@ -14,9 +14,8 @@ export async function GET(req: NextRequest) {
     .from('apps')
     .select('*')
     .eq('status', 'published')
-    .order('rating', { ascending: false });
+    .order('created_at', { ascending: false });
 
-  if (resourceType) query = query.eq('resource_type', resourceType);
   if (category) query = query.eq('category', category);
   if (search) query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
 
@@ -25,23 +24,27 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-/** POST /api/resources — 提交新资源（需登录，status=pending） */
+/** POST /api/resources — 提交新资源（管理员直接发布，其他人待审核） */
 export async function POST(req: NextRequest) {
   const userId = req.cookies.get('feishu_user_id')?.value;
   if (!userId) return NextResponse.json({ error: '请先登录' }, { status: 401 });
 
   const body = await req.json();
-  const { resource_type, name, description, content, category, scenarios, official_url, logo } = body;
+  const { name, description, content, category, scenarios, official_url, logo } = body;
 
-  if (!resource_type || !name || !description || !category) {
+  if (!name || !description || !category) {
     return NextResponse.json({ error: '缺少必填字段' }, { status: 400 });
   }
 
   const db = getSupabaseAdmin();
+
+  // 管理员提交直接发布
+  const { data: user } = await db.from('users').select('roles').eq('id', userId).single();
+  const isAdmin = user?.roles?.some((r: string) => ['admin', 'moderator'].includes(r));
+
   const { data, error } = await db
     .from('apps')
     .insert({
-      resource_type,
       name,
       description,
       content: content || '',
@@ -49,7 +52,7 @@ export async function POST(req: NextRequest) {
       scenarios: scenarios || [],
       official_url: official_url || '',
       logo: logo || '',
-      status: 'pending',
+      status: isAdmin ? 'published' : 'pending',
       author_id: userId,
     })
     .select()
@@ -57,4 +60,31 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data, { status: 201 });
+}
+
+/** PATCH /api/resources — 管理员审核资源（通过/驳回） */
+export async function PATCH(req: NextRequest) {
+  const userId = req.cookies.get('feishu_user_id')?.value;
+  if (!userId) return NextResponse.json({ error: '请先登录' }, { status: 401 });
+
+  const db = getSupabaseAdmin();
+  const { data: user } = await db.from('users').select('roles').eq('id', userId).single();
+  const isAdmin = user?.roles?.some((r: string) => ['admin', 'moderator'].includes(r));
+  if (!isAdmin) return NextResponse.json({ error: '无权限' }, { status: 403 });
+
+  const body = await req.json();
+  const { id, status } = body;
+  if (!id || !['published', 'rejected'].includes(status)) {
+    return NextResponse.json({ error: '参数错误' }, { status: 400 });
+  }
+
+  const { data, error } = await db
+    .from('apps')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }

@@ -1,4 +1,4 @@
-import type { CaseCategory, ResourceCategory, ResourceType, CourseDifficulty, ContentType, EventStatus, CaseTeam, CaseBusinessScenario } from '@/types';
+import type { CaseCategory, ResourceCategory, CourseDifficulty, ContentType, EventStatus, CaseTeam, CaseBusinessScenario } from '@/types';
 import { RESOURCE_CATEGORIES } from '@/types';
 
 // HR 模块分类颜色映射
@@ -17,38 +17,13 @@ export const CATEGORY_COLORS: Record<CaseCategory, string> = {
 
 /** 资源分类颜色映射 */
 export const RESOURCE_CATEGORY_COLORS: Record<ResourceCategory, string> = {
-  // AI 工具
-  '对话类': 'blue',
-  '写作类': 'green',
-  '设计类': 'purple',
-  '数据分析': 'orange',
-  '自动化': 'cyan',
-  'HR专属': 'magenta',
-  // 操作指引
-  '入门指引': 'geekblue',
-  '场景实操': 'lime',
-  '进阶技巧': 'gold',
-  '最佳实践': 'volcano',
-  // Skills
-  '效率提升': 'blue',
-  '内容创作': 'green',
-  '流程自动化': 'cyan',
-  'HR专用': 'magenta',
+  'AI Agent/大模型': 'blue',
+  '好用 Skills': 'purple',
 };
 
-/** @deprecated 兼容旧代码 */
-export const APP_CATEGORY_COLORS = RESOURCE_CATEGORY_COLORS;
-
-/** 资源类型 Tab 配置 */
-export const RESOURCE_TYPE_TABS: { key: ResourceType; label: string }[] = [
-  { key: 'ai_tool', label: 'AI 工具' },
-  { key: 'guide', label: '操作指引' },
-  { key: 'skill', label: 'Skills' },
-];
-
-/** 获取指定资源类型的分类列表 */
-export function getResourceCategories(type: ResourceType): ResourceCategory[] {
-  return RESOURCE_CATEGORIES[type] ?? [];
+/** 获取所有资源分类 */
+export function getAllCategories(): ResourceCategory[] {
+  return RESOURCE_CATEGORIES;
 }
 
 export const DIFFICULTY_OPTIONS = [
@@ -92,9 +67,6 @@ export const AI_TOOL_OPTIONS = [
   { label: 'Workbuddy / Codebuddy', value: 'Workbuddy/Codebuddy' },
   { label: '其他（请补充）', value: '其他' },
 ];
-
-/** @deprecated 兼容旧代码 */
-export const APP_CATEGORIES = RESOURCE_CATEGORIES.ai_tool;
 
 // 提报团队
 export const CASE_TEAMS: CaseTeam[] = ['LBU', 'FBU', 'ABU', 'HQU', 'WX', 'GEU', 'GUS', 'ZT_HSSC', 'GF_HSSC', 'ZT_ASSC', 'GF_ASSC'];

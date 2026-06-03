@@ -1,9 +1,8 @@
 import { getSupabase } from '../supabase';
-import type { Resource, ResourceCategory, ResourceType } from '@/types';
+import type { Resource, ResourceCategory } from '@/types';
 
 /** 获取资源列表 */
 export async function getApps(options?: {
-  resourceType?: ResourceType;
   category?: ResourceCategory;
   search?: string;
 }) {
@@ -11,9 +10,8 @@ export async function getApps(options?: {
     .from('apps')
     .select('*')
     .eq('status', 'published')
-    .order('rating', { ascending: false });
+    .order('created_at', { ascending: false });
 
-  if (options?.resourceType) query = query.eq('resource_type', options.resourceType);
   if (options?.category) query = query.eq('category', options.category);
   if (options?.search) query = query.or(`name.ilike.%${options.search}%,description.ilike.%${options.search}%`);
 
@@ -36,7 +34,6 @@ export async function getApp(id: string) {
 
 /** 创建资源（UGC 投稿） */
 export async function createApp(appData: {
-  resource_type: ResourceType;
   name: string;
   description: string;
   content?: string;

@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Sync denormalized count columns from actual records
-    const countTable = target_type === 'case' ? 'cases' : target_type === 'course' ? 'courses' : null;
+    const countTable = target_type === 'case' ? 'cases' : target_type === 'course' ? 'courses' : target_type === 'app' ? 'apps' : null;
     if (countTable) {
       const { count: likeCount } = await getSupabaseAdmin()
         .from('likes').select('*', { count: 'exact', head: true })

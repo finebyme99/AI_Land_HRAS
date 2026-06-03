@@ -39,7 +39,6 @@ export interface Submission {
   aiCost?: number;
   extraValue?: string;
   verifier?: string[];
-  sourceUrl?: string;
   status?: string;
   proposalNo?: number;
   attachments?: AttachmentFile[];
@@ -54,6 +53,7 @@ export interface Submission {
   oldFrequency?: string;
   newFrequency?: string;
   reviewers?: string[];
+  demoLink?: string;
 }
 
 export interface AttachmentFile {
@@ -257,6 +257,17 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
               )}
             </div>
           )}
+
+          {/* 实现效果 */}
+          {data.demoLink && (
+            <div className="mb-4">
+              <SectionLabel>实现效果</SectionLabel>
+              <a href={data.demoLink} target="_blank" rel="noopener noreferrer"
+                className="text-xs hover:underline break-all inline-flex items-center gap-1" style={{ color: 'var(--primary)' }}>
+                <LinkOutlined /> {data.demoLink}
+              </a>
+            </div>
+          )}
         </div>
 
         {/* 右栏：过程对比 + 结果 */}
@@ -334,26 +345,6 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
             </div>
           )}
 
-          {/* SOP / GitHub 链接 */}
-          {data.sourceUrl && (
-            <div className="mb-3">
-              <SectionLabel>SOP文档 / 仓库地址</SectionLabel>
-              <div className="text-xs leading-relaxed break-all" style={{ color: 'var(--text-secondary)' }}>
-                {data.sourceUrl.split(/[\s,，、;；\n]+/).filter(Boolean).map((url, i) => {
-                  const href = url.startsWith('http') ? url : `https://${url}`;
-                  return (
-                    <span key={i}>
-                      {i > 0 && <span className="mx-1" style={{ color: 'var(--text-muted)' }}>·</span>}
-                      <a href={href} target="_blank" rel="noopener noreferrer"
-                        className="hover:underline" style={{ color: 'var(--primary)' }}>
-                        {url}
-                      </a>
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {/* ⑨ 工时数据确认人 */}
           {data.verifier && data.verifier.length > 0 && (

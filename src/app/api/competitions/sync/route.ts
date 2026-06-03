@@ -43,7 +43,6 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '月均任务消耗AI费用': 'aiCost',
   '其他价值：准确率提升 / 质量提升 / 员工体验提升 等': 'extraValue',
   '工时数据真实性确认人': 'verifier',
-  'SOP文档链接、GitHub仓库地址等': 'sourceUrl',
   '评审周期': 'period',
   '组队团队成员': 'teamMembers',
   '赛事进展': 'status',
@@ -61,6 +60,7 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '原工作频率': 'oldFrequency',
   '新工作频率': 'newFrequency',
   '当前用户': 'reviewers',
+  'Demo链接': 'demoLink',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,6 +77,10 @@ function mapRecord(record: any): Record<string, unknown> {
     // attachment field: [{file_token, name, type, url}] → 保留原对象
     if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && ('file_token' in value[0] || ('url' in value[0] && 'type' in value[0]))) {
       mapped[key] = value;
+    }
+    // link field: {link: "url", text: "display"} → 提取 link URL
+    else if (typeof value === 'object' && value !== null && 'link' in value) {
+      mapped[key] = (value as { link?: string }).link ?? '';
     }
     else if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && 'text' in value[0]) {
       mapped[key] = value.map((v: { text?: string }) => v.text ?? '').join('');
@@ -134,7 +138,6 @@ export async function GET(request: NextRequest) {
       aiCost: row.ai_cost,
       extraValue: row.extra_value,
       verifier: row.verifier,
-      sourceUrl: row.source_url,
       status: row.status,
       proposalNo: row.proposal_no,
       attachments: (row.attachments ?? []).map((a: { name: string; type?: string; size?: number; storage_path: string }) => ({
@@ -155,6 +158,7 @@ export async function GET(request: NextRequest) {
       oldFrequency: row.old_frequency,
       newFrequency: row.new_frequency,
       reviewers: row.reviewers,
+      demoLink: row.demo_link,
     }));
 
     return NextResponse.json({ items, total: items.length, period });
@@ -197,21 +201,16 @@ export async function POST(request: NextRequest) {
       if (pageToken) url.searchParams.set('page_token', pageToken);
 
       const res = await fetch(url.toString(), {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
 
-      if (json.code !== 0) {
-        if (!filterSupported) {
-          console.error('飞书 API 错误:', JSON.stringify(json, null, 2));
-          return NextResponse.json({ error: json.msg ?? '飞书 API 错误' }, { status: 502 });
+      if (!res.ok || json.code !== 0) {
+        if (filterSupported && json.code === 1254043) {
+          filterSupported = false;
+          continue;
         }
-        // filter 不支持，回退全量拉取
-        console.warn('飞书 filter 不可用，回退全量拉取');
-        filterSupported = false;
-        pageToken = undefined;
-        allRecords.length = 0;
-        continue;
+        throw new Error(`飞书 API 错误: ${json.msg ?? res.status}`);
       }
 
       allRecords.push(...(json.data?.items ?? []));
@@ -230,23 +229,22 @@ export async function POST(request: NextRequest) {
           return periodField === period;
         });
 
-    // 预检：批量查询已存在的附件，避免重复下载
+    // 预检：从 DB 读取已存在的附件元数据（包含 file_token 用于判断文件是否被替换）
     const recordIds = periodRecords.map((r) => r.record_id);
-    const existingPaths = new Set<string>();
-    const BATCH_SIZE = 10;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existingAttachments = new Map<string, { name: string; file_token?: string; size?: number }>();
+    const BATCH_SIZE = 50;
     for (let i = 0; i < recordIds.length; i += BATCH_SIZE) {
       const batch = recordIds.slice(i, i + BATCH_SIZE);
-      const results = await Promise.allSettled(
-        batch.map(async (rid) => {
-          const { data: files } = await getSupabaseAdmin().storage.from(BUCKET).list(rid);
-          return { rid, files: files ?? [] };
-        }),
-      );
-      for (const r of results) {
-        if (r.status === 'fulfilled') {
-          for (const f of r.value.files) {
-            existingPaths.add(`${r.value.rid}/${f.name}`);
-          }
+      const { data: rows } = await getSupabaseAdmin()
+        .from('competition_submissions')
+        .select('id, attachments')
+        .in('id', batch);
+      for (const row of rows ?? []) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const a of (row.attachments ?? []) as any[]) {
+          const key = `${row.id}/${a.name}`;
+          existingAttachments.set(key, { name: a.name, file_token: a.file_token, size: a.size });
         }
       }
     }
@@ -255,12 +253,13 @@ export async function POST(request: NextRequest) {
     const rows: Record<string, unknown>[] = [];
     let skippedAttachments = 0;
     let downloadedAttachments = 0;
+    let replacedAttachments = 0;
 
     for (const record of periodRecords) {
       const mapped = mapRecord(record);
       const attachments = Array.isArray(mapped.attachments) ? mapped.attachments : [];
 
-      // 筛选出需要下载的附件（已存在的直接跳过）
+      // 筛选出需要下载的附件
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toDownload: { att: any; storagePath: string }[] = [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -273,12 +272,32 @@ export async function POST(request: NextRequest) {
 
         const safeName = a.name.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g, '_');
         const storagePath = `${mapped.id}/${safeName}`;
+        const existing = existingAttachments.get(storagePath);
 
-        if (existingPaths.has(storagePath)) {
-          // 已存在，直接记录元数据
-          processedAttachments.push({ name: a.name, type: a.type, size: a.size, storage_path: storagePath });
-          skippedAttachments++;
+        if (existing) {
+          // 文件存在，通过 file_token 判断是否被替换
+          if (existing.file_token && a.file_token) {
+            // 两边都有 file_token，精确比较
+            if (a.file_token === existing.file_token) {
+              processedAttachments.push({ name: a.name, type: a.type, size: a.size, file_token: a.file_token, storage_path: storagePath });
+              skippedAttachments++;
+            } else {
+              toDownload.push({ att: a, storagePath });
+              replacedAttachments++;
+            }
+          } else {
+            // 旧数据没有 file_token，回退到大小比较；大小信息也不足则重新下载以确保正确
+            const sizeMatch = a.size && existing.size && a.size === existing.size;
+            if (sizeMatch) {
+              processedAttachments.push({ name: a.name, type: a.type, size: a.size, file_token: a.file_token, storage_path: storagePath });
+              skippedAttachments++;
+            } else {
+              toDownload.push({ att: a, storagePath });
+              replacedAttachments++;
+            }
+          }
         } else {
+          // 新附件，需要下载
           toDownload.push({ att: a, storagePath });
         }
       }
@@ -290,18 +309,25 @@ export async function POST(request: NextRequest) {
         const results = await Promise.allSettled(
           batch.map(async ({ att: a, storagePath }) => {
             let fileRes: Response | null = null;
+            // 1) 直接 url
             if (a.url) {
               fileRes = await fetch(a.url, { headers: { 'Authorization': `Bearer ${token}` } });
             }
+            // 2) tmp_url 兜底
             if (!fileRes?.ok && a.tmp_url) {
               fileRes = await fetch(a.tmp_url);
+            }
+            // 3) 通过 file_token 调飞书媒体下载 API 兜底
+            if (!fileRes?.ok && a.file_token) {
+              const mediaUrl = `${FEISHU_API}/drive/v1/medias/${a.file_token}/download`;
+              fileRes = await fetch(mediaUrl, { headers: { 'Authorization': `Bearer ${token}` } });
             }
             if (fileRes?.ok) {
               const buffer = await fileRes.arrayBuffer();
               await uploadToStorage(BUCKET, storagePath, buffer, a.type || 'application/octet-stream');
-              return { name: a.name, type: a.type, size: a.size, storage_path: storagePath };
+              return { name: a.name, type: a.type, size: a.size, file_token: a.file_token, storage_path: storagePath };
             }
-            throw new Error(`下载失败: ${fileRes?.status ?? 'no url'}`);
+            throw new Error(`下载失败 [${a.name}]: ${fileRes?.status ?? 'no url'} (url=${!!a.url}, tmp=${!!a.tmp_url}, token=${!!a.file_token})`);
           }),
         );
         for (const r of results) {
@@ -337,7 +363,6 @@ export async function POST(request: NextRequest) {
         ai_cost: mapped.aiCost ?? null,
         extra_value: mapped.extraValue ?? null,
         verifier: toArray(mapped.verifier),
-        source_url: mapped.sourceUrl ?? null,
         status: mapped.status ?? null,
         attachments: processedAttachments,
         record_url: mapped.recordUrl ?? null,
@@ -354,6 +379,7 @@ export async function POST(request: NextRequest) {
         old_frequency: mapped.oldFrequency ?? null,
         new_frequency: mapped.newFrequency ?? null,
         reviewers: toArray(mapped.reviewers),
+        demo_link: mapped.demoLink ?? null,
       });
     }
 
@@ -368,7 +394,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       synced: rows.length,
       period,
-      attachments: { downloaded: downloadedAttachments, skipped: skippedAttachments },
+      attachments: { downloaded: downloadedAttachments, skipped: skippedAttachments, replaced: replacedAttachments },
     });
   } catch (err) {
     console.error('同步大赛方案失败:', err);

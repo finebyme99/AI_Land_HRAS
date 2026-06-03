@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Tag, Select, Input, Spin } from 'antd';
+import { Tag, Select, Spin } from 'antd';
 import { ReadOutlined, UserOutlined, PlusOutlined, BookOutlined, PlayCircleOutlined, LikeFilled, LikeOutlined, BookFilled } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { COURSE_DIFFICULTY_COLORS, DIFFICULTY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/constants';
+import SearchInput from '@/components/SearchInput';
 import type { Course, CourseDifficulty, ContentType } from '@/types';
 
 export default function CoursesPage() {
@@ -143,12 +144,11 @@ export default function CoursesPage() {
       {/* Filters */}
       <div className="glass rounded-xl p-4 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex flex-wrap gap-3 items-center">
-          <Input.Search
+          <SearchInput
             placeholder="搜索课程..."
             className="w-full sm:w-64"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
+            onChange={setSearch}
           />
           <Select
             placeholder="难度"

@@ -23,7 +23,7 @@ const navItems = [
   { key: '/cases', label: '案例库', icon: <BookOutlined /> },
   { key: '/competitions', label: 'AI大赛', icon: <TrophyOutlined /> },
   { key: '/courses', label: '公开课', icon: <ReadOutlined /> },
-  { key: '/apps', label: '资源推荐', icon: <AppstoreOutlined /> },
+  { key: '/apps', label: '工具推荐', icon: <AppstoreOutlined /> },
 ];
 
 const userMenuItems = [
@@ -113,13 +113,21 @@ export default function Navigation() {
                       key: item.key,
                       label: <Link href={item.key}>{item.label}</Link>,
                     })),
-                    ...(isReviewer ? [
-                      { key: '/admin/reviews', label: <Link href="/admin/reviews">评审管理</Link> },
-                    ] : []),
-                    ...(isAdmin ? [
-                      { key: '/admin/users', label: <Link href="/admin/users">用户管理</Link> },
-                      { key: '/admin/reminders', label: <Link href="/admin/reminders">提醒管理</Link> },
-                      { key: '/admin/settings', label: <Link href="/admin/settings">平台设置</Link> },
+                    ...(isAdmin || isReviewer ? [
+                      {
+                        key: 'admin',
+                        label: '管理后台',
+                        icon: <TeamOutlined />,
+                        children: [
+                          ...(isReviewer ? [{ key: '/admin/reviews', label: <Link href="/admin/reviews">评审管理</Link> }] : []),
+                          ...(isAdmin ? [
+                            { key: '/admin/resources', label: <Link href="/admin/resources">工具审核</Link> },
+                            { key: '/admin/users', label: <Link href="/admin/users">用户管理</Link> },
+                            { key: '/admin/reminders', label: <Link href="/admin/reminders">提醒管理</Link> },
+                            { key: '/admin/settings', label: <Link href="/admin/settings">平台设置</Link> },
+                          ] : []),
+                        ],
+                      },
                     ] : []),
                     { type: 'divider' as const },
                     { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: handleLogout },
@@ -212,13 +220,21 @@ export default function Navigation() {
                     key: item.key,
                     label: <Link href={item.key} onClick={() => setDrawerOpen(false)}>{item.label}</Link>,
                   })),
-                  ...(isReviewer ? [
-                    { key: '/admin/reviews', label: <Link href="/admin/reviews" onClick={() => setDrawerOpen(false)}>评审管理</Link> },
-                  ] : []),
-                  ...(isAdmin ? [
-                    { key: '/admin/users', label: <Link href="/admin/users" onClick={() => setDrawerOpen(false)}>用户管理</Link> },
-                    { key: '/admin/reminders', label: <Link href="/admin/reminders" onClick={() => setDrawerOpen(false)}>提醒管理</Link> },
-                    { key: '/admin/settings', label: <Link href="/admin/settings" onClick={() => setDrawerOpen(false)}>平台设置</Link> },
+                  ...(isAdmin || isReviewer ? [
+                    {
+                      key: 'admin',
+                      label: '管理后台',
+                      icon: <TeamOutlined />,
+                      children: [
+                        ...(isReviewer ? [{ key: '/admin/reviews', label: <Link href="/admin/reviews" onClick={() => setDrawerOpen(false)}>评审管理</Link> }] : []),
+                        ...(isAdmin ? [
+                          { key: '/admin/resources', label: <Link href="/admin/resources" onClick={() => setDrawerOpen(false)}>工具审核</Link> },
+                          { key: '/admin/users', label: <Link href="/admin/users" onClick={() => setDrawerOpen(false)}>用户管理</Link> },
+                          { key: '/admin/reminders', label: <Link href="/admin/reminders" onClick={() => setDrawerOpen(false)}>提醒管理</Link> },
+                          { key: '/admin/settings', label: <Link href="/admin/settings" onClick={() => setDrawerOpen(false)}>平台设置</Link> },
+                        ] : []),
+                      ],
+                    },
                   ] : []),
                   { type: 'divider' as const } as const,
                   { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: handleLogout },

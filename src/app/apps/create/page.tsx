@@ -1,38 +1,53 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
-import { Form, Input, Select, App, Tabs } from 'antd';
-import {
-  ArrowLeftOutlined,
-  PlusOutlined,
-  AppstoreOutlined,
-  ReadOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons';
+import { Form, Input, Select, App, Spin, Avatar } from 'antd';
+import { ArrowLeftOutlined, PlusOutlined, AppstoreOutlined, CameraOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import { RESOURCE_CATEGORIES } from '@/types';
-import { RESOURCE_TYPE_TABS } from '@/lib/constants';
-import type { ResourceType, ResourceCategory } from '@/types';
-
-const TYPE_ICONS: Record<ResourceType, React.ReactNode> = {
-  ai_tool: <AppstoreOutlined />,
-  guide: <ReadOutlined />,
-  skill: <ThunderboltOutlined />,
-};
 
 export default function CreateResourcePage() {
   const { user } = useAuth();
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [resourceType, setResourceType] = useState<ResourceType>('ai_tool');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const categories = RESOURCE_CATEGORIES[resourceType];
+  const handleLogoClick = () => {
+    fileInputRef.current?.click();
+  };
 
-  const handleTypeChange = (key: string) => {
-    setResourceType(key as ResourceType);
-    form.setFieldValue('category', undefined);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      message.error('仅支持图片格式');
+      return;
+    }
+    if (file.size > 500 * 1024) {
+      message.error('图片大小不能超过 500KB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/apps/logo', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '上传失败');
+      setLogoUrl(data.url);
+      message.success('图片已上传');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '上传失败');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleSubmit = async (values: Record<string, unknown>) => {
@@ -46,24 +61,29 @@ export default function CreateResourcePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          resource_type: resourceType,
           name: values.name,
           description: values.description,
           content: values.content || '',
           category: values.category,
           scenarios: values.scenarios || [],
           official_url: values.official_url || '',
+          logo: logoUrl || '',
         }),
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || '提交失败');
       }
-      message.success('资源已提交，等待审核');
+      const data = await res.json();
+      if (data.status === 'published') {
+        message.success('工具已发布');
+      } else {
+        message.success('工具已提交，等待审核');
+      }
       window.location.href = '/apps';
     } catch (err) {
       console.error('Failed to create resource:', err);
-      message.error(err instanceof Error ? err.message : '提交失败，请重试');
+      message.error(err instanceof Error ? err.message : '提交失败');
     } finally {
       setSubmitting(false);
     }
@@ -71,93 +91,98 @@ export default function CreateResourcePage() {
 
   if (!user) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="glass rounded-2xl p-8 text-center" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-          <AppstoreOutlined className="text-3xl mb-3" style={{ color: 'var(--text-muted)' }} />
-          <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>请先登录后再提交资源</p>
-          <Link href="/login" className="text-sm font-medium" style={{ color: 'var(--primary)' }}>
-            去登录
-          </Link>
+          <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>请先登录后再提交工具</p>
+          <Link href="/login" className="text-sm font-medium" style={{ color: 'var(--primary)' }}>去登录</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <Link href="/apps" className="inline-flex items-center gap-1.5 text-sm mb-6 transition-opacity hover:opacity-70" style={{ color: 'var(--primary)' }}>
-        <ArrowLeftOutlined /> 返回资源列表
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <Link href="/apps" className="inline-flex items-center gap-1.5 text-sm mb-6 transition-opacity hover:opacity-70" style={{ color: 'var(--text-muted)' }}>
+        <ArrowLeftOutlined /> 返回工具列表
       </Link>
 
-      <h1 className="text-2xl font-semibold flex items-center gap-3 mb-6">
-        <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(26, 58, 138, 0.1)', color: 'var(--primary)' }}>
-          <PlusOutlined />
+      <h1 className="text-2xl font-bold mb-6 flex items-center gap-3">
+        <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base"
+          style={{ background: 'rgba(120, 80, 160, 0.08)', color: '#7850a0' }}>
+          <AppstoreOutlined />
         </span>
-        提交资源
+        提交工具
       </h1>
-
-      {/* Resource Type Selector */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>资源类型</label>
-        <Tabs
-          activeKey={resourceType}
-          onChange={handleTypeChange}
-          items={RESOURCE_TYPE_TABS.map((tab) => ({
-            key: tab.key,
-            label: (
-              <span className="flex items-center gap-1.5">
-                {TYPE_ICONS[tab.key]}
-                {tab.label}
-              </span>
-            ),
-          }))}
-        />
-      </div>
 
       <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
+          {/* 工具图片 */}
+          <Form.Item label="工具图片">
+            <div className="flex items-center gap-4">
+              <div className="relative cursor-pointer group" onClick={handleLogoClick}>
+                <div className="w-20 h-20 rounded-xl flex items-center justify-center overflow-hidden"
+                  style={{ border: '2px dashed var(--border-light)', background: 'rgba(255,255,255,0.3)' }}>
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="工具图片" className="w-full h-full object-cover" />
+                  ) : (
+                    <AppstoreOutlined style={{ fontSize: 24, color: 'var(--text-muted)' }} />
+                  )}
+                </div>
+                <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ background: 'rgba(0,0,0,0.45)' }}>
+                  <CameraOutlined style={{ color: '#fff', fontSize: 18 }} />
+                </div>
+                {uploading && (
+                  <div className="absolute inset-0 rounded-xl flex items-center justify-center"
+                    style={{ background: 'rgba(0,0,0,0.45)' }}>
+                    <Spin size="small" />
+                  </div>
+                )}
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*,.svg" className="hidden" onChange={handleFileChange} />
+              <div>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>上传工具图片</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>支持 JPG/PNG/SVG，不超过 500KB</p>
+              </div>
+            </div>
+          </Form.Item>
+
           <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入名称' }]}>
-            <Input placeholder={
-              resourceType === 'ai_tool' ? '如：ChatGPT、Claude、Dify' :
-              resourceType === 'guide' ? '如：HR 场景 Prompt 编写指南' :
-              '如：简历筛选 Skill、会议纪要 Skill'
-            } maxLength={80} showCount />
+            <Input placeholder="如：ChatGPT、Claude、Dify" maxLength={80} showCount />
           </Form.Item>
 
           <Form.Item name="description" label="简介" rules={[{ required: true, message: '请输入简介' }]}>
-            <Input.TextArea rows={3} placeholder="简要描述这个资源的用途和亮点" maxLength={500} showCount />
+            <Input.TextArea rows={3} placeholder="一句话介绍这个工具" maxLength={200} showCount />
           </Form.Item>
 
           <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
-            <Select placeholder="选择分类" options={categories.map(c => ({ label: c, value: c }))} />
+            <Select placeholder="选择分类" options={RESOURCE_CATEGORIES.map(c => ({ label: c, value: c }))} />
           </Form.Item>
 
           <Form.Item name="scenarios" label="适用场景">
-            <Select mode="tags" placeholder="输入场景标签后回车" maxCount={5} />
+            <Select mode="multiple" placeholder="选择适用场景" options={[
+              { label: '对话', value: '对话' },
+              { label: '任务执行', value: '任务执行' },
+              { label: '编程', value: '编程' },
+            ]} />
           </Form.Item>
 
-          <Form.Item name="official_url" label={resourceType === 'guide' ? '参考链接' : '官网 / 项目地址'}>
+          <Form.Item name="official_url" label="官网 / 项目地址">
             <Input placeholder="https://..." />
           </Form.Item>
 
-          {/* 操作指引和 Skills 需要正文内容 */}
-          {(resourceType === 'guide' || resourceType === 'skill') && (
-            <Form.Item name="content" label={resourceType === 'guide' ? '操作指引正文' : 'Skill 说明'} rules={[{ required: true, message: '请输入内容' }]}>
-              <Input.TextArea rows={10} placeholder={
-                resourceType === 'guide'
-                  ? '详细的操作步骤、使用技巧、注意事项等'
-                  : 'Skill 的功能描述、使用方法、触发条件、示例等'
-              } />
-            </Form.Item>
-          )}
+          <Form.Item name="content" label="详细说明（选填）">
+            <Input.TextArea rows={6} placeholder="功能介绍、使用技巧、注意事项等" />
+          </Form.Item>
 
           <Form.Item>
             <button
-              className="px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
-              style={{ background: 'var(--primary)' }}
               type="submit"
-              disabled={submitting}>
-              <PlusOutlined /> {submitting ? '提交中...' : '提交资源'}
+              disabled={submitting}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
+              style={{ background: 'var(--primary)' }}
+            >
+              <PlusOutlined /> {submitting ? '提交中...' : '提交'}
             </button>
           </Form.Item>
         </Form>

@@ -393,3 +393,23 @@ a {
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
+
+/* 搜索输入框统一样式 */
+.search-input-override.ant-input {
+  border-radius: 12px !important;
+  padding-left: 12px !important;
+}
+
+.search-input-override.ant-input:focus,
+.search-input-override.ant-input-focused {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px rgba(26, 58, 138, 0.1) !important;
+}
+
+.search-input-override .ant-input-prefix {
+  margin-right: 8px;
+}
+
+.search-input-override .ant-input-clear-icon {
+  margin-right: 4px;
+}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Tag, Input, Select, Radio, Empty, Spin, Pagination } from 'antd';
+import { Tag, Select, Radio, Empty, Spin, Pagination } from 'antd';
 import {
   EyeOutlined,
   LikeOutlined,
@@ -14,6 +14,7 @@ import {
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { CATEGORY_COLORS, CASE_CATEGORIES, CASE_CATEGORY_OPTIONS, CASE_TEAMS, CASE_BUSINESS_SCENARIOS } from '@/lib/constants';
+import SearchInput from '@/components/SearchInput';
 import type { Case, CaseCategory, CaseTeam, CaseBusinessScenario } from '@/types';
 
 export default function CasesPage() {
@@ -99,12 +100,11 @@ export default function CasesPage() {
       {/* Filters */}
       <div className="glass rounded-xl p-4 mb-6 space-y-3" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex flex-wrap gap-3 items-center">
-          <Input.Search
+          <SearchInput
             placeholder="搜索案例..."
             className="w-full sm:w-64"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
+            onChange={setSearch}
           />
           <Select
             placeholder="HR 模块"

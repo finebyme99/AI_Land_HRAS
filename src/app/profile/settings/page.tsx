@@ -1,15 +1,19 @@
 'use client';
 
+import { useState, useRef } from 'react';
 import Link from 'next/link';
-import { Form, Input, Avatar, Tag, App, Spin } from 'antd';
-import { ArrowLeftOutlined, UserOutlined, SettingOutlined } from '@ant-design/icons';
+import { Form, Input, Avatar, App, Spin } from 'antd';
+import { ArrowLeftOutlined, UserOutlined, SettingOutlined, CameraOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import { getSupabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (loading) {
     return (
@@ -28,6 +32,48 @@ export default function SettingsPage() {
       </div>
     );
   }
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      message.error('仅支持图片格式');
+      return;
+    }
+    if (file.size > 500 * 1024) {
+      message.error('图片大小不能超过 500KB');
+      return;
+    }
+
+    // 预览
+    const reader = new FileReader();
+    reader.onload = (ev) => setPreviewUrl(ev.target?.result as string);
+    reader.readAsDataURL(file);
+
+    // 上传
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/user/avatar', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '上传失败');
+      message.success('头像已更新');
+      setPreviewUrl(null);
+      await refreshUser();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '上传失败');
+      setPreviewUrl(null);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleSave = async (values: Record<string, unknown>) => {
     try {
@@ -56,12 +102,26 @@ export default function SettingsPage() {
       </h1>
 
       <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+        {/* 头像区域 */}
         <div className="flex items-center gap-4 mb-6 pb-6" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
-          <Avatar size={64} src={user.avatar} icon={<UserOutlined />}
-            style={{ border: '3px solid var(--border-light)' }} />
+          <div className="relative cursor-pointer group" onClick={handleAvatarClick}>
+            <Avatar size={72} src={previewUrl || user.avatar} icon={<UserOutlined />}
+              style={{ border: '3px solid var(--border-light)' }} />
+            <div className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ background: 'rgba(0,0,0,0.45)' }}>
+              <CameraOutlined style={{ color: '#fff', fontSize: 20 }} />
+            </div>
+            {uploading && (
+              <div className="absolute inset-0 rounded-full flex items-center justify-center"
+                style={{ background: 'rgba(0,0,0,0.45)' }}>
+                <Spin size="small" />
+              </div>
+            )}
+          </div>
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           <div>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>头像和用户名联动飞书账号</p>
-            <Tag color="blue" className="mt-1">已同步飞书</Tag>
+            <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{user.name}</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>点击头像更换，支持 JPG/PNG，不超过 500KB</p>
           </div>
         </div>
 
