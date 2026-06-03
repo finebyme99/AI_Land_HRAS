@@ -340,6 +340,7 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
           {/* 量化数据来源 */}
           {(data.dataSource || data.dataSourceNote) && (
             <div className="mb-3">
+              <SectionLabel>量化数据来源</SectionLabel>
               {data.dataSource && (
                 <div className="flex flex-wrap gap-1.5 mb-1">
                   {data.dataSource.split(/[,，、;；\n]+/).filter(Boolean).map((tag, i) => (
