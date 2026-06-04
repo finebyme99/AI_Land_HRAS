@@ -118,6 +118,7 @@ export interface Course {
   comment_count: number;
   is_featured?: boolean;
   period?: string | null;
+  cover_image_key?: string | null;
   created_at: string;
 }
 

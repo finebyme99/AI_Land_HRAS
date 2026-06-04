@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
 async function buildCard(supabase: ReturnType<typeof getSupabaseAdmin>, contentType: string, contentId: string) {
   switch (contentType) {
     case 'course': {
-      const { data } = await supabase.from('courses').select('id, title, instructor, difficulty, description, duration, video_url, courseware_url, created_at, period').eq('id', contentId).single();
+      const { data } = await supabase.from('courses').select('id, title, instructor, difficulty, description, duration, video_url, courseware_url, created_at, period, cover_image_key').eq('id', contentId).single();
       if (!data) return null;
       return buildCourseCard(data);
     }

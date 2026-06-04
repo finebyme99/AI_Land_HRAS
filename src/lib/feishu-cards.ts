@@ -27,8 +27,19 @@ export function buildCourseCard(course: {
   courseware_url?: string;
   created_at?: string;
   period?: string | null;
+  cover_image_key?: string | null;
 }) {
   const bodyElements: unknown[] = [];
+
+  // ── 海报图片 ──
+  if (course.cover_image_key) {
+    bodyElements.push({
+      tag: 'img',
+      img_key: course.cover_image_key,
+      alt: { tag: 'plain_text', content: course.title },
+      mode: 'fit_horizontal',
+    });
+  }
 
   // ── 正文区：column_set (grey-50 背景) ──
   const contentElements: unknown[] = [
