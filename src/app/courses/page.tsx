@@ -2,25 +2,33 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Tag, Select, Spin } from 'antd';
-import { ReadOutlined, UserOutlined, PlusOutlined, BookOutlined, PlayCircleOutlined, LikeFilled, LikeOutlined, BookFilled } from '@ant-design/icons';
+import { Tag, Select, Spin, Modal, Form, Input, App, DatePicker } from 'antd';
+import { ReadOutlined, UserOutlined, PlusOutlined, BookOutlined, PlayCircleOutlined, LikeFilled, LikeOutlined, BookFilled, EditOutlined, SyncOutlined } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
-import { COURSE_DIFFICULTY_COLORS, DIFFICULTY_OPTIONS, CONTENT_TYPE_OPTIONS } from '@/lib/constants';
+import { CONTENT_TYPE_OPTIONS } from '@/lib/constants';
 import SearchInput from '@/components/SearchInput';
-import type { Course, CourseDifficulty, ContentType } from '@/types';
+import type { Course, ContentType } from '@/types';
+import dayjs from 'dayjs';
 
 export default function CoursesPage() {
   const { isAdmin, user } = useAuth();
+  const { message } = App.useApp();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [difficulty, setDifficulty] = useState<CourseDifficulty | ''>('');
   const [contentType, setContentType] = useState<ContentType | ''>('');
   const [instructor, setInstructor] = useState('');
   const [interactions, setInteractions] = useState<Record<string, { liked: boolean; bookmarked: boolean }>>({});
   const [counts, setCounts] = useState<Record<string, { like_count: number; bookmark_count: number }>>({});
+
+  // 编辑相关
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Course | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [editForm] = Form.useForm();
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -36,7 +44,6 @@ export default function CoursesPage() {
         .order('created_at', { ascending: false });
 
       if (debouncedSearch) query = query.or(`title.ilike.%${debouncedSearch}%`);
-      if (difficulty) query = query.eq('difficulty', difficulty);
       if (contentType) query = query.contains('content_type', [contentType]);
 
       const { data, error } = await query;
@@ -48,7 +55,7 @@ export default function CoursesPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, difficulty, contentType]);
+  }, [debouncedSearch, contentType]);
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
@@ -109,6 +116,50 @@ export default function CoursesPage() {
     } catch {}
   };
 
+  // 编辑课程
+  const openEdit = (course: Course) => {
+    setEditing(course);
+    editForm.setFieldsValue({
+      title: course.title,
+      description: course.description,
+      instructor: course.instructor,
+      duration: course.duration,
+      difficulty: course.difficulty,
+      published_at: dayjs(course.created_at),
+      courseware_url: course.courseware_url || '',
+      video_url: course.video_url || '',
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const values = await editForm.validateFields();
+      const res = await fetch(`/api/courses?id=${editing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...values,
+          created_at: values.published_at ? values.published_at.startOf('day').toISOString() : undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || '保存失败');
+      }
+      message.success('已保存');
+      setEditModalOpen(false);
+      setEditing(null);
+      fetchCourses();
+    } catch (e) {
+      if (e instanceof Error) message.error(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Client-side instructor filter + options
   const instructorOptions = [...new Set(courses.map((c) => c.instructor).filter(Boolean))]
     .sort()
@@ -132,12 +183,35 @@ export default function CoursesPage() {
           </h1>
         </div>
         {isAdmin && (
-          <Link href="/courses/create">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
-              style={{ background: 'var(--primary)' }}>
-              <PlusOutlined /> 发布课程
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                setSyncing(true);
+                try {
+                  const res = await fetch('/api/courses/sync', { method: 'POST' });
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || '同步失败');
+                  message.success(`同步完成：新增 ${data.inserted} 条，更新 ${data.updated} 条`);
+                  fetchCourses();
+                } catch (e) {
+                  message.error(e instanceof Error ? e.message : '同步失败');
+                } finally {
+                  setSyncing(false);
+                }
+              }}
+              disabled={syncing}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:opacity-90"
+              style={{ background: 'rgba(26,58,138,0.06)', color: 'var(--primary)' }}
+            >
+              <SyncOutlined spin={syncing} /> {syncing ? '同步中...' : '同步课程'}
             </button>
-          </Link>
+            <Link href="/courses/create">
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+                style={{ background: 'var(--primary)' }}>
+                <PlusOutlined /> 发布课程
+              </button>
+            </Link>
+          </div>
         )}
       </div>
 
@@ -149,14 +223,6 @@ export default function CoursesPage() {
             className="w-full sm:w-64"
             value={search}
             onChange={setSearch}
-          />
-          <Select
-            placeholder="难度"
-            className="w-full sm:w-28"
-            value={difficulty || undefined}
-            onChange={(v) => setDifficulty(v || '')}
-            allowClear
-            options={DIFFICULTY_OPTIONS}
           />
           <Select
             placeholder="形式"
@@ -195,22 +261,31 @@ export default function CoursesPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {displayCourses.map((course) => (
-            <div key={course.id} className="glass relative overflow-hidden rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+            <div key={course.id} className="glass relative overflow-hidden rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-md group"
               style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
               <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 hover:opacity-100 transition-opacity" style={{ background: 'var(--gradient-primary)' }} />
+              {/* 管理员编辑按钮 */}
+              {isAdmin && (
+                <button
+                  onClick={() => openEdit(course)}
+                  className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 hover:opacity-100 transition-all"
+                  style={{ background: 'rgba(255,255,255,0.8)', color: 'var(--text-secondary)' }}
+                  title="编辑"
+                >
+                  <EditOutlined style={{ fontSize: 13 }} />
+                </button>
+              )}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 {(Array.isArray(course.content_type) ? course.content_type : [course.content_type]).map((ct) => (
                   <Tag key={ct} color={ct === 'video' ? 'red' : 'blue'}>
                     {ct === 'video' ? '视频' : '文档'}
                   </Tag>
                 ))}
-                <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
                 {course.is_featured && <Tag color="orange">精选</Tag>}
               </div>
               <h3 className="text-base font-semibold mb-2 line-clamp-2">
                 {course.title}
               </h3>
-              <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
               {(course.courseware_url || course.video_url) && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {course.courseware_url && (
@@ -239,7 +314,7 @@ export default function CoursesPage() {
               )}
               <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
                 <span className="flex items-center gap-1">
-                  <UserOutlined /> {course.instructor} · {course.duration}
+                  <UserOutlined /> {course.instructor}
                 </span>
                 <span className="flex items-center gap-3">
                   <span
@@ -262,6 +337,38 @@ export default function CoursesPage() {
           ))}
         </div>
       )}
+
+      {/* 编辑弹窗 */}
+      <Modal
+        title="编辑课程"
+        open={editModalOpen}
+        onCancel={() => { setEditModalOpen(false); setEditing(null); }}
+        onOk={handleSave}
+        confirmLoading={saving}
+        okText="保存"
+        cancelText="取消"
+        width={600}
+      >
+        <Form form={editForm} layout="vertical" className="mt-4">
+          <Form.Item name="title" label="课程标题" rules={[{ required: true, message: '请输入课程标题' }]}>
+            <Input maxLength={100} showCount />
+          </Form.Item>
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item name="instructor" label="讲师" rules={[{ required: true, message: '请输入讲师' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="published_at" label="发布日期">
+              <DatePicker className="w-full" />
+            </Form.Item>
+          </div>
+          <Form.Item name="courseware_url" label="课件链接">
+            <Input placeholder="飞书文档链接等" />
+          </Form.Item>
+          <Form.Item name="video_url" label="视频链接">
+            <Input placeholder="飞书妙记链接等" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

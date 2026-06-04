@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  return NextResponse.json({ items: data ?? [] });
 }
 
 /** POST /api/resources — 提交新资源（管理员直接发布，其他人待审核） */

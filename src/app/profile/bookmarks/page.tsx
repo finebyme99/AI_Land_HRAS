@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { StarOutlined, ArrowLeftOutlined, LikeOutlined, ReadOutlined, FileTextOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons';
-import { Spin, Tag, Button, Popconfirm, message } from 'antd';
+import { Spin, Tag, Button, Popconfirm, App } from 'antd';
 import { useAuth } from '@/lib/auth-context';
 
 interface BookmarkItem {
@@ -22,6 +22,7 @@ interface BookmarkItem {
 
 export default function BookmarksPage() {
   const { user } = useAuth();
+  const { message } = App.useApp();
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState<string | null>(null);

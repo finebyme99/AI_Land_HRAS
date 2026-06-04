@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
     const userId = request.cookies.get('feishu_user_id')?.value;
     if (!userId) return NextResponse.json({ error: '未登录' }, { status: 401 });
     const supabase = getSupabaseAdmin();
-    const { data: user } = await supabase.from('users').select('role').eq('id', userId).single();
-    if (!user || !['admin', 'moderator'].includes(user.role)) {
+    const { data: user } = await supabase.from('users').select('roles').eq('id', userId).single();
+    if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) {
       return NextResponse.json({ error: '无权限' }, { status: 403 });
     }
 
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 async function buildCard(supabase: ReturnType<typeof getSupabaseAdmin>, contentType: string, contentId: string) {
   switch (contentType) {
     case 'course': {
-      const { data } = await supabase.from('courses').select('id, title, instructor, difficulty, description').eq('id', contentId).single();
+      const { data } = await supabase.from('courses').select('id, title, instructor, difficulty, description, duration, video_url, courseware_url, created_at').eq('id', contentId).single();
       if (!data) return null;
       return buildCourseCard(data);
     }

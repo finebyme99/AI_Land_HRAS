@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Spin, Input, Tag, Button, message, Tabs, Checkbox, Empty } from 'antd';
-import { SendOutlined, SearchOutlined, WechatOutlined } from '@ant-design/icons';
+import { Spin, Input, Tag, Button, App, Tabs, Checkbox, Empty, Badge } from 'antd';
+import { SendOutlined, SearchOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 
 /* ─── 类型 ─── */
@@ -50,13 +50,12 @@ const TYPE_LABELS: Record<string, string> = {
 export default function AdminPushPage() {
   const router = useRouter();
   const { isAdmin, loading: authLoading } = useAuth();
+  const { message } = App.useApp();
 
-  // 群聊
+  // 群聊（多选）
   const [chats, setChats] = useState<Chat[]>([]);
   const [chatSearch, setChatSearch] = useState('');
-  const [selectedChatId, setSelectedChatId] = useState<string>(() =>
-    typeof window !== 'undefined' ? localStorage.getItem('push_chat_id') || '' : ''
-  );
+  const [selectedChatIds, setSelectedChatIds] = useState<Set<string>>(new Set());
   const [chatsLoading, setChatsLoading] = useState(true);
 
   // 内容
@@ -188,8 +187,7 @@ export default function AdminPushPage() {
 
   /* ─── 推送 ─── */
   const handlePush = async () => {
-    const chat = chats.find((c) => c.chat_id === selectedChatId);
-    if (!chat) { message.warning('请选择目标群聊'); return; }
+    if (selectedChatIds.size === 0) { message.warning('请选择目标群聊'); return; }
     if (selected.size === 0) { message.warning('请选择要推送的内容'); return; }
 
     setPushing(true);
@@ -198,14 +196,20 @@ export default function AdminPushPage() {
         content_type: i.type,
         content_id: i.id,
       }));
-      const res = await fetch('/api/admin/push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: selectedChatId, items }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '推送失败');
-      message.success(`推送完成：${data.success} 条成功${data.failed ? `，${data.failed} 条失败` : ''}`);
+      let totalSuccess = 0;
+      let totalFailed = 0;
+      for (const chatId of selectedChatIds) {
+        const res = await fetch('/api/admin/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, items }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '推送失败');
+        totalSuccess += data.success ?? 0;
+        totalFailed += data.failed ?? 0;
+      }
+      message.success(`推送完成：${totalSuccess} 条成功${totalFailed ? `，${totalFailed} 条失败` : ''}`);
       setSelected(new Map());
       // 刷新日志
       const logRes = await fetch('/api/admin/push/logs');
@@ -223,7 +227,7 @@ export default function AdminPushPage() {
   if (authLoading) return <div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>;
   if (!isAdmin) return null;
 
-  const selectedChat = chats.find((c) => c.chat_id === selectedChatId);
+  const selectedChatNames = chats.filter((c) => selectedChatIds.has(c.chat_id)).map((c) => c.name);
   const currentItems = contentMap[activeTab] ?? [];
 
   return (
@@ -271,15 +275,20 @@ export default function AdminPushPage() {
                       key={chat.chat_id}
                       className="flex items-center gap-2 px-3 py-2 cursor-pointer text-sm transition-colors"
                       style={{
-                        background: selectedChatId === chat.chat_id ? 'rgba(26,58,138,0.06)' : 'transparent',
+                        background: selectedChatIds.has(chat.chat_id) ? 'rgba(26,58,138,0.06)' : 'transparent',
                         borderBottom: '1px solid rgba(0,0,0,0.04)',
                       }}
                       onClick={() => {
-                        setSelectedChatId(chat.chat_id);
-                        localStorage.setItem('push_chat_id', chat.chat_id);
+                        setSelectedChatIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(chat.chat_id)) next.delete(chat.chat_id);
+                          else next.add(chat.chat_id);
+                          return next;
+                        });
                       }}
                     >
-                      <WechatOutlined style={{ color: 'var(--primary)', fontSize: 14 }} />
+                      <Checkbox checked={selectedChatIds.has(chat.chat_id)} className="mt-0.5" />
+                      <span style={{ color: 'var(--primary)', fontSize: 14 }}>💬</span>
                       <span className="flex-1 truncate">{chat.name}</span>
                       <Tag color={chat.chat_type === 'external' ? 'orange' : 'blue'} className="text-[10px]">
                         {chat.chat_type === 'external' ? '外部' : '内部'}
@@ -288,9 +297,9 @@ export default function AdminPushPage() {
                   ))
                 )}
               </div>
-              {selectedChat && (
+              {selectedChatNames.length > 0 && (
                 <div className="mt-2 text-xs" style={{ color: 'var(--primary)' }}>
-                  ✅ 已选：{selectedChat.name}
+                  ✅ 已选 {selectedChatNames.length} 个群：{selectedChatNames.join('、')}
                 </div>
               )}
             </div>
@@ -364,12 +373,12 @@ export default function AdminPushPage() {
                 icon={<SendOutlined />}
                 loading={pushing}
                 onClick={handlePush}
-                disabled={!selectedChat || selected.size === 0}
+                disabled={selectedChatIds.size === 0 || selected.size === 0}
               >
-                推送到{selectedChat ? ` ${selectedChat.name}` : ''}
+                推送到 {selectedChatIds.size} 个群
               </Button>
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                共 {selected.size} 条内容{selectedChat ? ` → ${selectedChat.name}` : ''}
+                共 {selected.size} 条内容 → {selectedChatNames.length > 0 ? selectedChatNames.join('、') : '未选群'}
               </span>
             </div>
           </div>
@@ -427,48 +436,84 @@ export default function AdminPushPage() {
 }
 
 /* ─── 卡片预览组件 ─── */
-function PreviewCard({ item }: { item: ContentItem }) {
-  const cardStyle: React.CSSProperties = {
-    background: 'rgba(255,255,255,0.9)',
-    border: '1px solid rgba(0,0,0,0.08)',
-    borderRadius: 12,
-    overflow: 'hidden',
-  };
+const CARD_THEMES: Record<string, { bg: string; label: string; subtitle?: string; tags?: { text: string; color: string }[] }> = {
+  course: { bg: '#13c2c2', label: '🎓 新课程上线', subtitle: 'HRAS AI公开课，体系化带你从AI工具上手到落地', tags: [{ text: '上新', color: '#f5222d' }, { text: 'AI公开课', color: '#13c2c2' }, { text: '学习资源', color: '#1677ff' }] },
+  resource: { bg: '#52c41a', label: '🛠️ 新工具推荐' },
+  case: { bg: '#722ed1', label: '📚 新案例推荐' },
+  submission: { bg: '#fa8c16', label: '📋 大赛方案速览' },
+};
 
-  const headerStyle: React.CSSProperties = {
-    background: '#13c2c2', // turquoise
-    color: '#fff',
-    padding: '8px 12px',
-    fontSize: 13,
-    fontWeight: 600,
-  };
+function PreviewCard({ item }: { item: ContentItem }) {
+  const theme = CARD_THEMES[item.type] ?? CARD_THEMES.course;
 
   return (
-    <div style={cardStyle}>
-      <div style={headerStyle}>
-        {item.type === 'course' && '🎓 新课程上线'}
-        {item.type === 'resource' && '🛠️ 新工具推荐'}
-        {item.type === 'case' && '📚 新案例推荐'}
-        {item.type === 'submission' && '📋 大赛方案速览'}
-      </div>
-      <div style={{ padding: '10px 12px' }}>
-        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{item.title}</div>
-        {item.instructor && <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>讲师：{item.instructor}</div>}
-        {item.category && <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>分类：{item.category}</div>}
-        {item.difficulty && <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>难度：{item.difficulty}</div>}
-        {item.description && (
-          <div style={{ fontSize: 11, color: '#888', marginTop: 6, lineHeight: 1.5 }}>
-            {item.description.slice(0, 100)}{item.description.length > 100 ? '...' : ''}
+    <div style={{
+      background: '#fff',
+      border: '1px solid rgba(0,0,0,0.06)',
+      borderRadius: 8,
+      overflow: 'hidden',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+    }}>
+      {/* ── Header ── */}
+      <div style={{ background: theme.bg, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>{item.title}</div>
+        {theme.subtitle && (
+          <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11 }}>{theme.subtitle}</div>
+        )}
+        {theme.tags && (
+          <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+            {theme.tags.map((t, i) => (
+              <span key={i} style={{
+                fontSize: 10, fontWeight: 500, padding: '1px 6px', borderRadius: 3,
+                background: t.color, color: '#fff',
+              }}>
+                {t.text}
+              </span>
+            ))}
           </div>
         )}
-        <div style={{ marginTop: 10 }}>
-          <span style={{
-            display: 'inline-block', padding: '4px 12px', borderRadius: 6,
-            background: '#13c2c2', color: '#fff', fontSize: 11, fontWeight: 500,
-          }}>
-            查看详情
-          </span>
+      </div>
+
+      {/* ── Body: 内容区（grey-50 背景） ── */}
+      {item.type === 'course' ? (
+        <div style={{ background: '#fafafa', padding: '12px', margin: '12px', borderRadius: 4 }}>
+          <div style={{ fontSize: 13, lineHeight: 1.8, color: '#333' }}>
+            <div><b>本期讲师：</b>{item.instructor || '待定'}</div>
+          </div>
+          <div style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '8px 0' }} />
+          <div style={{ fontSize: 11, color: '#999' }}>发布日期：2026.06.01</div>
         </div>
+      ) : (
+        <div style={{ padding: '12px' }}>
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, color: '#1a1a1a' }}>{item.title}</div>
+          {item.category && (
+            <div style={{ fontSize: 11, color: '#555', marginBottom: 4 }}>🏷️ {item.category}</div>
+          )}
+          {item.description && (
+            <div style={{ fontSize: 12, color: '#888', lineHeight: 1.6 }}>{item.description.slice(0, 120)}</div>
+          )}
+        </div>
+      )}
+
+      {/* ── 按钮区 ── */}
+      <div style={{ padding: '8px 20px 12px', display: 'flex', gap: 8 }}>
+        {item.type === 'course' ? (
+          <>
+            <span style={{ flex: 1, textAlign: 'center', padding: '6px 0', borderRadius: 6, background: theme.bg, color: '#fff', fontSize: 12, fontWeight: 500 }}>
+              🎬 查看录屏
+            </span>
+            <span style={{ flex: 1, textAlign: 'center', padding: '6px 0', borderRadius: 6, background: '#fff', color: theme.bg, fontSize: 12, fontWeight: 500, border: `1px solid ${theme.bg}` }}>
+              📑 查看课件
+            </span>
+            <span style={{ flex: 1, textAlign: 'center', padding: '6px 0', borderRadius: 6, background: '#fff', color: '#555', fontSize: 12, fontWeight: 500, border: '1px solid #d9d9d9' }}>
+              📚 查看往期
+            </span>
+          </>
+        ) : (
+          <span style={{ padding: '6px 16px', borderRadius: 6, background: theme.bg, color: '#fff', fontSize: 12, fontWeight: 500 }}>
+            {item.type === 'submission' ? '📋 查看方案' : '📖 查看详情'}
+          </span>
+        )}
       </div>
     </div>
   );

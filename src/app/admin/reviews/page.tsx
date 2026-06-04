@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Table, Tag, Select, Input, Button, Spin, Popconfirm, message, Tabs } from 'antd';
+import { Table, Tag, Select, Input, Button, Spin, Popconfirm, App, Tabs } from 'antd';
 import { SearchOutlined, DownloadOutlined, AuditOutlined, TeamOutlined, CheckCircleOutlined, DeleteOutlined, SyncOutlined, BarChartOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import type { CompetitionReview, ReviewScores, ReviewerRole } from '@/types';
@@ -487,6 +487,7 @@ function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search,
 export default function AdminReviewsPage() {
   const router = useRouter();
   const { isAdmin, isReviewer, loading: authLoading } = useAuth();
+  const { message } = App.useApp();
   const [reviews, setReviews] = useState<CompetitionReview[]>([]);
   const [totalSubmissions, setTotalSubmissions] = useState(0);
   const [submissions, setSubmissions] = useState<{ id: string; reviewers?: string[]; status?: string }[]>([]);

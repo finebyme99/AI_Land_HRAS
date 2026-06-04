@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Form, Input, Select, App } from 'antd';
+import { Form, Input, Select, App, DatePicker } from 'antd';
 import { ArrowLeftOutlined, ReadOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
-import { DIFFICULTY_OPTIONS } from '@/lib/constants';
+import dayjs from 'dayjs';
 
 export default function CreateCoursePage() {
   const { isAdmin } = useAuth();
@@ -39,12 +39,11 @@ export default function CreateCoursePage() {
           title: values.title,
           description: values.description,
           instructor: values.instructor,
-          duration: values.duration,
-          difficulty: values.difficulty,
           content_type: values.content_type || [],
           cover_image: values.cover_image || '',
           courseware_url: values.courseware_url || '',
           video_url: values.video_url || '',
+          created_at: values.published_at ? (values.published_at as dayjs.Dayjs).startOf('day').toISOString() : undefined,
         }),
       });
       if (!res.ok) {
@@ -80,22 +79,12 @@ export default function CreateCoursePage() {
             <Input placeholder="输入课程标题" maxLength={100} showCount />
           </Form.Item>
 
-          <Form.Item name="description" label="课程描述" rules={[{ required: true, message: '请输入课程描述' }]}>
-            <Input.TextArea rows={3} placeholder="简要描述课程内容和目标" maxLength={500} showCount />
-          </Form.Item>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Form.Item name="instructor" label="讲师" rules={[{ required: true, message: '请输入讲师名称' }]}>
               <Input placeholder="讲师名称" />
             </Form.Item>
-            <Form.Item name="duration" label="课程时长" rules={[{ required: true, message: '请输入课程时长' }]}>
-              <Input placeholder="如：2小时30分" />
-            </Form.Item>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Form.Item name="difficulty" label="难度" rules={[{ required: true, message: '请选择难度' }]}>
-              <Select placeholder="选择难度" options={DIFFICULTY_OPTIONS} />
+            <Form.Item name="published_at" label="发布日期" initialValue={dayjs()}>
+              <DatePicker className="w-full" placeholder="选择发布日期" />
             </Form.Item>
           </div>
 

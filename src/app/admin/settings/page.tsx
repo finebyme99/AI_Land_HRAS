@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Form, InputNumber, Button, Spin, message } from 'antd';
+import { Form, InputNumber, Button, Spin, App } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 
 export default function AdminSettingsPage() {
   const router = useRouter();
   const { isAdmin, loading: authLoading } = useAuth();
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

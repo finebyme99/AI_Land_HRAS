@@ -11,6 +11,22 @@ async function requireAdmin(request: NextRequest) {
   return user;
 }
 
+// GET /api/courses — 获取课程列表
+export async function GET() {
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from('courses')
+      .select('id, title, instructor, difficulty, category, description, cover_image, created_at')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return NextResponse.json({ courses: data ?? [] });
+  } catch (err) {
+    console.error('获取课程列表失败:', err);
+    return NextResponse.json({ error: '获取课程列表失败' }, { status: 500 });
+  }
+}
+
 // POST /api/courses — 创建课程（admin only）
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
@@ -23,25 +39,29 @@ export async function POST(request: NextRequest) {
       title, description, instructor, duration,
       difficulty, content_type,
       cover_image, courseware_url, video_url,
+      created_at,
     } = await request.json();
 
     if (!title || !description || !instructor || !duration || !difficulty) {
       return NextResponse.json({ error: '请填写必要字段' }, { status: 400 });
     }
 
+    const insertData: Record<string, unknown> = {
+      title,
+      description,
+      instructor,
+      duration,
+      difficulty,
+      content_type: content_type || [],
+      cover_image: cover_image || '',
+      courseware_url: courseware_url || '',
+      video_url: video_url || '',
+    };
+    if (created_at) insertData.created_at = created_at;
+
     const { data, error } = await getSupabaseAdmin()
       .from('courses')
-      .insert({
-        title,
-        description,
-        instructor,
-        duration,
-        difficulty,
-        content_type: content_type || [],
-        cover_image: cover_image || '',
-        courseware_url: courseware_url || '',
-        video_url: video_url || '',
-      })
+      .insert(insertData)
       .select('id, title, category, difficulty, created_at')
       .single();
 
@@ -72,7 +92,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
     const updates: Record<string, unknown> = {};
-    const allowed = ['title', 'description', 'instructor', 'duration', 'difficulty', 'content_type', 'cover_image', 'courseware_url', 'video_url'];
+    const allowed = ['title', 'description', 'instructor', 'duration', 'difficulty', 'content_type', 'cover_image', 'courseware_url', 'video_url', 'created_at'];
     for (const key of allowed) {
       if (key in body) updates[key] = body[key];
     }

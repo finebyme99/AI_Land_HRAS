@@ -1,6 +1,6 @@
 /**
  * 飞书消息卡片模板构建器
- * 统一使用 turquoise 颜色，跳转链接用按钮形式
+ * 公开课卡片参照 docs/feishu-bot-card.json 模板
  */
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://hras-ai-land.vercel.app';
@@ -11,45 +11,185 @@ function truncate(text: string, maxLen: number): string {
   return text.length > maxLen ? text.slice(0, maxLen) + '...' : text;
 }
 
-/** 公开课卡片 */
+/** 格式化日期 */
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** 公开课卡片 — 参照 feishu-bot-card.json 模板 */
 export function buildCourseCard(course: {
   id: string;
   title: string;
   instructor?: string;
-  difficulty?: string;
-  description?: string;
+  video_url?: string;
+  courseware_url?: string;
+  created_at?: string;
 }) {
-  const lines: string[] = [];
-  lines.push(`**${course.title}**`);
-  if (course.instructor) lines.push(`讲师：${course.instructor}`);
-  if (course.difficulty) lines.push(`难度：${course.difficulty}`);
-  if (course.description) lines.push('', truncate(course.description, 120));
+  const bodyElements: unknown[] = [];
 
-  return {
-    config: { wide_screen_mode: true },
-    header: {
-      title: { tag: 'plain_text' as const, content: `🎓 新课程上线` },
-      template: 'turquoise' as const,
+  // ── 正文区：column_set (grey-50 背景) ──
+  const contentElements: unknown[] = [
+    {
+      tag: 'markdown',
+      content: `**本期讲师：** ${course.instructor || '待定'}`,
+      text_align: 'left',
+      text_size: 'normal_v2',
+      margin: '4px 4px 4px 4px',
     },
-    elements: [
-      { tag: 'div' as const, text: { tag: 'lark_md' as const, content: lines.join('\n') } },
-      { tag: 'hr' as const },
+    {
+      tag: 'hr',
+      margin: '0px 0px 0px 0px',
+    },
+    {
+      tag: 'div',
+      text: {
+        tag: 'plain_text',
+        content: `发布日期：${formatDate(course.created_at)}`,
+        text_size: 'notation',
+        text_align: 'left',
+        text_color: 'grey',
+      },
+      margin: '4px 4px 4px 4px',
+    },
+  ];
+
+  bodyElements.push({
+    tag: 'column_set',
+    background_style: 'grey-50',
+    horizontal_spacing: '8px',
+    horizontal_align: 'left',
+    columns: [
       {
-        tag: 'action' as const,
-        actions: [
-          {
-            tag: 'button' as const,
-            text: { tag: 'plain_text' as const, content: '📖 查看详情' },
-            type: 'primary' as const,
-            url: `${APP_URL}/courses/${course.id}`,
-          },
-        ],
+        tag: 'column',
+        width: 'weighted',
+        elements: contentElements,
+        vertical_align: 'top',
+        weight: 1,
       },
     ],
+    margin: '12px 12px 12px 12px',
+  });
+
+  // ── 按钮区：3 个等宽按钮 ──
+  const buttonColumns: unknown[] = [];
+
+  // 查看录屏（primary_filled）
+  if (course.video_url) {
+    buttonColumns.push({
+      tag: 'column',
+      width: 'weighted',
+      elements: [
+        {
+          tag: 'button',
+          text: { tag: 'plain_text', content: '查看录屏' },
+          type: 'primary_filled',
+          width: 'fill',
+          size: 'medium',
+          icon: { tag: 'standard_icon', token: 'share-computer-audio_outlined' },
+          url: course.video_url,
+          margin: '0px 0px 0px 0px',
+        },
+      ],
+      vertical_spacing: '8px',
+      horizontal_align: 'left',
+      vertical_align: 'top',
+      weight: 1,
+    });
+  }
+
+  // 查看课件（primary）
+  if (course.courseware_url) {
+    buttonColumns.push({
+      tag: 'column',
+      width: 'weighted',
+      elements: [
+        {
+          tag: 'button',
+          text: { tag: 'plain_text', content: '查看课件' },
+          type: 'primary',
+          width: 'fill',
+          size: 'medium',
+          icon: { tag: 'standard_icon', token: 'describe_outlined' },
+          url: course.courseware_url,
+          margin: '0px 0px 0px 0px',
+        },
+      ],
+      vertical_spacing: '8px',
+      horizontal_align: 'left',
+      vertical_align: 'top',
+      weight: 1,
+    });
+  }
+
+  // 查看往期（default）
+  buttonColumns.push({
+    tag: 'column',
+    width: 'weighted',
+    elements: [
+      {
+        tag: 'button',
+        text: { tag: 'plain_text', content: '查看往期' },
+        type: 'default',
+        width: 'fill',
+        size: 'medium',
+        icon: { tag: 'standard_icon', token: 'history-search_outlined' },
+        url: `${APP_URL}/courses`,
+        margin: '0px 0px 0px 0px',
+      },
+    ],
+    vertical_align: 'top',
+    weight: 1,
+  });
+
+  bodyElements.push({
+    tag: 'column_set',
+    horizontal_spacing: '8px',
+    horizontal_align: 'left',
+    columns: buttonColumns,
+    margin: '8px 20px 12px 20px',
+  });
+
+  return {
+    schema: '2.0',
+    config: {
+      update_multi: true,
+      style: {
+        text_size: {
+          normal_v2: {
+            default: 'normal',
+            pc: 'normal',
+            mobile: 'heading',
+          },
+        },
+      },
+    },
+    header: {
+      title: { tag: 'plain_text', content: course.title },
+      subtitle: { tag: 'plain_text', content: 'HRAS AI公开课，体系化带你从AI工具上手到落地' },
+      text_tag_list: [
+        { tag: 'text_tag', text: { tag: 'plain_text', content: '上新' }, color: 'red' },
+        { tag: 'text_tag', text: { tag: 'plain_text', content: 'AI公开课' }, color: 'turquoise' },
+        { tag: 'text_tag', text: { tag: 'plain_text', content: '学习资源' }, color: 'blue' },
+      ],
+      template: 'turquoise',
+      icon: { tag: 'standard_icon', token: 'collection_outlined' },
+      padding: '12px 8px 12px 8px',
+    },
+    body: {
+      direction: 'vertical',
+      horizontal_spacing: '8px',
+      vertical_spacing: '0px',
+      horizontal_align: 'left',
+      vertical_align: 'top',
+      padding: '0px 0px 0px 0px',
+      elements: bodyElements,
+    },
   };
 }
 
-/** 工具推荐卡片（Phase 2） */
+/** 工具推荐卡片 */
 export function buildResourceCard(resource: {
   id: string;
   name: string;
@@ -58,34 +198,38 @@ export function buildResourceCard(resource: {
 }) {
   const lines: string[] = [];
   lines.push(`**${resource.name}**`);
-  if (resource.category) lines.push(`适用场景：${resource.category}`);
-  if (resource.description) lines.push('', truncate(resource.description, 120));
+  if (resource.category) lines.push(`🏷️ ${resource.category}`);
+  if (resource.description) lines.push('', truncate(resource.description, 150));
 
   return {
-    config: { wide_screen_mode: true },
+    schema: '2.0',
+    config: { update_multi: true },
     header: {
-      title: { tag: 'plain_text' as const, content: `🛠️ 新工具推荐` },
-      template: 'turquoise' as const,
+      title: { tag: 'plain_text', content: '🛠️ 新工具推荐' },
+      template: 'green',
     },
-    elements: [
-      { tag: 'div' as const, text: { tag: 'lark_md' as const, content: lines.join('\n') } },
-      { tag: 'hr' as const },
-      {
-        tag: 'action' as const,
-        actions: [
-          {
-            tag: 'button' as const,
-            text: { tag: 'plain_text' as const, content: '🔗 查看详情' },
-            type: 'primary' as const,
-            url: `${APP_URL}/apps`,
-          },
-        ],
-      },
-    ],
+    body: {
+      direction: 'vertical',
+      elements: [
+        { tag: 'markdown', content: lines.join('\n') },
+        { tag: 'hr' },
+        {
+          tag: 'action',
+          actions: [
+            {
+              tag: 'button',
+              text: { tag: 'plain_text', content: '🔗 查看详情' },
+              type: 'primary',
+              url: `${APP_URL}/apps`,
+            },
+          ],
+        },
+      ],
+    },
   };
 }
 
-/** 案例卡片（Phase 2） */
+/** 案例卡片 */
 export function buildCaseCard(c: {
   id: string;
   title: string;
@@ -98,39 +242,43 @@ export function buildCaseCard(c: {
   const lines: string[] = [];
   lines.push(`**${c.title}**`);
   const meta: string[] = [];
-  if (c.author) meta.push(`作者：${c.author}`);
-  if (c.category) meta.push(`分类：${c.category}`);
-  if (meta.length) lines.push(meta.join(' · '));
-  if (c.summary) lines.push('', truncate(c.summary, 100));
+  if (c.author) meta.push(`👤 ${c.author}`);
+  if (c.category) meta.push(`🏷️ ${c.category}`);
+  if (meta.length) lines.push(meta.join('　　'));
+  if (c.summary) lines.push('', truncate(c.summary, 120));
   if (c.like_count || c.comment_count) {
-    lines.push('', `👍 ${c.like_count ?? 0} · 💬 ${c.comment_count ?? 0}`);
+    lines.push('', `👍 ${c.like_count ?? 0}　💬 ${c.comment_count ?? 0}`);
   }
 
   return {
-    config: { wide_screen_mode: true },
+    schema: '2.0',
+    config: { update_multi: true },
     header: {
-      title: { tag: 'plain_text' as const, content: `📚 新案例推荐` },
-      template: 'turquoise' as const,
+      title: { tag: 'plain_text', content: '📚 新案例推荐' },
+      template: 'violet',
     },
-    elements: [
-      { tag: 'div' as const, text: { tag: 'lark_md' as const, content: lines.join('\n') } },
-      { tag: 'hr' as const },
-      {
-        tag: 'action' as const,
-        actions: [
-          {
-            tag: 'button' as const,
-            text: { tag: 'plain_text' as const, content: '🔍 查看详情' },
-            type: 'primary' as const,
-            url: `${APP_URL}/cases/${c.id}`,
-          },
-        ],
-      },
-    ],
+    body: {
+      direction: 'vertical',
+      elements: [
+        { tag: 'markdown', content: lines.join('\n') },
+        { tag: 'hr' },
+        {
+          tag: 'action',
+          actions: [
+            {
+              tag: 'button',
+              text: { tag: 'plain_text', content: '🔍 查看详情' },
+              type: 'primary',
+              url: `${APP_URL}/cases/${c.id}`,
+            },
+          ],
+        },
+      ],
+    },
   };
 }
 
-/** 大赛方案卡片（Phase 2） */
+/** 大赛方案卡片 */
 export function buildSubmissionCard(s: {
   id: string;
   title: string;
@@ -141,31 +289,35 @@ export function buildSubmissionCard(s: {
   const lines: string[] = [];
   lines.push(`**${s.title}**`);
   const meta: string[] = [];
-  if (s.submitter) meta.push(`提交人：${s.submitter}`);
-  if (s.track) meta.push(`赛道：${s.track}`);
-  if (meta.length) lines.push(meta.join(' · '));
-  if (s.afterProcess) lines.push('', truncate(s.afterProcess, 100));
+  if (s.submitter) meta.push(`👤 ${s.submitter}`);
+  if (s.track) meta.push(`🏁 ${s.track}`);
+  if (meta.length) lines.push(meta.join('　　'));
+  if (s.afterProcess) lines.push('', truncate(s.afterProcess, 120));
 
   return {
-    config: { wide_screen_mode: true },
+    schema: '2.0',
+    config: { update_multi: true },
     header: {
-      title: { tag: 'plain_text' as const, content: `📋 大赛方案速览` },
-      template: 'turquoise' as const,
+      title: { tag: 'plain_text', content: '📋 大赛方案速览' },
+      template: 'orange',
     },
-    elements: [
-      { tag: 'div' as const, text: { tag: 'lark_md' as const, content: lines.join('\n') } },
-      { tag: 'hr' as const },
-      {
-        tag: 'action' as const,
-        actions: [
-          {
-            tag: 'button' as const,
-            text: { tag: 'plain_text' as const, content: '📋 查看方案' },
-            type: 'primary' as const,
-            url: `${APP_URL}/competitions/${s.id}`,
-          },
-        ],
-      },
-    ],
+    body: {
+      direction: 'vertical',
+      elements: [
+        { tag: 'markdown', content: lines.join('\n') },
+        { tag: 'hr' },
+        {
+          tag: 'action',
+          actions: [
+            {
+              tag: 'button',
+              text: { tag: 'plain_text', content: '📋 查看方案' },
+              type: 'primary',
+              url: `${APP_URL}/competitions/${s.id}`,
+            },
+          ],
+        },
+      ],
+    },
   };
 }
