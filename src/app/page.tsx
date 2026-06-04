@@ -18,6 +18,7 @@ import {
   ClockCircleOutlined,
   RocketOutlined,
   AppstoreOutlined,
+  ApiOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
@@ -389,6 +390,11 @@ export default function Home() {
                   </button>
                 </Link>
               )}
+              <Link href="/apps/create">
+                <button className="btn-gradient">
+                  <ApiOutlined /> 分享工具
+                </button>
+              </Link>
               <Link href="/cases">
                 <button className="pill-btn">案例库</button>
               </Link>
