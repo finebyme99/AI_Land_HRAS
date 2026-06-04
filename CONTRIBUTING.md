@@ -1,4 +1,4 @@
-# HRAS AI Land 并行开发规范
+# HRAS AI Land 开发规范
 
 ## 项目概述
 
@@ -6,35 +6,16 @@ HRAS AI Land 是 HR AI 社区平台，基于 Next.js 16 + Supabase + 飞书 OAut
 
 ## 分支策略
 
-```
-main (稳定版，Vercel 生产部署源)
-├── feat/case-module         ← 案例库模块
-├── feat/course-module       ← 课程模块
-├── feat/competition-module  ← AI 大赛模块
-└── feat/app-module          ← 应用推荐模块
-```
+当前阶段（2026-06）直接在 **main** 分支开发和提交。Vercel 部署源是 main，push 即自动部署。
 
-### 分支规则
-
-1. **main 分支**：稳定版，feat 分支完成后 PR 合回 main，触发 Vercel 自动部署
-2. **feat/xxx-module**：按模块隔离开发，每个模块独立分支，完成后 merge 回 main
-
-## 开发工作流
-
-### 日常开发
+### 开发工作流
 
 ```bash
-# 切换到对应模块分支开发
 cd /Users/apple/Q/AI/26AI落地/AILand
-git checkout feat/xxx-module  # 切换到目标模块分支
+# 直接在 main 上开发
+git add -A && git commit -m "xxx" && git push origin main
+# Vercel 自动部署
 ```
-
-### 提交与推送
-
-1. 所有 commit 在 feat 分支上
-2. 完成后 merge 回 main：`git checkout main && git merge feat/xxx-module`
-3. `git push origin main` 推送到远程
-4. Vercel 自动部署生产环境
 
 ## 技术架构约束
 
@@ -59,34 +40,52 @@ git checkout feat/xxx-module  # 切换到目标模块分支
 src/
 ├── app/                    # Next.js App Router
 │   ├── page.tsx           # 首页
-│   ├── cases/             # 案例库
-│   │   ├── page.tsx       # 列表页
+│   ├── cases/             # 案例库（HRAS案例库）
+│   │   ├── page.tsx       # 列表页（含编辑弹窗）
+│   │   ├── create/        # 创建页
 │   │   └── [id]/page.tsx  # 详情页
-│   ├── courses/           # 课程
-│   ├── apps/              # 应用推荐
+│   ├── courses/           # 课程（AI 公开课）
+│   ├── apps/              # 工具推荐
+│   │   ├── page.tsx       # 列表页（含编辑弹窗）
+│   │   └── create/        # 创建页
 │   ├── competitions/      # AI 大赛
 │   ├── admin/             # 管理后台
+│   │   ├── review/        # 内容审核（工具 + 案例，Tabs 切换）
+│   │   ├── users/         # 用户管理
+│   │   ├── reviews/       # 评审管理（大赛评审）
+│   │   ├── push/          # 飞书推送
+│   │   ├── reminders/     # 提醒管理
+│   │   └── settings/      # 平台设置
 │   ├── profile/           # 个人中心
 │   ├── login/             # 登录
 │   └── api/               # API 路由
-│       └── resources/     # 资源管理 API
+│       ├── resources/     # 工具管理 API
+│       ├── cases/         # 案例 API
+│       │   ├── route.ts   # POST 创建 / PATCH 审核
+│       │   ├── admin/     # GET/PUT 管理员操作
+│       │   └── [id]/      # GET 单案例详情
+│       └── users/         # 用户 API
+│           └── list/      # GET 轻量用户列表
 ├── components/            # 公共组件
-│   └── Navigation.tsx     # 导航栏
+│   ├── Navigation.tsx     # 导航栏
+│   ├── HighlightSweep.tsx # 标题 shimmer 动效
+│   └── SearchInput.tsx    # 搜索输入框
 ├── lib/                   # 工具库
 │   ├── auth-context.tsx   # 认证上下文
 │   ├── supabase.ts        # Supabase 客户端
-│   ├── constants.ts       # 常量
-│   └── mock-data.ts       # 模拟数据（待删除）
+│   ├── constants.ts       # 常量枚举
+│   └── supabase-admin.ts  # Supabase Admin 客户端
 └── types/
     └── index.ts           # 类型定义
 ```
 
 ### 权限控制
 
-- `useAuth()` 提供 `{ user, isAdmin, signOut, refreshUser }`
-- `isAdmin` 由 `user?.role === 'admin' || user?.role === 'moderator'` 决定
-- admin 操作：提交案例、发布课程、标精选、切换 featured
-- 普通用户：创建话题、回答、点赞、收藏
+- `useAuth()` 提供 `{ user, isAdmin, loading, signOut, refreshUser }`
+- `isAdmin` 由 `user?.roles` 数组包含 `'admin'` 或 `'moderator'` 决定
+- admin 操作：审核内容、编辑任意案例/工具、标精选、管理用户
+- 普通用户：提交案例（需审核）、提交工具（需审核）、点赞、收藏
+- 案例/工具的作者可编辑自己的内容
 
 ## 数据库迁移
 
@@ -123,17 +122,6 @@ NEXT_PUBLIC_APP_URL=https://hras-ai-land.vercel.app
 2. **公共组件改动需同步**：改 Navigation.tsx、auth-context.tsx 等公共文件后，通知其他分支
 3. **类型定义共享**：新类型加到 `src/types/index.ts`，不要在模块内定义私有类型
 4. **CSS 变量统一**：新颜色/间距用 CSS 变量，不要硬编码
-
-## 常见问题
-
-### Q: 两个分支改了同一个文件怎么办？
-A: 后合并的分支需要解决冲突。建议提前沟通，或让一个分支先合。
-
-### Q: 需要跨模块改动怎么办？
-A: 在当前分支直接改，但要在 PR 描述中说明，方便 review。
-
-### Q: 如何同步 main 的最新代码到 feat 分支？
-A: `git checkout feat/xxx && git merge main` 或 `git rebase main`
 
 ## 自检规范
 

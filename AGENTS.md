@@ -3,29 +3,12 @@
 
 进入此项目时，必须先读取以下文件：
 
-1. `CONTRIBUTING.md` — 并行开发规范、分支策略、技术架构约束、协作约定
-2. `AGENTS.md`（本文件）— Next.js 特殊规则
+1. `CONTRIBUTING.md` — 技术架构约束、样式规范、文件结构、数据库迁移、部署配置
+2. `AGENTS.md`（本文件）— 分支策略 + Next.js 特殊规则
 
-## 并行开发分支
+## 分支策略
 
-```
-main (稳定版，Vercel 部署源)
-├── feat/case-module         ← 案例库模块
-├── feat/course-module       ← 课程模块
-├── feat/competition-module  ← AI 大赛模块
-└── feat/app-module          ← 应用推荐模块
-```
-
-每个窗口 checkout 对应分支，所有 commit 在 feat 分支上，完成后 PR 合回 main。
-
-## 分支切换命令
-
-```bash
-git checkout feat/case-module         # 案例库开发
-git checkout feat/course-module       # 课程开发
-git checkout feat/competition-module  # AI 大赛开发
-git checkout feat/app-module          # 应用推荐开发
-```
+当前阶段（2026-06）直接在 **main** 分支开发和提交。Vercel 部署源是 main，push 即自动部署。
 
 ## 详细规范
 
@@ -36,7 +19,6 @@ git checkout feat/app-module          # 应用推荐开发
 - 权限控制机制
 - 数据库迁移流程
 - 部署配置
-- 协作约定
 <!-- END:project-conventions -->
 
 <!-- BEGIN:nextjs-agent-rules -->
