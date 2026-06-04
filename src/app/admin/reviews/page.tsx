@@ -348,9 +348,19 @@ function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search,
     <div>
       {/* 评委进度汇总 */}
       {!loading && reviews.length > 0 && (() => {
-        const reviewedSubmissionIds = new Set(reviews.filter((r) => r.decision === 'reviewed').map((r) => r.submission_id));
+        // 排除"并入其他方案"的有效方案
+        const activeSubmissions = submissions.filter((s) => s.status !== '并入其他方案');
+        const activeSubmissionIds = new Set(activeSubmissions.map((s) => s.id));
+        const activeTotal = activeSubmissions.length;
+
+        const reviewedSubmissionIds = new Set(
+          reviews.filter((r) => r.decision === 'reviewed' && activeSubmissionIds.has(r.submission_id))
+            .map((r) => r.submission_id)
+        );
         const byReviewer: Record<string, { name: string; department: string; role: ReviewerRole | null; reviewed: number; avgScore: number; scoreCount: number }> = {};
         for (const r of reviews) {
+          // 跳过已排除方案的评审记录
+          if (!activeSubmissionIds.has(r.submission_id)) continue;
           const key = r.reviewer_id;
           if (!byReviewer[key]) {
             byReviewer[key] = {
@@ -378,17 +388,17 @@ function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search,
         return (
           <div className="mb-6">
             <div className="flex items-center gap-4 mb-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-              <span>方案总数 <b style={{ color: 'var(--foreground)' }}>{totalSubmissions}</b></span>
+              <span>方案总数 <b style={{ color: 'var(--foreground)' }}>{activeTotal}</b></span>
               <span>已评审 <b style={{ color: '#16a34a' }}>{reviewedSubmissionIds.size}</b></span>
-              <span>未评审 <b style={{ color: totalSubmissions - reviewedSubmissionIds.size > 0 ? '#b3540e' : 'var(--foreground)' }}>
-                {totalSubmissions - reviewedSubmissionIds.size}
+              <span>未评审 <b style={{ color: activeTotal - reviewedSubmissionIds.size > 0 ? '#b3540e' : 'var(--foreground)' }}>
+                {activeTotal - reviewedSubmissionIds.size}
               </b></span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {reviewerList.map((rv) => {
                 const denominator = rv.role === 'user'
-                  ? submissions.filter((s) => s.reviewers?.some((r: string) => r.includes(rv.name) || rv.name.includes(r))).length
-                  : totalSubmissions;
+                  ? activeSubmissions.filter((s) => s.reviewers?.some((r: string) => r.includes(rv.name) || rv.name.includes(r))).length
+                  : activeTotal;
                 const pct = denominator > 0 ? Math.min(Math.round((rv.reviewed / denominator) * 100), 100) : 0;
                 const avg = rv.scoreCount > 0 ? (rv.avgScore / rv.scoreCount).toFixed(1) : '-';
                 return (
