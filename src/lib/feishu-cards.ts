@@ -33,7 +33,7 @@ export function buildCourseCard(course: {
   const contentElements: unknown[] = [
     {
       tag: 'markdown',
-      content: `**本期讲师：** ${course.instructor || '待定'}`,
+      content: `**本期内容：** ${course.title}\n**本期讲师：** ${course.instructor || '待定'}`,
       text_align: 'left',
       text_size: 'normal_v2',
       margin: '4px 4px 4px 4px',
@@ -166,7 +166,7 @@ export function buildCourseCard(course: {
       },
     },
     header: {
-      title: { tag: 'plain_text', content: course.title },
+      title: { tag: 'plain_text', content: 'AI公开课上新！' },
       subtitle: { tag: 'plain_text', content: 'HRAS AI公开课，体系化带你从AI工具上手到落地' },
       text_tag_list: [
         { tag: 'text_tag', text: { tag: 'plain_text', content: '上新' }, color: 'red' },

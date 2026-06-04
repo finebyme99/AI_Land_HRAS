@@ -66,6 +66,9 @@ export default function AdminPushPage() {
   // 选中项
   const [selected, setSelected] = useState<Map<string, ContentItem>>(new Map());
 
+  // 页面 Tab
+  const [pageTab, setPageTab] = useState('push');
+
   // 推送
   const [pushing, setPushing] = useState(false);
 
@@ -199,10 +202,11 @@ export default function AdminPushPage() {
       let totalSuccess = 0;
       let totalFailed = 0;
       for (const chatId of selectedChatIds) {
+        const chatName = chats.find((c) => c.chat_id === chatId)?.name || chatId;
         const res = await fetch('/api/admin/push', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, items }),
+          body: JSON.stringify({ chat_id: chatId, chat_name: chatName, items }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '推送失败');
@@ -247,6 +251,18 @@ export default function AdminPushPage() {
           </div>
         </div>
 
+        <Tabs
+          activeKey={pageTab}
+          onChange={setPageTab}
+          items={[
+            { key: 'push', label: '📤 推送' },
+            { key: 'logs', label: '📋 推送历史' },
+          ]}
+          className="mb-4"
+        />
+
+        {pageTab === 'push' && (
+        <>
         {/* 左右分栏 */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
 
@@ -399,35 +415,41 @@ export default function AdminPushPage() {
             )}
           </div>
         </div>
+        </>
+        )}
 
-        {/* 推送历史 */}
-        {logs.length > 0 && (
-          <div className="mt-8">
-            <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>推送历史</h3>
-            <div className="rounded-lg overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr style={{ background: 'rgba(0,0,0,0.02)' }}>
-                    <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>时间</th>
-                    <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>类型</th>
-                    <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>标题</th>
-                    <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>目标群</th>
-                    <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>状态</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log) => (
-                    <tr key={log.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                      <td className="px-3 py-2">{new Date(log.created_at).toLocaleString('zh-CN')}</td>
-                      <td className="px-3 py-2"><Tag>{TYPE_LABELS[log.content_type] ?? log.content_type}</Tag></td>
-                      <td className="px-3 py-2 truncate max-w-[150px]">{log.content_title}</td>
-                      <td className="px-3 py-2 truncate max-w-[120px]">{log.target_chat_name}</td>
-                      <td className="px-3 py-2">{log.status === 'sent' ? '✅' : '❌'}</td>
+        {pageTab === 'logs' && (
+          <div>
+            {logsLoading ? (
+              <div className="py-8 text-center"><Spin /></div>
+            ) : logs.length === 0 ? (
+              <Empty description="暂无推送记录" />
+            ) : (
+              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr style={{ background: 'rgba(0,0,0,0.02)' }}>
+                      <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>时间</th>
+                      <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>类型</th>
+                      <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>标题</th>
+                      <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>目标群</th>
+                      <th className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>状态</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {logs.map((log) => (
+                      <tr key={log.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                        <td className="px-3 py-2">{new Date(log.created_at).toLocaleString('zh-CN')}</td>
+                        <td className="px-3 py-2"><Tag>{TYPE_LABELS[log.content_type] ?? log.content_type}</Tag></td>
+                        <td className="px-3 py-2 truncate max-w-[150px]">{log.content_title}</td>
+                        <td className="px-3 py-2 truncate max-w-[120px]">{log.target_chat_name || '-'}</td>
+                        <td className="px-3 py-2">{log.status === 'sent' ? '✅' : '❌'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -478,6 +500,7 @@ function PreviewCard({ item }: { item: ContentItem }) {
       {item.type === 'course' ? (
         <div style={{ background: '#fafafa', padding: '12px', margin: '12px', borderRadius: 4 }}>
           <div style={{ fontSize: 13, lineHeight: 1.8, color: '#333' }}>
+            <div><b>本期内容：</b>{item.title}</div>
             <div><b>本期讲师：</b>{item.instructor || '待定'}</div>
           </div>
           <div style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '8px 0' }} />

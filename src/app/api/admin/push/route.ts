@@ -35,8 +35,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { chat_id, items } = body as {
+    const { chat_id, chat_name, items } = body as {
       chat_id: string;
+      chat_name?: string;
       items: { content_type: string; content_id: string }[];
     };
 
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
           content_id: item.content_id,
           content_title: title,
           target_chat_id: chat_id,
+          target_chat_name: chat_name || chat_id,
           card_json: card,
           status: result.messageId ? 'sent' : 'failed',
           error_message: result.messageId ? null : '发送失败',
