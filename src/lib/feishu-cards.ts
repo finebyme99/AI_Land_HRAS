@@ -205,6 +205,7 @@ export function buildResourceCard(resource: {
   id: string;
   name: string;
   category?: string;
+  scenarios?: string[];
   description?: string;
   official_url?: string;
   logo?: string;
@@ -226,7 +227,7 @@ export function buildResourceCard(resource: {
   const contentElements: unknown[] = [
     {
       tag: 'markdown',
-      content: `**工具名称：** ${resource.name}\n**工具分类：** ${resource.category || '通用'}`,
+      content: `**工具名称：** ${resource.name}\n**工具分类：** ${resource.category || '通用'}\n**适用场景：** ${(resource.scenarios && resource.scenarios.length > 0) ? resource.scenarios.join('、') : '通用'}`,
       text_align: 'left',
       text_size: 'normal_v2',
       margin: '4px 4px 4px 4px',

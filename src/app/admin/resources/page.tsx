@@ -334,6 +334,8 @@ export default function AdminResourcesPage() {
               { label: '对话', value: '对话' },
               { label: '任务执行', value: '任务执行' },
               { label: '编程', value: '编程' },
+              { label: '日常提效', value: '日常提效' },
+              { label: '咨询搜集', value: '咨询搜集' },
             ]} />
           </Form.Item>
           <Form.Item name="official_url" label="官网 / 链接">

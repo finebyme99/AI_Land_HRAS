@@ -20,6 +20,7 @@ interface ContentItem {
   description?: string;
   instructor?: string;
   difficulty?: string;
+  scenarios?: string[];
   type: 'course' | 'resource' | 'case' | 'submission';
 }
 
@@ -120,7 +121,7 @@ export default function AdminPushPage() {
         const res = await fetch('/api/resources');
         const data = await res.json();
         items = (data.items ?? []).map((r: Record<string, unknown>) => ({
-          id: r.id, title: r.name ?? r.title, category: r.category, description: r.description, type: 'resource' as const,
+          id: r.id, title: r.name ?? r.title, category: r.category, description: r.description, scenarios: r.scenarios as string[] | undefined, type: 'resource' as const,
         }));
       } else if (type === 'case') {
         const res = await fetch('/api/cases');
@@ -511,6 +512,7 @@ function PreviewCard({ item }: { item: ContentItem }) {
           <div style={{ fontSize: 13, lineHeight: 1.8, color: '#333' }}>
             <div><b>工具名称：</b>{item.title}</div>
             <div><b>工具分类：</b>{item.category || '通用'}</div>
+            <div><b>适用场景：</b>{item.scenarios && item.scenarios.length > 0 ? item.scenarios.join('、') : '通用'}</div>
           </div>
           {item.description && (
             <>
