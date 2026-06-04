@@ -331,11 +331,12 @@ export default function AdminResourcesPage() {
           </Form.Item>
           <Form.Item name="scenarios" label="适用场景">
             <Select mode="multiple" placeholder="选择适用场景" options={[
-              { label: '对话', value: '对话' },
-              { label: '任务执行', value: '任务执行' },
               { label: '编程', value: '编程' },
-              { label: '日常提效', value: '日常提效' },
+              { label: '设计', value: '设计' },
+              { label: '写作', value: '写作' },
+              { label: '数据分析', value: '数据分析' },
               { label: '咨询搜集', value: '咨询搜集' },
+              { label: '日常提效', value: '日常提效' },
             ]} />
           </Form.Item>
           <Form.Item name="official_url" label="官网 / 链接">

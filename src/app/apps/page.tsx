@@ -22,6 +22,8 @@ import SearchInput from '@/components/SearchInput';
 import type { Resource, ResourceCategory } from '@/types';
 import { RESOURCE_CATEGORIES } from '@/types';
 
+const SCENARIO_OPTIONS = ['编程', '设计', '写作', '数据分析', '咨询搜集', '日常提效'];
+
 export default function AppsPage() {
   const { user, isAdmin } = useAuth();
   const { message } = App.useApp();
@@ -30,6 +32,7 @@ export default function AppsPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState<ResourceCategory | ''>('');
+  const [scenario, setScenario] = useState('');
   const [interactions, setInteractions] = useState<Record<string, { liked: boolean; bookmarked: boolean }>>({});
   const [counts, setCounts] = useState<Record<string, { like_count: number; bookmark_count: number }>>({});
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -56,6 +59,7 @@ export default function AppsPage() {
 
       if (debouncedSearch) query = query.or(`name.ilike.%${debouncedSearch}%,description.ilike.%${debouncedSearch}%`);
       if (category) query = query.eq('category', category);
+      if (scenario) query = query.contains('scenarios', [scenario]);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -66,7 +70,7 @@ export default function AppsPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, category]);
+  }, [debouncedSearch, category, scenario]);
 
   useEffect(() => { fetchResources(); }, [fetchResources]);
 
@@ -261,6 +265,31 @@ export default function AppsPage() {
                 border: '1px solid transparent',
               }}
             >{c}</button>
+          ))}
+        </div>
+        {/* 适用场景筛选 - 标签式按钮 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium shrink-0" style={{ color: 'var(--text-muted)' }}>场景</span>
+          <button
+            onClick={() => setScenario('')}
+            className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+            style={{
+              color: !scenario ? '#fff' : 'var(--text-secondary)',
+              background: !scenario ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+              border: '1px solid transparent',
+            }}
+          >全部</button>
+          {SCENARIO_OPTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => setScenario(scenario === s ? '' : s)}
+              className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+              style={{
+                color: scenario === s ? '#fff' : 'var(--text-secondary)',
+                background: scenario === s ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+                border: '1px solid transparent',
+              }}
+            >{s}</button>
           ))}
         </div>
       </div>
