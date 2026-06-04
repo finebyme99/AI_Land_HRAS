@@ -225,12 +225,28 @@ export function buildResourceCard(resource: {
   const contentElements: unknown[] = [
     {
       tag: 'markdown',
-      content: `**工具名称：** ${resource.name}\n**适用场景：** ${resource.category || '通用'}\n\n${truncate(resource.description || '', 150)}`,
+      content: `**工具名称：** ${resource.name}\n**工具分类：** ${resource.category || '通用'}`,
       text_align: 'left',
       text_size: 'normal_v2',
       margin: '4px 4px 4px 4px',
     },
   ];
+
+  // 描述：灰色，分隔线后
+  if (resource.description) {
+    contentElements.push({ tag: 'hr', margin: '4px 0px 4px 0px' });
+    contentElements.push({
+      tag: 'div',
+      text: {
+        tag: 'plain_text',
+        content: truncate(resource.description, 150),
+        text_size: 'notation',
+        text_align: 'left',
+        text_color: 'grey',
+      },
+      margin: '4px 4px 4px 4px',
+    });
+  }
 
   bodyElements.push({
     tag: 'column_set',
@@ -259,11 +275,11 @@ export function buildResourceCard(resource: {
       elements: [
         {
           tag: 'button',
-          text: { tag: 'plain_text', content: '🔗 访问官网' },
+          text: { tag: 'plain_text', content: '访问官网' },
           type: 'primary_filled',
           width: 'fill',
           size: 'medium',
-          icon: { tag: 'standard_icon', token: 'link_outlined' },
+          icon: { tag: 'standard_icon', token: 'send_outlined' },
           url: resource.official_url,
           margin: '0px 0px 0px 0px',
         },
@@ -281,11 +297,11 @@ export function buildResourceCard(resource: {
     elements: [
       {
         tag: 'button',
-        text: { tag: 'plain_text', content: '📚 查看更多' },
+        text: { tag: 'plain_text', content: '查看更多' },
         type: 'default',
         width: 'fill',
         size: 'medium',
-        icon: { tag: 'standard_icon', token: 'appstore_outlined' },
+        icon: { tag: 'standard_icon', token: 'search_outlined' },
         url: `${APP_URL}/apps`,
         margin: '0px 0px 0px 0px',
       },
@@ -317,7 +333,7 @@ export function buildResourceCard(resource: {
       },
     },
     header: {
-      title: { tag: 'plain_text', content: '🛠️ 新工具推荐' },
+      title: { tag: 'plain_text', content: '新工具推荐' },
       subtitle: { tag: 'plain_text', content: 'HRAS AI精选工具，助你高效办公' },
       text_tag_list: [
         { tag: 'text_tag', text: { tag: 'plain_text', content: '工具推荐' }, color: 'green' },

@@ -460,7 +460,7 @@ export default function AdminPushPage() {
 /* ─── 卡片预览组件 ─── */
 const CARD_THEMES: Record<string, { bg: string; label: string; subtitle?: string; tags?: { text: string; color: string }[] }> = {
   course: { bg: '#13c2c2', label: '🎓 新课程上线', subtitle: 'HRAS AI公开课，体系化带你从AI工具上手到落地', tags: [{ text: 'AI公开课', color: '#13c2c2' }] },
-  resource: { bg: '#52c41a', label: '🛠️ 新工具推荐', subtitle: 'HRAS AI精选工具，助你高效办公', tags: [{ text: '工具推荐', color: '#52c41a' }] },
+  resource: { bg: '#52c41a', label: '新工具推荐', subtitle: 'HRAS AI精选工具，助你高效办公', tags: [{ text: '工具推荐', color: '#52c41a' }] },
   case: { bg: '#722ed1', label: '📚 新案例推荐' },
   submission: { bg: '#fa8c16', label: '📋 大赛方案速览' },
 };
@@ -510,12 +510,12 @@ function PreviewCard({ item }: { item: ContentItem }) {
         <div style={{ padding: '12px', margin: '12px', borderRadius: 4 }}>
           <div style={{ fontSize: 13, lineHeight: 1.8, color: '#333' }}>
             <div><b>工具名称：</b>{item.title}</div>
-            <div><b>适用场景：</b>{item.category || '通用'}</div>
+            <div><b>工具分类：</b>{item.category || '通用'}</div>
           </div>
           {item.description && (
             <>
               <div style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '8px 0' }} />
-              <div style={{ fontSize: 12, color: '#888', lineHeight: 1.6 }}>{item.description.slice(0, 120)}</div>
+              <div style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>{item.description.slice(0, 120)}</div>
             </>
           )}
         </div>
@@ -548,10 +548,10 @@ function PreviewCard({ item }: { item: ContentItem }) {
         ) : item.type === 'resource' ? (
           <>
             <span style={{ flex: 1, textAlign: 'center', padding: '6px 0', borderRadius: 6, background: theme.bg, color: '#fff', fontSize: 12, fontWeight: 500 }}>
-              🔗 访问官网
+              访问官网
             </span>
             <span style={{ flex: 1, textAlign: 'center', padding: '6px 0', borderRadius: 6, background: '#fff', color: '#555', fontSize: 12, fontWeight: 500, border: '1px solid #d9d9d9' }}>
-              📚 查看更多
+              查看更多
             </span>
           </>
         ) : (
