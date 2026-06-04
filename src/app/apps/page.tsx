@@ -217,8 +217,8 @@ export default function AppsPage() {
               <AppstoreOutlined />
             </span>
             工具推荐
+            <span className="text-sm font-normal" style={{ color: 'var(--text-secondary)' }}>发现好用的 AI 工具与 Skills</span>
           </h1>
-          <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-secondary)' }}>发现好用的 AI 工具与 Skills</p>
         </div>
         <Link href="/apps/create">
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"

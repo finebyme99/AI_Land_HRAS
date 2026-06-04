@@ -180,8 +180,8 @@ export default function CompetitionsPage() {
                 <TrophyOutlined />
               </span>
               AI大赛
+              <span className="text-sm font-normal" style={{ color: 'var(--text-secondary)' }}>HRAS AI 应用大赛 · 按月评选优秀方案</span>
             </h1>
-            <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-secondary)' }}>HRAS AI 应用大赛 · 按月评选优秀方案</p>
           </div>
         </div>
 

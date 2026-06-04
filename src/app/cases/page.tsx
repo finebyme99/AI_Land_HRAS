@@ -84,8 +84,8 @@ export default function CasesPage() {
               <BookOutlined />
             </span>
             案例库
+            <span className="text-sm font-normal" style={{ color: 'var(--text-secondary)' }}>来自 HR 实践者的 AI 应用案例</span>
           </h1>
-          <p className="text-sm mt-1 ml-12" style={{ color: 'var(--text-secondary)' }}>来自 HR 实践者的 AI 应用案例</p>
         </div>
         {isAdmin && (
           <Link href="/cases/create">
