@@ -101,9 +101,12 @@ async function buildCard(supabase: ReturnType<typeof getSupabaseAdmin>, contentT
       return buildCourseCard(data);
     }
     case 'resource': {
-      const { data } = await supabase.from('apps').select('id, name, category, scenarios, description, official_url, logo, created_at').eq('id', contentId).single();
+      const { data } = await supabase.from('apps').select('id, name, category, scenarios, description, official_url, logo, created_at, author:users!author_id(name)').eq('id', contentId).single();
       if (!data) return null;
-      return buildResourceCard(data);
+      return buildResourceCard({
+        ...data,
+        author_name: (data.author as { name?: string })?.name,
+      });
     }
     case 'case': {
       const { data } = await supabase.from('cases').select('id, title, category, summary, author:users!author_id(name, department)').eq('id', contentId).single();

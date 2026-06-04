@@ -210,6 +210,7 @@ export function buildResourceCard(resource: {
   official_url?: string;
   logo?: string;
   created_at?: string;
+  author_name?: string;
 }) {
   const bodyElements: unknown[] = [];
 
@@ -263,13 +264,14 @@ export function buildResourceCard(resource: {
     margin: '12px 12px 12px 12px',
   });
 
-  // ── 分隔线 + 发布日期 ──
+  // ── 分隔线 + 发布日期 + 推荐人 ──
   contentElements.push({ tag: 'hr', margin: '4px 0px 0px 0px' });
+  const metaText = `发布日期：${formatDate(resource.created_at)}` + (resource.author_name ? `　　推荐人：${resource.author_name}` : '');
   contentElements.push({
     tag: 'div',
     text: {
       tag: 'plain_text',
-      content: `发布日期：${formatDate(resource.created_at)}`,
+      content: metaText,
       text_size: 'notation',
       text_align: 'left',
       text_color: 'grey',
@@ -287,7 +289,7 @@ export function buildResourceCard(resource: {
       elements: [
         {
           tag: 'button',
-          text: { tag: 'plain_text', content: '访问官网' },
+          text: { tag: 'plain_text', content: '查看详情' },
           type: 'primary_filled',
           width: 'fill',
           size: 'medium',
