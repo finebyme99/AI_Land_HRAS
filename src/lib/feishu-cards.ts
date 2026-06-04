@@ -206,36 +206,135 @@ export function buildResourceCard(resource: {
   name: string;
   category?: string;
   description?: string;
+  official_url?: string;
+  logo?: string;
 }) {
-  const lines: string[] = [];
-  lines.push(`**${resource.name}**`);
-  if (resource.category) lines.push(`🏷️ ${resource.category}`);
-  if (resource.description) lines.push('', truncate(resource.description, 150));
+  const bodyElements: unknown[] = [];
+
+  // ── Logo 图片 ──
+  if (resource.logo) {
+    bodyElements.push({
+      tag: 'img',
+      img_key: resource.logo, // 可能是 Supabase URL，卡片不一定支持
+      alt: { tag: 'plain_text', content: resource.name },
+      mode: 'fit_horizontal',
+    });
+  }
+
+  // ── 正文区 ──
+  const contentElements: unknown[] = [
+    {
+      tag: 'markdown',
+      content: `**工具名称：** ${resource.name}\n**适用场景：** ${resource.category || '通用'}\n\n${truncate(resource.description || '', 150)}`,
+      text_align: 'left',
+      text_size: 'normal_v2',
+      margin: '4px 4px 4px 4px',
+    },
+  ];
+
+  bodyElements.push({
+    tag: 'column_set',
+    background_style: 'default',
+    horizontal_spacing: '8px',
+    horizontal_align: 'left',
+    columns: [
+      {
+        tag: 'column',
+        width: 'weighted',
+        elements: contentElements,
+        vertical_align: 'top',
+        weight: 1,
+      },
+    ],
+    margin: '12px 12px 12px 12px',
+  });
+
+  // ── 按钮区 ──
+  const buttonColumns: unknown[] = [];
+
+  if (resource.official_url) {
+    buttonColumns.push({
+      tag: 'column',
+      width: 'weighted',
+      elements: [
+        {
+          tag: 'button',
+          text: { tag: 'plain_text', content: '🔗 访问官网' },
+          type: 'primary_filled',
+          width: 'fill',
+          size: 'medium',
+          icon: { tag: 'standard_icon', token: 'link_outlined' },
+          url: resource.official_url,
+          margin: '0px 0px 0px 0px',
+        },
+      ],
+      vertical_spacing: '8px',
+      horizontal_align: 'left',
+      vertical_align: 'top',
+      weight: 1,
+    });
+  }
+
+  buttonColumns.push({
+    tag: 'column',
+    width: 'weighted',
+    elements: [
+      {
+        tag: 'button',
+        text: { tag: 'plain_text', content: '📚 查看更多' },
+        type: 'default',
+        width: 'fill',
+        size: 'medium',
+        icon: { tag: 'standard_icon', token: 'appstore_outlined' },
+        url: `${APP_URL}/apps`,
+        margin: '0px 0px 0px 0px',
+      },
+    ],
+    vertical_align: 'top',
+    weight: 1,
+  });
+
+  bodyElements.push({
+    tag: 'column_set',
+    horizontal_spacing: '8px',
+    horizontal_align: 'left',
+    columns: buttonColumns,
+    margin: '8px 20px 12px 20px',
+  });
 
   return {
     schema: '2.0',
-    config: { update_multi: true },
+    config: {
+      update_multi: true,
+      style: {
+        text_size: {
+          normal_v2: {
+            default: 'normal',
+            pc: 'normal',
+            mobile: 'heading',
+          },
+        },
+      },
+    },
     header: {
       title: { tag: 'plain_text', content: '🛠️ 新工具推荐' },
+      subtitle: { tag: 'plain_text', content: 'HRAS AI精选工具，助你高效办公' },
+      text_tag_list: [
+        { tag: 'text_tag', text: { tag: 'plain_text', content: '工具推荐' }, color: 'green' },
+        ...(resource.category ? [{ tag: 'text_tag' as const, text: { tag: 'plain_text' as const, content: resource.category }, color: 'blue' as const }] : []),
+      ],
       template: 'green',
+      icon: { tag: 'standard_icon', token: 'appstore_outlined' },
+      padding: '12px 8px 12px 8px',
     },
     body: {
       direction: 'vertical',
-      elements: [
-        { tag: 'markdown', content: lines.join('\n') },
-        { tag: 'hr' },
-        {
-          tag: 'action',
-          actions: [
-            {
-              tag: 'button',
-              text: { tag: 'plain_text', content: '🔗 查看详情' },
-              type: 'primary',
-              url: `${APP_URL}/apps`,
-            },
-          ],
-        },
-      ],
+      horizontal_spacing: '8px',
+      vertical_spacing: '0px',
+      horizontal_align: 'left',
+      vertical_align: 'top',
+      padding: '0px 0px 0px 0px',
+      elements: bodyElements,
     },
   };
 }
