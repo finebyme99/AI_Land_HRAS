@@ -208,6 +208,7 @@ export function buildResourceCard(resource: {
   description?: string;
   official_url?: string;
   logo?: string;
+  created_at?: string;
 }) {
   const bodyElements: unknown[] = [];
 
@@ -259,6 +260,20 @@ export function buildResourceCard(resource: {
       },
     ],
     margin: '12px 12px 12px 12px',
+  });
+
+  // ── 分隔线 + 发布日期 ──
+  contentElements.push({ tag: 'hr', margin: '4px 0px 0px 0px' });
+  contentElements.push({
+    tag: 'div',
+    text: {
+      tag: 'plain_text',
+      content: `发布日期：${formatDate(resource.created_at)}`,
+      text_size: 'notation',
+      text_align: 'left',
+      text_color: 'grey',
+    },
+    margin: '4px 4px 4px 4px',
   });
 
   // ── 按钮区 ──
