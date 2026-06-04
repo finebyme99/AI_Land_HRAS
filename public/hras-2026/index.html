@@ -246,6 +246,58 @@
   .proc-card li{display:flex;gap:10px;padding:8px 0;font-size:14px;color:var(--ink-2);line-height:1.55}
   .proc-card li svg{flex:0 0 auto;margin-top:4px;color:var(--accent-a)}
 
+  /* ───────────── Review roles grid ───────────── */
+  .role-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:40px}
+  @media (max-width:880px){.role-grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:540px){.role-grid{grid-template-columns:1fr}}
+  .role-card{padding:28px 24px;border-radius:var(--r-md);background:#fff;border:1px solid var(--line);transition:all .4s cubic-bezier(.2,.8,.2,1);position:relative;overflow:hidden}
+  .role-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-md);border-color:var(--line-2)}
+  .role-card .role-icon{font-size:28px;margin-bottom:10px}
+  .role-card .role-name{font-size:17px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px}
+  .role-card .role-count{font-family:"Space Grotesk",sans-serif;font-size:13px;color:var(--ink-3);font-weight:600;margin-bottom:10px}
+  .role-card .role-who{font-size:13px;color:var(--ink-3);line-height:1.5;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+  .role-card .role-duty{font-size:13.5px;color:var(--ink-2);line-height:1.55}
+  .role-card .role-duty strong{color:var(--ink);font-weight:600}
+  .role-card .role-time{margin-top:10px;font-size:12px;color:var(--ink-3);font-weight:500;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--bg-soft)}
+  .role-card.business .role-name{color:var(--accent-a)}
+  .role-card.tech .role-name{color:var(--accent-b)}
+  .role-card.user .role-name{color:var(--accent-c)}
+  .role-card.cho .role-name{color:var(--accent-d)}
+
+  /* ───────────── Scoring dimensions table ───────────── */
+  .score-section{margin-top:0}
+  .score-callout{padding:20px 24px;border-radius:var(--r-md);background:rgba(91,92,255,.04);border:1px dashed rgba(91,92,255,.2);margin-bottom:32px}
+  .score-callout p{font-size:14.5px;color:var(--ink-2);line-height:1.65}
+  .score-callout p strong{color:var(--ink);font-weight:600}
+  .score-callout blockquote{margin:10px 0 0;padding:10px 16px;border-left:3px solid var(--accent-a);background:rgba(91,92,255,.03);border-radius:0 8px 8px 0;font-size:13.5px;color:var(--ink-2);line-height:1.6}
+  .dim-table{width:100%;border-collapse:separate;border-spacing:0;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--line);background:#fff}
+  .dim-table thead th{padding:14px 16px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);background:var(--bg-soft);text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  .dim-table thead th:first-child{padding-left:20px}
+  .dim-table tbody td{padding:14px 16px;font-size:13.5px;color:var(--ink-2);line-height:1.55;border-bottom:1px solid var(--line);vertical-align:top}
+  .dim-table tbody td:first-child{padding-left:20px;font-weight:700;color:var(--ink)}
+  .dim-table tbody tr:last-child td{border-bottom:none}
+  .dim-table tbody tr:hover{background:rgba(91,92,255,.02)}
+  .dim-tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em}
+  .dim-tag.business{background:rgba(91,92,255,.1);color:var(--accent-a)}
+  .dim-tag.tech{background:rgba(0,212,255,.1);color:#0ea5c7}
+  .dim-tag.user{background:rgba(255,94,138,.1);color:var(--accent-c)}
+  .dim-weight{font-family:"Space Grotesk",sans-serif;font-weight:700;color:var(--accent-a);font-size:14px}
+  .dim-weight.core{color:var(--accent-c)}
+  .dim-signal{font-size:12.5px;line-height:1.5}
+  .dim-signal.high{color:#16a34a}
+  .dim-signal.low{color:#dc2626}
+  .dim-note{display:block;font-size:11.5px;color:var(--ink-3);margin-top:4px;line-height:1.5;font-style:italic}
+  @media (max-width:880px){.dim-table thead th,.dim-table tbody td{padding:10px 12px;font-size:12.5px}.dim-table thead th:first-child,.dim-table tbody td:first-child{padding-left:12px}}
+  @media (max-width:680px){.dim-table{font-size:12px}.dim-signal{font-size:11.5px}}
+
+  /* ───────────── Scoring formula ───────────── */
+  .formula-bar{display:flex;align-items:center;justify-content:center;gap:16px;padding:28px;border-radius:var(--r-md);background:linear-gradient(135deg,rgba(91,92,255,.06),rgba(0,212,255,.04));border:1px solid rgba(91,92,255,.12);margin-top:32px;flex-wrap:wrap}
+  .formula-bar .f-label{font-size:13px;font-weight:600;color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}
+  .formula-bar .f-expr{font-family:"Space Grotesk",sans-serif;font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
+  .formula-bar .f-expr .f-op{color:var(--ink-3);margin:0 8px;font-weight:400}
+  .formula-bar .f-expr .f-hl{background:var(--grad-1);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .formula-bar .f-max{font-size:13px;color:var(--ink-3);font-weight:500}
+
   /* ───────────── Awards ───────────── */
   .awards-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
   @media (max-width:1080px){.awards-grid{grid-template-columns:repeat(2,1fr)}}
@@ -617,17 +669,129 @@
   <div class="container">
     <div class="sec-head reveal">
       <span class="eyebrow">REVIEW PROCESS</span>
-      <h2 class="h2">组委会评审<br>每月集中评审</h2>
-      <p class="lead">每月 26 日至月底，组委会集中评审当月所有参赛方案，次月 1 日公布结果。</p>
+      <h2 class="h2">多角色评审<br>8 维加权评分</h2>
+      <p class="lead">业务、技术、用户三方评审团 + CHO 终审，每月 26 日至月底集中评审，次月 1 日公布结果。</p>
     </div>
 
-    <div class="proc-grid" style="grid-template-columns:1fr;max-width:480px;margin:0 auto">
-      <div class="proc-card reveal"><h4 style="margin-top:0">组委会评审 <span class="tag-pill live">每月 26 - 月底</span></h4><p class="muted" style="margin-top:6px;font-size:14px">参与成员：赛事组委会</p>
-        <ul>
-          <li><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7L5 11L13 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>评估方案价值与可行性</li>
-          <li><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7L5 11L13 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>审核方案数据真实性</li>
-          <li><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7L5 11L13 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>确定评分并公布结果</li>
-        </ul>
+    <!-- 评审角色 -->
+    <div class="role-grid reveal">
+      <div class="role-card business">
+        <div class="role-icon">💼</div>
+        <div class="role-name">业务评委</div>
+        <div class="role-count">3 人</div>
+        <div class="role-who">HCOE 负责人、HSSC 负责人、BP 推广落地天团（轮值）</div>
+        <div class="role-duty">从<strong>业务视角</strong>评判方案真实价值、落地效果、可复用性</div>
+        <div class="role-time">⏱ 每月预计 1 小时内</div>
+      </div>
+      <div class="role-card tech">
+        <div class="role-icon">⚙️</div>
+        <div class="role-name">技术评委</div>
+        <div class="role-count">3 人</div>
+        <div class="role-who">AI 应用组</div>
+        <div class="role-duty">从<strong>技术视角</strong>评判技术可行性、方案成熟度</div>
+        <div class="role-time">⏱ 每月预计 1 小时内</div>
+      </div>
+      <div class="role-card user">
+        <div class="role-icon">👤</div>
+        <div class="role-name">用户评委</div>
+        <div class="role-count">n 人</div>
+        <div class="role-who">提报人提交的用户名单</div>
+        <div class="role-duty">从<strong>用户视角</strong>评判易用性、实际使用效果、长期使用意愿</div>
+        <div class="role-time">⏱ 每月预计 1 小时内</div>
+      </div>
+      <div class="role-card cho">
+        <div class="role-icon">🏆</div>
+        <div class="role-name">CHO 终审</div>
+        <div class="role-count">1 人</div>
+        <div class="role-who">CHO</div>
+        <div class="role-duty"><strong>终审拍板</strong></div>
+        <div class="role-time">⏱ 每月预计 1 小时内</div>
+      </div>
+    </div>
+
+    <!-- 评审依据 -->
+    <div class="score-section reveal" data-delay="1">
+      <div class="score-callout">
+        <p><strong>评审方式：</strong>对每份方案各维度给出 1–5 分打分。</p>
+        <p style="margin-top:6px"><strong>评分维度：</strong>业务、技术、用户三个评审团，从不同角度给出评分。</p>
+        <p style="margin-top:6px"><strong>计分方式：</strong>最终得分 = 各维度得分 × 权重。满分 50 分。</p>
+      </div>
+
+      <div style="overflow-x:auto;margin:0 -4px;padding:0 4px">
+        <table class="dim-table">
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>评委角色</th>
+              <th>权重</th>
+              <th>✅ 高分信号【5 分】</th>
+              <th>❌ 低分信号【0 分】</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>产品实用性</td>
+              <td><span class="dim-tag user">用户评委</span></td>
+              <td><span class="dim-weight core">×1.5</span></td>
+              <td><span class="dim-signal high">显著提效 / 显著增值 / 解决长期痛点</span><span class="dim-note">核心评分维度，权重高</span></td>
+              <td><span class="dim-signal low">和用之前差不多，甚至更复杂</span></td>
+            </tr>
+            <tr>
+              <td>数据一致性</td>
+              <td><span class="dim-tag user">用户评委</span></td>
+              <td><span class="dim-weight">×1.2</span></td>
+              <td><span class="dim-signal high">量化数据真实，符合我的实际工作场景</span><span class="dim-note">本部门实际执行者认知，和【数据详实度】双重验证</span></td>
+              <td><span class="dim-signal low">量化数据错误，不符合我的真实场景</span></td>
+            </tr>
+            <tr>
+              <td>产品易用性</td>
+              <td><span class="dim-tag user">用户评委</span></td>
+              <td><span class="dim-weight">×1.2</span></td>
+              <td><span class="dim-signal high">上手快速、体验丝滑</span></td>
+              <td><span class="dim-signal low">步骤繁琐、经常卡壳</span></td>
+            </tr>
+            <tr>
+              <td>可复用性</td>
+              <td><span class="dim-tag business">业务评委</span></td>
+              <td><span class="dim-weight core">×1.5</span></td>
+              <td><span class="dim-signal high">覆盖面广、涉及多团队、或有战略价值</span><span class="dim-note">核心评分维度，权重高</span></td>
+              <td><span class="dim-signal low">影响范围极窄，依赖个人 / 仅个别人受益</span></td>
+            </tr>
+            <tr>
+              <td>数据详实度</td>
+              <td><span class="dim-tag business">业务评委</span></td>
+              <td><span class="dim-weight">×1.2</span></td>
+              <td><span class="dim-signal high">量化数据可信，贴合业务真实场景</span><span class="dim-note">业务专家对真实场景的认知，和【数据一致性】双重验证</span></td>
+              <td><span class="dim-signal low">量化数据矛盾，不符合真实场景</span></td>
+            </tr>
+            <tr>
+              <td>突破开创性</td>
+              <td><span class="dim-tag business">业务评委</span></td>
+              <td><span class="dim-weight">×1.2</span></td>
+              <td><span class="dim-signal high">之前没有此能力，达成了流程首创或再造</span></td>
+              <td><span class="dim-signal low">无任何流程再造、突破创新</span></td>
+            </tr>
+            <tr>
+              <td>技术可用性</td>
+              <td><span class="dim-tag tech">技术评委</span></td>
+              <td><span class="dim-weight">×1.2</span></td>
+              <td><span class="dim-signal high">有高度标准可用的 SOP / SKILLS / 代码仓库，非"一次性操作"</span></td>
+              <td><span class="dim-signal low">存在技术隐患 / 疑点，SOP / SKILLS / 代码仓库不具备技术可行性</span></td>
+            </tr>
+            <tr>
+              <td>工具合理性</td>
+              <td><span class="dim-tag tech">技术评委</span></td>
+              <td><span class="dim-weight">×1.0</span></td>
+              <td><span class="dim-signal high">AI 工具匹配场景，选型有依据</span></td>
+              <td><span class="dim-signal low">工具和场景明显不匹配，或未说明用什么工具</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="formula-bar">
+        <span class="f-label">计分公式</span>
+        <span class="f-expr"><span class="f-hl">总分</span><span class="f-op">=</span>Σ(各维分数 × 权重)<span class="f-op">|</span>满分 <span class="f-hl">50</span> 分</span>
       </div>
     </div>
   </div>
