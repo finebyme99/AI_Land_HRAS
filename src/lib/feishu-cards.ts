@@ -179,7 +179,7 @@ export function buildCourseCard(course: {
     },
     header: {
       title: { tag: 'plain_text', content: 'AI公开课上新！' },
-      subtitle: { tag: 'plain_text', content: 'HRAS AI公开课，体系化带你从AI工具上手到落地' },
+      subtitle: { tag: 'plain_text', content: 'AI岛推荐：HRAS AI公开课，体系化带你从AI工具上手到落地' },
       text_tag_list: [
         { tag: 'text_tag', text: { tag: 'plain_text', content: 'AI公开课' }, color: 'turquoise' },
         ...(course.period ? [{ tag: 'text_tag' as const, text: { tag: 'plain_text' as const, content: course.period }, color: 'blue' as const }] : []),
@@ -334,7 +334,7 @@ export function buildResourceCard(resource: {
     },
     header: {
       title: { tag: 'plain_text', content: '新工具推荐' },
-      subtitle: { tag: 'plain_text', content: 'HRAS AI精选工具，助你高效办公' },
+      subtitle: { tag: 'plain_text', content: 'AI岛推荐：HRAS AI精选工具，助你高效办公' },
       text_tag_list: [
         { tag: 'text_tag', text: { tag: 'plain_text', content: '工具推荐' }, color: 'green' },
         ...(resource.category ? [{ tag: 'text_tag' as const, text: { tag: 'plain_text' as const, content: resource.category }, color: 'blue' as const }] : []),
@@ -381,6 +381,7 @@ export function buildCaseCard(c: {
     config: { update_multi: true },
     header: {
       title: { tag: 'plain_text', content: '📚 新案例推荐' },
+      subtitle: { tag: 'plain_text', content: 'AI岛推荐：来自HR实践者的AI应用案例' },
       template: 'violet',
     },
     body: {
@@ -425,6 +426,7 @@ export function buildSubmissionCard(s: {
     config: { update_multi: true },
     header: {
       title: { tag: 'plain_text', content: '📋 大赛方案速览' },
+      subtitle: { tag: 'plain_text', content: 'AI岛推荐：AI大赛优秀方案速览' },
       template: 'orange',
     },
     body: {
