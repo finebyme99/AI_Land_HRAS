@@ -232,18 +232,14 @@ export function buildResourceCard(resource: {
     },
   ];
 
-  // 描述：灰色，分隔线后
+  // 描述：分隔线后
   if (resource.description) {
     contentElements.push({ tag: 'hr', margin: '4px 0px 4px 0px' });
     contentElements.push({
-      tag: 'div',
-      text: {
-        tag: 'plain_text',
-        content: truncate(resource.description, 150),
-        text_size: 'notation',
-        text_align: 'left',
-        text_color: 'grey',
-      },
+      tag: 'markdown',
+      content: `**工具简介：** ${truncate(resource.description, 150)}`,
+      text_align: 'left',
+      text_size: 'notation',
       margin: '4px 4px 4px 4px',
     });
   }

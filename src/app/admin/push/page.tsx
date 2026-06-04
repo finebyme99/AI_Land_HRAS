@@ -515,7 +515,7 @@ function PreviewCard({ item }: { item: ContentItem }) {
           {item.description && (
             <>
               <div style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '8px 0' }} />
-              <div style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>{item.description.slice(0, 120)}</div>
+              <div style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}><b style={{ color: '#333' }}>工具简介：</b>{item.description.slice(0, 120)}</div>
             </>
           )}
         </div>
