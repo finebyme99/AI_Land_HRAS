@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Tag, Select, Spin, Modal, Form, Input, App, DatePicker } from 'antd';
+import { Tag, Spin, Modal, Form, Input, App, DatePicker } from 'antd';
 import { ReadOutlined, UserOutlined, PlusOutlined, BookOutlined, PlayCircleOutlined, LikeFilled, LikeOutlined, BookFilled, EditOutlined, SyncOutlined } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
@@ -216,7 +216,7 @@ export default function CoursesPage() {
       </div>
 
       {/* Filters */}
-      <div className="glass rounded-xl p-4 mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+      <div className="glass rounded-xl p-4 mb-6 space-y-3" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex flex-wrap gap-3 items-center">
           <SearchInput
             placeholder="搜索课程..."
@@ -224,24 +224,56 @@ export default function CoursesPage() {
             value={search}
             onChange={setSearch}
           />
-          <Select
-            placeholder="形式"
-            className="w-full sm:w-28"
-            value={contentType || undefined}
-            onChange={(v) => setContentType(v || '')}
-            allowClear
-            options={CONTENT_TYPE_OPTIONS}
-          />
-          <Select
-            placeholder="讲师"
-            className="w-full sm:w-36"
-            value={instructor || undefined}
-            onChange={(v) => setInstructor(v || '')}
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            options={instructorOptions}
-          />
+        </div>
+        {/* 资源形式 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium shrink-0" style={{ color: 'var(--text-muted)' }}>形式</span>
+          <button
+            onClick={() => setContentType('')}
+            className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+            style={{
+              color: !contentType ? '#fff' : 'var(--text-secondary)',
+              background: !contentType ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+              border: '1px solid transparent',
+            }}
+          >全部</button>
+          {CONTENT_TYPE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setContentType(contentType === opt.value ? '' : opt.value)}
+              className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+              style={{
+                color: contentType === opt.value ? '#fff' : 'var(--text-secondary)',
+                background: contentType === opt.value ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+                border: '1px solid transparent',
+              }}
+            >{opt.label}</button>
+          ))}
+        </div>
+        {/* 讲师 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium shrink-0" style={{ color: 'var(--text-muted)' }}>讲师</span>
+          <button
+            onClick={() => setInstructor('')}
+            className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+            style={{
+              color: !instructor ? '#fff' : 'var(--text-secondary)',
+              background: !instructor ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+              border: '1px solid transparent',
+            }}
+          >全部</button>
+          {instructorOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setInstructor(instructor === opt.value ? '' : opt.value)}
+              className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+              style={{
+                color: instructor === opt.value ? '#fff' : 'var(--text-secondary)',
+                background: instructor === opt.value ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+                border: '1px solid transparent',
+              }}
+            >{opt.label}</button>
+          ))}
         </div>
       </div>
 
