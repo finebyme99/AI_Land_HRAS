@@ -63,7 +63,6 @@ export default function CreateResourcePage() {
         body: JSON.stringify({
           name: values.name,
           description: values.description,
-          content: values.content || '',
           category: values.category,
           scenarios: values.scenarios || [],
           official_url: values.official_url || '',
@@ -152,27 +151,28 @@ export default function CreateResourcePage() {
           </Form.Item>
 
           <Form.Item name="description" label="简介" rules={[{ required: true, message: '请输入简介' }]}>
-            <Input.TextArea rows={3} placeholder="一句话介绍这个工具" maxLength={200} showCount />
+            <Input placeholder="一句话介绍工具的核心亮点，为你的推荐打好广告" maxLength={25} showCount />
           </Form.Item>
 
           <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
             <Select placeholder="选择分类" options={RESOURCE_CATEGORIES.map(c => ({ label: c, value: c }))} />
           </Form.Item>
 
-          <Form.Item name="scenarios" label="适用场景">
-            <Select mode="multiple" placeholder="选择适用场景" options={[
+          <Form.Item name="scenarios" label="适用场景" rules={[{ required: true, message: '请选择适用场景' }]}>
+            <Select mode="multiple" placeholder="选择适用场景（可多选）" options={[
               { label: '对话', value: '对话' },
               { label: '任务执行', value: '任务执行' },
               { label: '编程', value: '编程' },
+              { label: '日常提效', value: '日常提效' },
+              { label: '咨询搜集', value: '咨询搜集' },
             ]} />
           </Form.Item>
 
-          <Form.Item name="official_url" label="官网 / 项目地址">
+          <Form.Item name="official_url" label="使用指南链接" rules={[
+            { required: true, message: '请输入使用指南链接' },
+            { type: 'url', message: '请输入有效的 URL' },
+          ]}>
             <Input placeholder="https://..." />
-          </Form.Item>
-
-          <Form.Item name="content" label="详细说明（选填）">
-            <Input.TextArea rows={6} placeholder="功能介绍、使用技巧、注意事项等" />
           </Form.Item>
 
           <Form.Item>
