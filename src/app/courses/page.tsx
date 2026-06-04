@@ -18,7 +18,7 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [contentType, setContentType] = useState<ContentType | ''>('');
+  const [contentTypes, setContentTypes] = useState<Set<ContentType>>(new Set());
   const [instructor, setInstructor] = useState('');
   const [interactions, setInteractions] = useState<Record<string, { liked: boolean; bookmarked: boolean }>>({});
   const [counts, setCounts] = useState<Record<string, { like_count: number; bookmark_count: number }>>({});
@@ -44,7 +44,11 @@ export default function CoursesPage() {
         .order('created_at', { ascending: false });
 
       if (debouncedSearch) query = query.or(`title.ilike.%${debouncedSearch}%`);
-      if (contentType) query = query.contains('content_type', [contentType]);
+      // 资源形式：多选 OR（满足任意一个即命中）
+      if (contentTypes.size > 0) {
+        const orConditions = Array.from(contentTypes).map((t) => `content_type.cs.{${t}}`).join(',');
+        query = query.or(orConditions);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -55,7 +59,7 @@ export default function CoursesPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, contentType]);
+  }, [debouncedSearch, contentTypes]);
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
@@ -225,26 +229,33 @@ export default function CoursesPage() {
             onChange={setSearch}
           />
         </div>
-        {/* 资源形式 */}
+        {/* 资源形式（多选 OR） */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium shrink-0" style={{ color: 'var(--text-muted)' }}>形式</span>
           <button
-            onClick={() => setContentType('')}
+            onClick={() => setContentTypes(new Set())}
             className="px-3 py-1 rounded-full text-xs font-medium transition-all"
             style={{
-              color: !contentType ? '#fff' : 'var(--text-secondary)',
-              background: !contentType ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+              color: contentTypes.size === 0 ? '#fff' : 'var(--text-secondary)',
+              background: contentTypes.size === 0 ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
               border: '1px solid transparent',
             }}
           >全部</button>
           {CONTENT_TYPE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => setContentType(contentType === opt.value ? '' : opt.value)}
+              onClick={() => {
+                setContentTypes((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(opt.value)) next.delete(opt.value);
+                  else next.add(opt.value);
+                  return next;
+                });
+              }}
               className="px-3 py-1 rounded-full text-xs font-medium transition-all"
               style={{
-                color: contentType === opt.value ? '#fff' : 'var(--text-secondary)',
-                background: contentType === opt.value ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
+                color: contentTypes.has(opt.value) ? '#fff' : 'var(--text-secondary)',
+                background: contentTypes.has(opt.value) ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
                 border: '1px solid transparent',
               }}
             >{opt.label}</button>
