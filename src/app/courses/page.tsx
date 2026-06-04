@@ -319,6 +319,7 @@ export default function CoursesPage() {
                 </button>
               )}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
+                {course.period && <Tag color="cyan">{course.period}</Tag>}
                 {(Array.isArray(course.content_type) ? course.content_type : [course.content_type]).map((ct) => (
                   <Tag key={ct} color={ct === 'video' ? 'red' : 'blue'}>
                     {ct === 'video' ? '视频' : '文档'}

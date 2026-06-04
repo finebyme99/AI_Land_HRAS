@@ -26,6 +26,7 @@ export function buildCourseCard(course: {
   video_url?: string;
   courseware_url?: string;
   created_at?: string;
+  period?: string | null;
 }) {
   const bodyElements: unknown[] = [];
 
@@ -169,9 +170,8 @@ export function buildCourseCard(course: {
       title: { tag: 'plain_text', content: 'AI公开课上新！' },
       subtitle: { tag: 'plain_text', content: 'HRAS AI公开课，体系化带你从AI工具上手到落地' },
       text_tag_list: [
-        { tag: 'text_tag', text: { tag: 'plain_text', content: '上新' }, color: 'red' },
         { tag: 'text_tag', text: { tag: 'plain_text', content: 'AI公开课' }, color: 'turquoise' },
-        { tag: 'text_tag', text: { tag: 'plain_text', content: '学习资源' }, color: 'blue' },
+        ...(course.period ? [{ tag: 'text_tag' as const, text: { tag: 'plain_text' as const, content: course.period }, color: 'blue' as const }] : []),
       ],
       template: 'turquoise',
       icon: { tag: 'standard_icon', token: 'collection_outlined' },

@@ -117,6 +117,7 @@ export interface Course {
   bookmark_count: number;
   comment_count: number;
   is_featured?: boolean;
+  period?: string | null;
   created_at: string;
 }
 

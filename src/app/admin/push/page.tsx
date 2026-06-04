@@ -459,7 +459,7 @@ export default function AdminPushPage() {
 
 /* ─── 卡片预览组件 ─── */
 const CARD_THEMES: Record<string, { bg: string; label: string; subtitle?: string; tags?: { text: string; color: string }[] }> = {
-  course: { bg: '#13c2c2', label: '🎓 新课程上线', subtitle: 'HRAS AI公开课，体系化带你从AI工具上手到落地', tags: [{ text: '上新', color: '#f5222d' }, { text: 'AI公开课', color: '#13c2c2' }, { text: '学习资源', color: '#1677ff' }] },
+  course: { bg: '#13c2c2', label: '🎓 新课程上线', subtitle: 'HRAS AI公开课，体系化带你从AI工具上手到落地', tags: [{ text: 'AI公开课', color: '#13c2c2' }] },
   resource: { bg: '#52c41a', label: '🛠️ 新工具推荐' },
   case: { bg: '#722ed1', label: '📚 新案例推荐' },
   submission: { bg: '#fa8c16', label: '📋 大赛方案速览' },

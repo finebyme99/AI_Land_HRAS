@@ -75,6 +75,7 @@ function mapRecord(record: any) {
     video_url: extractUrl(f['录屏']),
     courseware_url: extractUrl(f['课件文档']),
     content_type: extractContentTypes(f['资源类型']),
+    period: extractText(f['期数']) || null,
   };
 }
 
@@ -136,6 +137,7 @@ export async function POST(request: NextRequest) {
         video_url: r.video_url,
         courseware_url: r.courseware_url,
         content_type: r.content_type.length > 0 ? r.content_type : ['doc'],
+        period: r.period,
       }));
 
     let inserted = 0;
