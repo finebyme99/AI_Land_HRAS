@@ -69,7 +69,7 @@ export function buildCourseCard(course: {
 
   bodyElements.push({
     tag: 'column_set',
-    background_style: 'grey-50',
+    background_style: 'default',
     horizontal_spacing: '8px',
     horizontal_align: 'left',
     columns: [
