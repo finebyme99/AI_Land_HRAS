@@ -62,6 +62,15 @@ export interface Case {
   is_featured?: boolean;
   team?: CaseTeam | '';
   business_scenario?: CaseBusinessScenario | '';
+  // 新增字段
+  team_members?: string;
+  original_business_scenario?: string;
+  pain_points?: string[];
+  monthly_saved_hours?: number;
+  efficiency_ratio?: number;
+  demo_link?: string;
+  other_values?: string[];
+  developers?: Pick<User, 'id' | 'name' | 'avatar' | 'department'>[];
   created_at: string;
   updated_at: string;
 }

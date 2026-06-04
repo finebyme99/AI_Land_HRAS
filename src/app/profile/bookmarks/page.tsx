@@ -76,7 +76,7 @@ export default function BookmarksPage() {
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'course': return '公开课';
-      case 'case': return '案例库';
+      case 'case': return 'HRAS案例库';
       default: return type;
     }
   };

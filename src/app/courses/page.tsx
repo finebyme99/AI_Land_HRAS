@@ -8,6 +8,7 @@ import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { CONTENT_TYPE_OPTIONS } from '@/lib/constants';
 import SearchInput from '@/components/SearchInput';
+import HighlightSweep from '@/components/HighlightSweep';
 import type { Course, ContentType } from '@/types';
 import dayjs from 'dayjs';
 
@@ -178,13 +179,12 @@ export default function CoursesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-3">
-            <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(74, 111, 165, 0.08)', color: '#4a6fa5' }}>
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #4a6fa5, #6b8fc4)', color: '#fff' }}>
               <ReadOutlined />
             </span>
-            AI 公开课
-            <span className="text-sm font-normal" style={{ color: 'var(--text-secondary)' }}>系统化学习 AI 知识与技能</span>
-          </h1>
+            <HighlightSweep text="系统化学习 AI 知识与技能" className="text-2xl font-bold" gradient="linear-gradient(135deg, #4a6fa5 0%, #6b8fc4 50%, #8bb4e0 100%)" />
+          </div>
         </div>
         {isAdmin && (
           <div className="flex items-center gap-2">

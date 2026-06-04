@@ -358,7 +358,7 @@ export default function Home() {
   const statItems = [
     { label: '案例总数', value: stats.cases, icon: <BookOutlined />, iconBg: 'rgba(26, 58, 138, 0.12)', iconColor: '#1a3a8a', href: '/cases' },
     { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a', href: '/courses' },
-    { label: '资源总数', value: stats.apps, icon: <AppstoreOutlined />, iconBg: 'rgba(120, 80, 160, 0.12)', iconColor: '#7850a0', href: '/apps' },
+    { label: '工具总数', value: stats.apps, icon: <AppstoreOutlined />, iconBg: 'rgba(120, 80, 160, 0.12)', iconColor: '#7850a0', href: '/apps' },
     { label: '注册用户', value: stats.users, icon: <TeamOutlined />, iconBg: 'rgba(34, 197, 94, 0.12)', iconColor: '#22c55e', href: isAdmin ? '/admin/users' : '' },
   ];
 
@@ -396,7 +396,7 @@ export default function Home() {
                 </button>
               </Link>
               <Link href="/cases">
-                <button className="pill-btn">案例库</button>
+                <button className="pill-btn">HRAS案例库</button>
               </Link>
               <Link href="/competitions">
                 <button className="pill-btn">AI 大赛</button>

@@ -19,6 +19,7 @@ import { getSupabase } from '@/lib/supabase';
 import { RESOURCE_CATEGORY_COLORS } from '@/lib/constants';
 import { useAuth } from '@/lib/auth-context';
 import SearchInput from '@/components/SearchInput';
+import HighlightSweep from '@/components/HighlightSweep';
 import type { Resource, ResourceCategory } from '@/types';
 import { RESOURCE_CATEGORIES } from '@/types';
 
@@ -177,7 +178,6 @@ export default function AppsPage() {
     form.setFieldsValue({
       name: res.name,
       description: res.description,
-      content: res.content,
       category: res.category,
       scenarios: res.scenarios,
       official_url: res.official_url,
@@ -215,14 +215,13 @@ export default function AppsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-3">
-            <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base"
-              style={{ background: 'rgba(120, 80, 160, 0.08)', color: '#7850a0' }}>
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #7850a0, #9b6fc0)', color: '#fff' }}>
               <AppstoreOutlined />
             </span>
-            工具推荐
-            <span className="text-sm font-normal" style={{ color: 'var(--text-secondary)' }}>发现好用的 AI 工具与 Skills</span>
-          </h1>
+            <HighlightSweep text="发现好用的 AI 工具与 Skills" className="text-2xl font-bold" gradient="linear-gradient(135deg, #7850a0 0%, #9b6fc0 50%, #b48fd4 100%)" />
+          </div>
         </div>
         <Link href="/apps/create">
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
@@ -429,23 +428,26 @@ export default function AppsPage() {
             <Input maxLength={80} showCount />
           </Form.Item>
           <Form.Item name="description" label="简介" rules={[{ required: true, message: '请输入简介' }]}>
-            <Input.TextArea rows={2} maxLength={200} showCount />
+            <Input placeholder="一句话介绍工具的核心亮点" maxLength={100} showCount />
           </Form.Item>
           <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
             <Select options={RESOURCE_CATEGORIES.map(c => ({ label: c, value: c }))} />
           </Form.Item>
-          <Form.Item name="scenarios" label="适用场景">
-            <Select mode="multiple" placeholder="选择适用场景" options={[
-              { label: '对话', value: '对话' },
-              { label: '任务执行', value: '任务执行' },
+          <Form.Item name="scenarios" label="适用场景" rules={[{ required: true, message: '请选择适用场景' }]}>
+            <Select mode="multiple" placeholder="选择适用场景（可多选）" options={[
               { label: '编程', value: '编程' },
+              { label: '设计', value: '设计' },
+              { label: '写作', value: '写作' },
+              { label: '数据分析', value: '数据分析' },
+              { label: '咨询搜集', value: '咨询搜集' },
+              { label: '日常提效', value: '日常提效' },
             ]} />
           </Form.Item>
-          <Form.Item name="official_url" label="官网 / 链接">
+          <Form.Item name="official_url" label="使用指南链接" rules={[
+            { required: true, message: '请输入使用指南链接' },
+            { type: 'url', message: '请输入有效的 URL' },
+          ]}>
             <Input placeholder="https://..." />
-          </Form.Item>
-          <Form.Item name="content" label="详细说明">
-            <Input.TextArea rows={4} placeholder="功能介绍、使用技巧等" />
           </Form.Item>
         </Form>
       </Modal>

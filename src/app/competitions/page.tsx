@@ -5,6 +5,7 @@ import { Spin, App, Switch, Tabs, Tag } from 'antd';
 import { SyncOutlined, TrophyOutlined, CalendarOutlined, UserOutlined, BankOutlined, CodeOutlined, BookOutlined, CheckCircleOutlined, LockOutlined, AuditOutlined, FormOutlined, FlagOutlined, RightOutlined, RocketOutlined, FireOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import CompetitionCard from '@/components/CompetitionCard';
+import HighlightSweep from '@/components/HighlightSweep';
 import type { Submission } from '@/components/CompetitionCard';
 import type { CompetitionReview, ReviewScores, ReviewerRole } from '@/types';
 
@@ -175,13 +176,12 @@ export default function CompetitionsPage() {
         {/* 页面标题 — 与案例库/公开课等模块格式一致 */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-semibold flex items-center gap-3">
-              <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base" style={{ background: 'rgba(242, 127, 34, 0.1)', color: '#d46b08' }}>
+            <div className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #d46b08, #f27f22)', color: '#fff' }}>
                 <TrophyOutlined />
               </span>
-              AI大赛
-              <span className="text-sm font-normal" style={{ color: 'var(--text-secondary)' }}>HRAS AI 应用大赛 · 按月评选优秀方案</span>
-            </h1>
+              <HighlightSweep text="HRAS AI 应用大赛 · 按月评选优秀方案" className="text-2xl font-bold" gradient="linear-gradient(135deg, #d46b08 0%, #f27f22 50%, #fa8c16 100%)" />
+            </div>
           </div>
         </div>
 

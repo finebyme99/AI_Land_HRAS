@@ -20,7 +20,7 @@ import { useAuth } from '@/lib/auth-context';
 
 const navItems = [
   { key: '/', label: '首页', icon: <HomeOutlined /> },
-  { key: '/cases', label: '案例库', icon: <BookOutlined /> },
+  { key: '/cases', label: 'HRAS案例库', icon: <BookOutlined /> },
   { key: '/competitions', label: 'AI大赛', icon: <TrophyOutlined /> },
   { key: '/courses', label: '公开课', icon: <ReadOutlined /> },
   { key: '/apps', label: '工具推荐', icon: <AppstoreOutlined /> },
@@ -121,7 +121,7 @@ export default function Navigation() {
                         children: [
                           ...(isReviewer ? [{ key: '/admin/reviews', label: <Link href="/admin/reviews">评审管理</Link> }] : []),
                           ...(isAdmin ? [
-                            { key: '/admin/resources', label: <Link href="/admin/resources">工具审核</Link> },
+                            { key: '/admin/review', label: <Link href="/admin/review">内容审核</Link> },
                             { key: '/admin/users', label: <Link href="/admin/users">用户管理</Link> },
                             { key: '/admin/reminders', label: <Link href="/admin/reminders">提醒管理</Link> },
                             { key: '/admin/push', label: <Link href="/admin/push">飞书推送</Link> },
@@ -229,7 +229,7 @@ export default function Navigation() {
                       children: [
                         ...(isReviewer ? [{ key: '/admin/reviews', label: <Link href="/admin/reviews" onClick={() => setDrawerOpen(false)}>评审管理</Link> }] : []),
                         ...(isAdmin ? [
-                          { key: '/admin/resources', label: <Link href="/admin/resources" onClick={() => setDrawerOpen(false)}>工具审核</Link> },
+                          { key: '/admin/review', label: <Link href="/admin/review" onClick={() => setDrawerOpen(false)}>内容审核</Link> },
                           { key: '/admin/users', label: <Link href="/admin/users" onClick={() => setDrawerOpen(false)}>用户管理</Link> },
                           { key: '/admin/reminders', label: <Link href="/admin/reminders" onClick={() => setDrawerOpen(false)}>提醒管理</Link> },
                           { key: '/admin/push', label: <Link href="/admin/push" onClick={() => setDrawerOpen(false)}>飞书推送</Link> },

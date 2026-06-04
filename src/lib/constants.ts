@@ -79,6 +79,23 @@ export const CASE_BUSINESS_SCENARIOS: CaseBusinessScenario[] = [
 ];
 export const CASE_BUSINESS_SCENARIO_OPTIONS = CASE_BUSINESS_SCENARIOS.map((s) => ({ label: s, value: s }));
 
+// 原核心痛点
+export const PAIN_POINTS = [
+  '重复劳动，机械操作太多',
+  '涉及多个系统，来回切换',
+  '数据整理/清洗耗时巨大',
+  '容易出错，反复核对',
+  '跨部门协调沟通成本高',
+  '需要等别人/等审批，被卡住',
+  '格式/模板要求繁琐',
+  '知识经验难以沉淀和复用',
+];
+export const PAIN_POINT_OPTIONS = PAIN_POINTS.map((p) => ({ label: p, value: p }));
+
+// 其他价值补充（非必填）
+export const OTHER_VALUES = ['准确率提升', '质量提升', '员工体验提升'];
+export const OTHER_VALUE_OPTIONS = OTHER_VALUES.map((v) => ({ label: v, value: v }));
+
 export const EVENT_STATUS_MAP: Record<EventStatus, { label: string; color: string }> = {
   upcoming: { label: '即将开始', color: 'blue' },
   ongoing: { label: '进行中', color: 'red' },

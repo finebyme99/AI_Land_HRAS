@@ -151,7 +151,7 @@ export default function CreateResourcePage() {
           </Form.Item>
 
           <Form.Item name="description" label="简介" rules={[{ required: true, message: '请输入简介' }]}>
-            <Input placeholder="一句话介绍工具的核心亮点，为你的推荐打好广告" maxLength={25} showCount />
+            <Input placeholder="一句话介绍工具的核心亮点，为你的推荐打好广告" maxLength={100} showCount />
           </Form.Item>
 
           <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
