@@ -26,7 +26,7 @@ export async function getFeishuAppByAppId(appId: string): Promise<FeishuApp | nu
     .from('feishu_apps')
     .select('*')
     .eq('app_id', appId)
-    .single();
+    .maybeSingle();
   return data || null;
 }
 
@@ -35,7 +35,7 @@ export async function getFeishuAppByTenantKey(tenantKey: string): Promise<Feishu
     .from('feishu_apps')
     .select('*')
     .eq('tenant_key', tenantKey)
-    .single();
+    .maybeSingle();
   return data || null;
 }
 
