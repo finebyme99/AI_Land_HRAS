@@ -331,3 +331,74 @@ export function buildCourseInputCard(): object {
     ],
   };
 }
+
+/** 提交成功后替换原卡片的"已提交"提示 */
+export function buildSuccessCard(course: { id: string; title: string; instructor?: string }): object {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hras-ai-land.vercel.app';
+  return {
+    config: { wide_screen_mode: true },
+    header: {
+      title: { tag: 'plain_text', content: '✅ 已补录公开课' },
+      template: 'green',
+    },
+    elements: [
+      {
+        tag: 'div',
+        text: {
+          tag: 'lark_md',
+          content: `**${course.title}**${course.instructor ? `（讲师 ${course.instructor}）` : ''} 已写入 AI 岛。`,
+        },
+      },
+      {
+        tag: 'action',
+        actions: [
+          {
+            tag: 'button',
+            text: { tag: 'plain_text', content: '去 AI 岛查看' },
+            type: 'primary',
+            url: `${appUrl}/courses`,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/** 提交失败时替换原卡片的错误提示（带一个回填按钮） */
+export function buildErrorCard(message: string, formValue: Record<string, unknown>): object {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hras-ai-land.vercel.app';
+  // 失败时回填字段（通过 URL 参数），让用户去 AI 岛 /courses/create 时表已预填
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(formValue)) {
+    if (v != null && v !== '') params.set(k, String(v));
+  }
+  const retryUrl = `${appUrl}/courses/create?${params.toString()}`;
+
+  return {
+    config: { wide_screen_mode: true },
+    header: {
+      title: { tag: 'plain_text', content: '❌ 补录失败' },
+      template: 'red',
+    },
+    elements: [
+      {
+        tag: 'div',
+        text: {
+          tag: 'lark_md',
+          content: `**原因**：${message}\n\n请在 AI 岛手动补录，或点击下方按钮继续填写。`,
+        },
+      },
+      {
+        tag: 'action',
+        actions: [
+          {
+            tag: 'button',
+            text: { tag: 'plain_text', content: '去 AI 岛补录' },
+            type: 'primary',
+            url: retryUrl,
+          },
+        ],
+      },
+    ],
+  };
+}
