@@ -81,9 +81,13 @@ src/
 
 ### 权限控制
 
-- `useAuth()` 提供 `{ user, isAdmin, loading, signOut, refreshUser }`
+- `useAuth()` 提供 `{ user, isAdmin, isReviewer, isCourseAdmin, canManageCourses, loading, signOut, refreshUser }`
 - `isAdmin` 由 `user?.roles` 数组包含 `'admin'` 或 `'moderator'` 决定
-- admin 操作：审核内容、编辑任意案例/工具、标精选、管理用户
+- `isReviewer` = `isAdmin` ∪ `roles.includes('reviewer')` ∪ 飞书硬编码白名单（`HARDCODED_REVIEWER_NAMES`，见 `src/lib/constants.ts`）
+- `isCourseAdmin` = `roles.includes('course_admin')`；`canManageCourses` = `isAdmin` ∪ `isCourseAdmin`
+- 角色（DB key → 中文）：`admin` 管理员 / `moderator` 版主 / `reviewer` 评委 / `course_admin` 公开管理员 / `contributor` 贡献者 / `user` 普通用户
+- admin 操作：审核内容、编辑任意案例/工具/课程、标精选、管理用户
+- `course_admin` 公开管理员：在 /courses 模块可同步、发布、编辑课程，不能动其他后台
 - 普通用户：提交案例（需审核）、提交工具（需审核）、点赞、收藏
 - 案例/工具的作者可编辑自己的内容
 
