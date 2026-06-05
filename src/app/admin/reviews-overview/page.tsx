@@ -149,7 +149,11 @@ export default function ReviewsOverviewPage() {
     if (teamFilter !== 'all') list = list.filter((s) => s.team === teamFilter);
     // 默认按总分降序
     list = [...list].sort((a, b) => (b.totalScore ?? -1) - (a.totalScore ?? -1));
-    return list;
+    // 全局排名（基于未过滤的全集按 totalScore 排）
+    const fullSorted = [...(data?.submissions ?? [])].sort((a, b) => (b.totalScore ?? -1) - (a.totalScore ?? -1));
+    const rankMap = new Map<string, number>();
+    fullSorted.forEach((s, i) => rankMap.set(s.id, i + 1));
+    return list.map((s) => ({ ...s, rank: rankMap.get(s.id) ?? 0 }));
   }, [data, teamFilter]);
 
   if (authLoading) {
@@ -223,10 +227,12 @@ export default function ReviewsOverviewPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {visibleSubs.map((sub) => (
-            <div key={sub.id} className="glass rounded-[20px] p-5 transition-all hover:-translate-y-0.5 hover:shadow-md"
+            <div key={sub.id} className="glass rounded-[20px] p-5 transition-all hover:-translate-y-0.5 hover:shadow-md relative overflow-hidden"
               style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-              {/* 头：编号 + 状态 */}
-              <div className="flex items-center justify-between mb-2">
+              {/* 排名徽章 — 角标 */}
+              <RankBadge rank={sub.rank} />
+              {/* 头：提案号 + 状态 */}
+              <div className="flex items-center justify-between mb-2 pl-12">
                 <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
                   {sub.proposalNo ? `#${String(sub.proposalNo).padStart(3, '0')}` : '—'}
                 </span>
@@ -581,6 +587,37 @@ function CompareRow({ label, before, after }: { label: string; before: string; a
       <span style={{ color: 'rgba(255,255,255,0.6)' }}>{before}</span>
       <span style={{ color: 'rgba(255,255,255,0.6)' }}>→</span>
       <b style={{ color: '#fff' }}>{after}</b>
+    </div>
+  );
+}
+
+/** 排名徽章 — 卡片左上角角标 */
+function RankBadge({ rank }: { rank: number }) {
+  // 前 3 名用金银铜色，其余用灰色
+  const styleMap: Record<number, { bg: string; color: string; label: string }> = {
+    1: { bg: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#5a3a00', label: '🥇' },
+    2: { bg: 'linear-gradient(135deg, #E8E8E8, #B0B0B0)', color: '#3a3a3a', label: '🥈' },
+    3: { bg: 'linear-gradient(135deg, #CD7F32, #A0522D)', color: '#fff', label: '🥉' },
+  };
+  const s = styleMap[rank] ?? { bg: 'rgba(26,58,138,0.08)', color: '#1a3a8a', label: '' };
+  return (
+    <div
+      className="absolute top-0 left-0 flex items-center justify-center font-bold"
+      style={{
+        width: 44,
+        height: 44,
+        background: s.bg,
+        color: s.color,
+        borderBottomRightRadius: 12,
+        fontSize: 16,
+        lineHeight: 1,
+        boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+        zIndex: 1,
+      }}
+      title={`第 ${rank} 名`}
+    >
+      {s.label ? <span className="text-base mr-0.5">{s.label}</span> : null}
+      <span style={{ marginLeft: s.label ? -2 : 0 }}>{rank}</span>
     </div>
   );
 }
