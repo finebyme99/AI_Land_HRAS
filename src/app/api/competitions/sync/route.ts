@@ -412,7 +412,7 @@ export async function POST(request: NextRequest) {
     for (const name of reviewerNameSet) {
       const { data: matched } = await supabase
         .from('users')
-        .select('id, roles')
+        .select('id, name, roles')
         .or(`name.eq.${name},name.ilike.${name}`)
         .limit(2);
       const u = (matched ?? []).find((x) => x.name === name) ?? matched?.[0];

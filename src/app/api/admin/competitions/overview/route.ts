@@ -50,23 +50,15 @@ export async function GET(request: NextRequest) {
     const subIds = submissions.map((s) => s.id);
 
     // 2. 拉这些 submissions 的所有 reviews（含 reviewer 名字）
-    let reviews: Array<{
-      id: string;
-      submission_id: string;
-      reviewer_id: string;
-      reviewer_role: ReviewerRole | null;
-      decision: string;
-      reason: string;
-      scores: ReviewScores;
-      reviewer?: { name: string } | null;
-    }> = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let reviews: any[] = [];
     if (subIds.length > 0) {
       const { data: r, error: rErr } = await supabase
         .from('competition_reviews')
         .select('id, submission_id, reviewer_id, reviewer_role, decision, reason, scores, reviewer:reviewer_id(name)')
         .in('submission_id', subIds);
       if (rErr) throw rErr;
-      reviews = (r ?? []) as typeof reviews;
+      reviews = (r ?? []) as any[];
     }
 
     // 3. 聚合：按 submission 分组
@@ -193,10 +185,11 @@ export async function GET(request: NextRequest) {
     const seenByRole: Record<ReviewerRole, Set<string>> = { user: new Set(), business: new Set(), tech: new Set() };
     for (const r of reviews) {
       if (r.decision !== 'reviewed' || !r.reviewer_role) continue;
-      const name = r.reviewer?.name?.trim() || '匿名';
-      if (seenByRole[r.reviewer_role].has(name)) continue;
-      seenByRole[r.reviewer_role].add(name);
-      panelByRole[r.reviewer_role].push(name);
+      const role = r.reviewer_role as ReviewerRole;
+      const name = (Array.isArray(r.reviewer) ? r.reviewer[0]?.name : r.reviewer?.name)?.trim() || '匿名';
+      if (seenByRole[role].has(name)) continue;
+      seenByRole[role].add(name);
+      panelByRole[role].push(name);
     }
     // 姓氏读音特例：pinyin-pro 默认读音对姓氏场景有偏，覆盖
     const SURNAME_PINYIN: Record<string, string> = {

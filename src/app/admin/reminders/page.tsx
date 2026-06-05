@@ -332,7 +332,7 @@ export default function AdminRemindersPage() {
       render: (_: any, record: ReminderItem) => {
         const targets = record.reminder_targets || [];
         if (targets.length === 0) return <span style={{ color: 'var(--text-muted)' }}>未设置</span>;
-        const names = targets.map((t) => t.users?.name || t.user_id.slice(0, 8)).join(', ');
+        const names = targets.map((t) => t.users?.name || t.recipient_id || t.user_id?.slice(0, 8) || '—').join(', ');
         return (
           <Tooltip title={names}>
             <span>{targets.length} 人</span>
