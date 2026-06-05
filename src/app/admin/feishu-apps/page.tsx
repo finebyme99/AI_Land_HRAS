@@ -102,7 +102,7 @@ export default function FeishuAppsPage() {
             <Input placeholder="飞书开放平台 app_id" />
           </Form.Item>
           <Form.Item label="App Secret" name="app_secret" rules={[{ required: true }]}>
-            <Input.Password placeholder="提交后立即加密，DB 不可见明文" />
+            <Input.Password placeholder="敏感信息，仅 admin 可见" />
           </Form.Item>
           <Form.Item label="Tenant Key" name="tenant_key" rules={[{ required: true }]}>
             <Input placeholder="飞书租户 key（企业管理员在飞书后台可查）" />

@@ -1,7 +1,7 @@
 export interface FeishuApp {
   id: string;
   app_id: string;
-  app_secret_enc: string;
+  app_secret: string;
   tenant_key: string;
   enterprise_name: string;
   redirect_uri: string;

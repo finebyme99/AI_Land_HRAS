@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFeishuUserToken, getFeishuUserInfo } from '@/lib/feishu';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-import { getFeishuAppByAppId, decryptAppSecret, logAuth } from '@/lib/feishu-app-store';
+import { getFeishuAppByAppId, getAppSecret, logAuth } from '@/lib/feishu-app-store';
 import { cookies } from 'next/headers';
 
 // GET /api/auth/feishu/callback — 飞书 OAuth 回调（多租户）
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // 4. 用该 app 的 secret 换 user_access_token
-    const appSecret = await decryptAppSecret(app);
+    const appSecret = await getAppSecret(app);
     const tokenData = await getFeishuUserToken(code, app.app_id, appSecret);
 
     // 5. 拿飞书用户信息（含 tenant_key）

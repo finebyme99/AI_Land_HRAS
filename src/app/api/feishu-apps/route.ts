@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { listFeishuApps, createFeishuApp, updateFeishuAppStatus, decryptAppSecret } from '@/lib/feishu-app-store';
+import { listFeishuApps, createFeishuApp, updateFeishuAppStatus, getAppSecret } from '@/lib/feishu-app-store';
 import { getTenantAccessTokenFor } from '@/lib/feishu';
 
 async function requireAdmin(): Promise<string | null> {
@@ -54,7 +54,7 @@ export async function PUT(req: NextRequest) {
   const app = apps.find(a => a.id === id);
   if (!app) return NextResponse.json({ error: 'not found' }, { status: 404 });
   try {
-    const secret = await decryptAppSecret(app);
+    const secret = await getAppSecret(app);
     await getTenantAccessTokenFor(app.app_id, secret);
     return NextResponse.json({ ok: true });
   } catch (e: any) {

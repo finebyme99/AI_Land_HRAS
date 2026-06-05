@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listFeishuApps, decryptAppSecret, updateFeishuAppStatus, logAuth } from '@/lib/feishu-app-store';
+import { listFeishuApps, getAppSecret, updateFeishuAppStatus, logAuth } from '@/lib/feishu-app-store';
 import { getTenantAccessTokenFor } from '@/lib/feishu';
 
 // GET /api/cron/feishu-apps-health — 每天检查所有 active 飞书 app 连通性
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   for (const app of activeApps) {
     try {
-      const secret = await decryptAppSecret(app);
+      const secret = await getAppSecret(app);
       await getTenantAccessTokenFor(app.app_id, secret);
       results.push({ id: app.id, enterprise_name: app.enterprise_name, ok: true });
     } catch (e: any) {

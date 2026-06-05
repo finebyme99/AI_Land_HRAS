@@ -1,5 +1,4 @@
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-import { encrypt, decrypt } from '@/lib/secret-crypto';
 import type { FeishuApp, AuthLog } from '@/types';
 
 export async function listFeishuApps(): Promise<FeishuApp[]> {
@@ -51,7 +50,7 @@ export async function createFeishuApp(input: {
     .from('feishu_apps')
     .insert({
       app_id: input.app_id,
-      app_secret_enc: encrypt(input.app_secret),
+      app_secret: input.app_secret,
       tenant_key: input.tenant_key,
       enterprise_name: input.enterprise_name,
       redirect_uri: input.redirect_uri,
@@ -71,8 +70,8 @@ export async function updateFeishuAppStatus(id: string, status: 'active' | 'disa
   if (error) throw error;
 }
 
-export async function decryptAppSecret(app: FeishuApp): Promise<string> {
-  return decrypt(app.app_secret_enc);
+export async function getAppSecret(app: FeishuApp): Promise<string> {
+  return app.app_secret;
 }
 
 export async function logAuth(input: Partial<AuthLog> & { success: boolean }): Promise<void> {
