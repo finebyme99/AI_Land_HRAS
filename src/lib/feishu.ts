@@ -8,15 +8,20 @@ function getEnv(name: string): string {
 
 const FEISHU_API_BASE = 'https://open.feishu.cn/open-apis';
 
-// 获取 tenant_access_token（应用凭证）
+/** @deprecated Use getTenantAccessTokenFor(appId, appSecret) for multi-tenant. Kept for backward compat with 8 existing call sites. */
 export async function getTenantAccessToken(): Promise<string> {
+  return getTenantAccessTokenFor(
+    getEnv('FEISHU_APP_ID'),
+    getEnv('FEISHU_APP_SECRET'),
+  );
+}
+
+/** 多租户：用传入的 (appId, appSecret) 换 tenant_access_token */
+export async function getTenantAccessTokenFor(appId: string, appSecret: string): Promise<string> {
   const res = await fetch(`${FEISHU_API_BASE}/auth/v3/tenant_access_token/internal`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      app_id: getEnv('FEISHU_APP_ID'),
-      app_secret: getEnv('FEISHU_APP_SECRET'),
-    }),
+    body: JSON.stringify({ app_id: appId, app_secret: appSecret }),
   });
   const data = await res.json();
   if (data.code !== 0) throw new Error(`获取 tenant_access_token 失败: ${data.msg}`);
