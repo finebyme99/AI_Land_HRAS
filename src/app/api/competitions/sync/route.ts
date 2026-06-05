@@ -397,10 +397,42 @@ export async function POST(request: NextRequest) {
       if (error) throw new Error(`写入数据库失败: ${errMsg(error)}`);
     }
 
+    // 自动回填 reviewer 角色：扫本次同步的所有 submissions 的 reviewers + verifier 字段，
+    // 给对应的 users 加上 'reviewer' 角色（仅在没加过时；管理员等已含其他角色的不动）
+    let reviewerAutoGranted = 0;
+    const reviewerNameSet = new Set<string>();
+    for (const r of rows) {
+      for (const name of ((r.reviewers as unknown[]) ?? [])) {
+        if (typeof name === 'string' && name) reviewerNameSet.add(name);
+      }
+      for (const name of ((r.verifier as unknown[]) ?? [])) {
+        if (typeof name === 'string' && name) reviewerNameSet.add(name);
+      }
+    }
+    for (const name of reviewerNameSet) {
+      const { data: matched } = await supabase
+        .from('users')
+        .select('id, roles')
+        .or(`name.eq.${name},name.ilike.${name}`)
+        .limit(2);
+      const u = (matched ?? []).find((x) => x.name === name) ?? matched?.[0];
+      if (!u) continue;
+      if ((u.roles ?? []).includes('reviewer')) continue;
+      const next = [...new Set([...(u.roles ?? []), 'reviewer'])];
+      const { error: upErr } = await supabase.from('users').update({ roles: next }).eq('id', u.id);
+      if (upErr) {
+        console.error(`[auto-grant] failed for ${name}:`, upErr.message);
+        continue;
+      }
+      reviewerAutoGranted++;
+      console.log(`[auto-grant] ${name} (${u.id}) → roles:`, next);
+    }
+
     return NextResponse.json({
       synced: rows.length,
       period,
       attachments: { downloaded: downloadedAttachments, skipped: skippedAttachments, replaced: replacedAttachments },
+      reviewerAutoGranted,
     });
   } catch (err) {
     console.error('同步大赛方案失败:', err);

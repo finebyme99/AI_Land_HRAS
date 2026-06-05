@@ -2,32 +2,17 @@ import type { CaseCategory, ResourceCategory, CourseDifficulty, ContentType, Eve
 import { RESOURCE_CATEGORIES } from '@/types';
 
 /**
- * 硬编码评委名单（临时方案）
+ * 方案级评委别名表（跨语言 name 匹配）
  *
- * 背景：飞书多维表格里 GUS HRBP 考勤签字报表的"方案确认用户"（薛佳玥 Hailey / 郭谦）
- * 在 users 表里没有 reviewer 角色，导致在前台看不到方案评审入口。
- *
- * 注意：仅放未在 users.roles 里有 'reviewer' 的人。已确认有角色的人（JIAYUEXUE / 章佳媛）
- * 不需要在此白名单里，删以免误导。
- *
- * TODO：后续方案 — 改用 admin/users 后台加角色；或在 AI 大赛同步流程里自动从
- * 飞书"确认用户"字段回填 reviewer 角色到 users.roles。
- * 见 memory/feedback_hardcoded_reviewer.md 跟进项。
- */
-export const HARDCODED_REVIEWER_NAMES: string[] = [
-  '薛佳玥',
-  '郭谦',
-];
-
-/**
- * 硬编码方案级评委分配（临时方案）
- *
- * 用途：当一个具体人需要评审某个具体方案，但飞书多维表格的 reviewers 字段
- * 没把这个名字填进去。用 userName → 方案名数组 的映射做前端过滤放行。
+ * 用途：飞书多维表格里方案 reviewers 字段用的是英文名（如 "Claire"），
+ * 而本地 users.name 是中文名（如 "章佳媛"）。原来的模糊匹配
+ * `i.reviewers.some(r => r.includes(userName) || userName.includes(r))`
+ * 跨语言场景会失配，于是用这个表做兜底放行。
  *
  * 匹配规则：submission.title 包含（includes）任一目标字符串即视为命中。
  *
- * TODO：后续从飞书 reviewers 字段同步到 submissions.reviewers 字段。
+ * TODO：长远方案是给 users 加 aliases: text[] 字段；sync 时从飞书同步别名到该字段；
+ * competitions/page.tsx 模糊匹配时合并 name + aliases。
  */
 export const HARDCODED_REVIEWER_PROPOSALS: Record<string, string[]> = {
   '章佳媛': ['AI员工关怀物料设计流程'],
