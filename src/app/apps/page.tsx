@@ -217,10 +217,10 @@ export default function AppsPage() {
         <div>
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #7850a0, #9b6fc0)', color: '#fff' }}>
+              style={{ background: 'linear-gradient(135deg, #d46b08, #f27f22)', color: '#fff' }}>
               <AppstoreOutlined />
             </span>
-            <HighlightSweep text="发现好用的 AI 工具与 Skills" className="text-2xl font-bold" gradient="linear-gradient(135deg, #7850a0 0%, #9b6fc0 50%, #b48fd4 100%)" />
+            <HighlightSweep text="发现好用的 AI 工具与 Skills" className="text-2xl font-bold" gradient="linear-gradient(135deg, #d46b08 0%, #f27f22 50%, #fa8c16 100%)" />
           </div>
         </div>
         <Link href="/apps/create">

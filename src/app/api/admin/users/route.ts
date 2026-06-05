@@ -51,7 +51,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: '缺少参数' }, { status: 400 });
     }
 
-    const validRoles = ['user', 'contributor', 'reviewer', 'moderator', 'admin'];
+    const validRoles = ['user', 'contributor', 'reviewer', 'course_admin', 'moderator', 'admin'];
     if (!Array.isArray(roles) || !roles.every((r: string) => validRoles.includes(r))) {
       return NextResponse.json({ error: '无效角色' }, { status: 400 });
     }

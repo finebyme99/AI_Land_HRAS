@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: '未登录' }, { status: 401 });
   const supabase = getSupabaseAdmin();
   const { data: user } = await supabase.from('users').select('roles').eq('id', userId).single();
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) {
+  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator', 'course_admin'].includes(r))) {
     return NextResponse.json({ error: '无权限' }, { status: 403 });
   }
 

@@ -1,6 +1,37 @@
 import type { CaseCategory, ResourceCategory, CourseDifficulty, ContentType, EventStatus, CaseTeam, CaseBusinessScenario } from '@/types';
 import { RESOURCE_CATEGORIES } from '@/types';
 
+/**
+ * 硬编码评委名单（临时方案）
+ *
+ * 背景：飞书多维表格里 GUS HRBP 考勤签字报表的"方案确认用户"（薛佳玥 Hailey / 郭谦）
+ * 在 users 表里没有 reviewer 角色，导致在前台看不到方案评审入口。
+ *
+ * TODO：后续方案 — 改用 admin/users 后台加角色；或在 AI 大赛同步流程里自动从
+ * 飞书"确认用户"字段回填 reviewer 角色到 users.roles。
+ * 见 CLAUDE.md 跟进项。
+ */
+export const HARDCODED_REVIEWER_NAMES: string[] = [
+  'JIAYUEXUE',
+  '薛佳玥',
+  '郭谦',
+  '章佳媛',
+];
+
+/**
+ * 硬编码方案级评委分配（临时方案）
+ *
+ * 用途：当一个具体人需要评审某个具体方案，但飞书多维表格的 reviewers 字段
+ * 没把这个名字填进去。用 userName → 方案名数组 的映射做前端过滤放行。
+ *
+ * 匹配规则：submission.title 包含（includes）任一目标字符串即视为命中。
+ *
+ * TODO：后续从飞书 reviewers 字段同步到 submissions.reviewers 字段。
+ */
+export const HARDCODED_REVIEWER_PROPOSALS: Record<string, string[]> = {
+  '章佳媛': ['AI员工关怀物料设计流程'],
+};
+
 // HR 模块分类颜色映射
 export const CATEGORY_COLORS: Record<CaseCategory, string> = {
   'HRAS_人力数据看板': 'blue',

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Spin, App, Switch, Tabs, Tag } from 'antd';
 import { SyncOutlined, TrophyOutlined, CalendarOutlined, UserOutlined, BankOutlined, CodeOutlined, BookOutlined, CheckCircleOutlined, LockOutlined, AuditOutlined, FormOutlined, FlagOutlined, RightOutlined, RocketOutlined, FireOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
+import { HARDCODED_REVIEWER_PROPOSALS } from '@/lib/constants';
 import CompetitionCard from '@/components/CompetitionCard';
 import HighlightSweep from '@/components/HighlightSweep';
 import type { Submission } from '@/components/CompetitionCard';
@@ -160,8 +161,13 @@ export default function CompetitionsPage() {
 
   // 用户评委只看 reviewers 包含自己的方案（模糊匹配），业务/技术评委看全部
   const userName = user?.name ?? '';
+  // 硬编码白名单方案：即使飞书 reviewers 没写，也按 HARDCODED_REVIEWER_PROPOSALS 放行
+  const hardcodedTitles = HARDCODED_REVIEWER_PROPOSALS[userName] ?? [];
   const roleFiltered = reviewerRole === 'user'
-    ? items.filter((i) => userName && i.reviewers?.some((r: string) => r.includes(userName) || userName.includes(r)))
+    ? items.filter((i) =>
+        (userName && i.reviewers?.some((r: string) => r.includes(userName) || userName.includes(r))) ||
+        hardcodedTitles.some((t) => i.title?.includes(t))
+      )
     : items;
   // 只看未评审（全部评完时自动取消筛选，展示所有已评审方案；评审记录未加载完时不过滤）
   const reviewsLoaded = Object.keys(reviews).length > 0;

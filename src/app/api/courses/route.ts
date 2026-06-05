@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
-// 验证 admin 权限
-async function requireAdmin(request: NextRequest) {
+// 验证课程编辑权限：admin / moderator / course_admin
+async function requireCourseEditor(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
   const { data: user } = await getSupabaseAdmin()
     .from('users').select('id, roles').eq('id', userId).single();
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) return null;
+  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator', 'course_admin'].includes(r))) return null;
   return user;
 }
 
@@ -27,11 +27,11 @@ export async function GET() {
   }
 }
 
-// POST /api/courses — 创建课程（admin only）
+// POST /api/courses — 创建课程（admin / course_admin）
 export async function POST(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (!admin) {
-    return NextResponse.json({ error: '仅管理员可发布课程' }, { status: 403 });
+  const editor = await requireCourseEditor(request);
+  if (!editor) {
+    return NextResponse.json({ error: '仅管理员或公开管理员可发布课程' }, { status: 403 });
   }
 
   try {
@@ -77,11 +77,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH /api/courses?id=xxx — 更新课程（admin only）
+// PATCH /api/courses?id=xxx — 更新课程（admin / course_admin）
 export async function PATCH(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (!admin) {
-    return NextResponse.json({ error: '仅管理员可编辑课程' }, { status: 403 });
+  const editor = await requireCourseEditor(request);
+  if (!editor) {
+    return NextResponse.json({ error: '仅管理员或公开管理员可编辑课程' }, { status: 403 });
   }
 
   const id = request.nextUrl.searchParams.get('id');

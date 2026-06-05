@@ -13,7 +13,7 @@ import type { Course, ContentType } from '@/types';
 import dayjs from 'dayjs';
 
 export default function CoursesPage() {
-  const { isAdmin, user } = useAuth();
+  const { user, canManageCourses } = useAuth();
   const { message } = App.useApp();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,13 +180,13 @@ export default function CoursesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #4a6fa5, #6b8fc4)', color: '#fff' }}>
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0F2057, #1a3a8a)', color: '#fff' }}>
               <ReadOutlined />
             </span>
-            <HighlightSweep text="系统化学习 AI 知识与技能" className="text-2xl font-bold" gradient="linear-gradient(135deg, #4a6fa5 0%, #6b8fc4 50%, #8bb4e0 100%)" />
+            <HighlightSweep text="系统化学习 AI 知识与技能" className="text-2xl font-bold" gradient="linear-gradient(135deg, #0F2057 0%, #1a3a8a 50%, #2d5aa0 100%)" />
           </div>
         </div>
-        {isAdmin && (
+        {canManageCourses && (
           <div className="flex items-center gap-2">
             <button
               onClick={async () => {
@@ -308,7 +308,7 @@ export default function CoursesPage() {
               style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
               <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 hover:opacity-100 transition-opacity" style={{ background: 'var(--gradient-primary)' }} />
               {/* 管理员编辑按钮 */}
-              {isAdmin && (
+              {canManageCourses && (
                 <button
                   onClick={() => openEdit(course)}
                   className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 hover:opacity-100 transition-all"
