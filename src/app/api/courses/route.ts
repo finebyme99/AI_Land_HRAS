@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { insertCourseRow } from '@/lib/courses-insert';
 
 // 验证课程编辑权限：admin / moderator / course_admin
 async function requireCourseEditor(request: NextRequest) {
@@ -35,41 +36,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const {
-      title, description, instructor, duration,
-      difficulty, content_type,
-      cover_image, courseware_url, video_url,
-      created_at,
-    } = await request.json();
-
-    if (!title || !description || !instructor || !duration || !difficulty) {
-      return NextResponse.json({ error: '请填写必要字段' }, { status: 400 });
+    const body = await request.json();
+    const { course, error } = await insertCourseRow(body);
+    if (error || !course) {
+      return NextResponse.json({ error: error || '发布失败' }, { status: 400 });
     }
-
-    const insertData: Record<string, unknown> = {
-      title,
-      description,
-      instructor,
-      duration,
-      difficulty,
-      content_type: content_type || [],
-      cover_image: cover_image || '',
-      courseware_url: courseware_url || '',
-      video_url: video_url || '',
-    };
-    if (created_at) insertData.created_at = created_at;
-
-    const { data, error } = await getSupabaseAdmin()
-      .from('courses')
-      .insert(insertData)
-      .select('id, title, category, difficulty, created_at')
-      .single();
-
-    if (error) throw error;
-
-    return NextResponse.json({ course: data });
+    return NextResponse.json({ course });
   } catch (err: unknown) {
-    console.error('Course creation error:', err);
     const msg = err && typeof err === 'object' && 'message' in err
       ? String((err as { message: unknown }).message)
       : '发布失败';
