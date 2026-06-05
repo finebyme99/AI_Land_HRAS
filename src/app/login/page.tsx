@@ -16,12 +16,8 @@ function LoginForm() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 pt-8 pb-8">
       <div className="w-full max-w-md">
-        {/* Logo */}
+        {/* 欢迎语（顶部导航已有 HRAS AI 岛 logo，这里不再重复） */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <span className="text-2xl font-bold tracking-tight gradient-text">HRAS</span>
-            <span className="text-2xl font-bold tracking-tight" style={{ color: 'var(--foreground)' }}>AI岛</span>
-          </div>
           <h1 className="text-xl font-semibold mb-2">欢迎回来</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>HR 的 AI 社区 — 登录后开始探索</p>
         </div>
