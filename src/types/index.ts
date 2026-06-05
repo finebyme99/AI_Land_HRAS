@@ -1,3 +1,28 @@
+export interface FeishuApp {
+  id: string;
+  app_id: string;
+  app_secret_enc: string;
+  tenant_key: string;
+  enterprise_name: string;
+  redirect_uri: string;
+  status: 'active' | 'disabled';
+  created_at: string;
+  created_by: string | null;
+}
+
+export interface AuthLog {
+  id: string;
+  user_id: string | null;
+  app_id: string | null;
+  tenant_key: string | null;
+  open_id: string | null;
+  ip: string | null;
+  ua: string | null;
+  success: boolean;
+  error: string | null;
+  created_at: string;
+}
+
 // ============ 用户 ============
 export interface User {
   id: string;
