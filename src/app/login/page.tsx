@@ -1,18 +1,11 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const [feishuLoading, setFeishuLoading] = useState(false);
-
-  // 飞书登录
-  const handleFeishuLogin = () => {
-    setFeishuLoading(true);
-    window.location.href = '/api/auth/feishu';
-  };
 
   const error = searchParams.get('error');
   const errorMessage = error === 'no_code' ? '未获取到授权码，请重试'
@@ -43,35 +36,13 @@ function LoginForm() {
             </div>
           )}
 
-          {/* 纵腾用户：飞书登录 */}
-          <div className="mb-1">
-            <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>纵腾用户</span>
-          </div>
-          <button
-            onClick={handleFeishuLogin}
-            disabled={feishuLoading}
-            className="w-full h-12 rounded-xl text-base font-medium text-white transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-            style={{ background: 'var(--gradient-primary)' }}
-          >
-            {feishuLoading ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                正在跳转...
-              </>
-            ) : (
-              <>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/>
-                </svg>
-                纵腾飞书账号登录
-              </>
-            )}
-          </button>
+          {/* 飞书登录：多企业 */}
+          <FeishuEnterpriseButtons />
 
           {/* 分隔线 */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.08)' }} />
-            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>无纵腾飞书账号</span>
+            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>无飞书账号</span>
             <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.08)' }} />
           </div>
 
@@ -80,7 +51,10 @@ function LoginForm() {
 
           <div className="mt-6 pt-5 text-center" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              纵腾员工请使用飞书账号登录，无飞书账号请注册
+              飞书用户请选择您所在的企业登录；无飞书账号请注册
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              建议从飞书工作台「AILand」应用图标进入
             </p>
           </div>
         </div>
@@ -243,6 +217,51 @@ function PasswordAuth() {
           mode === 'register' ? '注册并登录' : '登录'
         )}
       </button>
+    </div>
+  );
+}
+
+/** 多企业飞书登录按钮：动态从 /api/feishu-apps/public 拉 active 企业的 app_id + enterprise_name */
+function FeishuEnterpriseButtons() {
+  const [apps, setApps] = useState<Array<{ app_id: string; enterprise_name: string }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/feishu-apps/public').then(r => r.json()).then(j => {
+      if (j.apps) setApps(j.apps);
+    });
+  }, []);
+
+  const go = (appId: string) => {
+    setLoading(true);
+    window.location.href = `/api/auth/feishu?app_id=${encodeURIComponent(appId)}`;
+  };
+
+  if (apps.length === 0) {
+    // 无 active 飞书应用配置 → 显示提示（管理员尚未录入）
+    return (
+      <div className="text-center text-sm py-3" style={{ color: 'var(--text-muted)' }}>
+        飞书登录暂未配置，请联系 AILand 管理员
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {apps.map((a, i) => (
+        <button
+          key={a.app_id}
+          onClick={() => go(a.app_id)}
+          disabled={loading}
+          className="w-full h-12 rounded-xl text-base font-medium transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+          style={i === 0
+            ? { background: 'var(--gradient-primary)', color: 'white' }
+            : { background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(26,58,138,0.15)', color: 'var(--foreground)' }
+          }
+        >
+          {a.enterprise_name}飞书账号登录
+        </button>
+      ))}
     </div>
   );
 }
