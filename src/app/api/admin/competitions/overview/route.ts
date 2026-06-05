@@ -175,11 +175,27 @@ export async function GET(request: NextRequest) {
       ? Math.round((scored.reduce((s, x) => s + (x.totalScore ?? 0), 0) / scored.length) * 10) / 10
       : null;
 
+    // 5. 评委团（按角色聚合本期所有已评审的人）
+    const panelByRole: Record<ReviewerRole, string[]> = { user: [], business: [], tech: [] };
+    const seenByRole: Record<ReviewerRole, Set<string>> = { user: new Set(), business: new Set(), tech: new Set() };
+    for (const r of reviews) {
+      if (r.decision !== 'reviewed' || !r.reviewer_role) continue;
+      const name = r.reviewer?.name?.trim() || '匿名';
+      if (seenByRole[r.reviewer_role].has(name)) continue;
+      seenByRole[r.reviewer_role].add(name);
+      panelByRole[r.reviewer_role].push(name);
+    }
+    // 姓名按字母/中文笔画粗排（这里用 localeCompare 简单处理）
+    for (const role of ['user', 'business', 'tech'] as ReviewerRole[]) {
+      panelByRole[role].sort((a, b) => a.localeCompare(b, 'zh'));
+    }
+
     return NextResponse.json(
       {
         period,
         summary: { total, reviewed, pending, avgScore },
         submissions: enriched,
+        panel: panelByRole,
       },
       { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } },
     );

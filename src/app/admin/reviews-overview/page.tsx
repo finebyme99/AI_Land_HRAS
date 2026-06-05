@@ -66,6 +66,7 @@ interface OverviewResponse {
   period: string;
   summary: { total: number; reviewed: number; pending: number; avgScore: number | null };
   submissions: SubmissionDTO[];
+  panel: Record<Role, string[]>;
 }
 
 const PERIOD_OPTIONS = [
@@ -299,6 +300,30 @@ export default function ReviewsOverviewPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* 评委团 footer — 仅 admin 可见（页面已 gate） */}
+      {data && data.panel && (
+        <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+          <div className="text-xs mb-3" style={{ color: '#888' }}>
+            <TeamOutlined className="mr-1" />
+            本次 {data.period === '2605' ? '5 月' : data.period} 大赛评委团（不公布具体评分，仅供管理员复审参考）
+          </div>
+          <div className="space-y-2 text-sm" style={{ color: '#666' }}>
+            {(['user', 'business', 'tech'] as Role[]).map((r) => {
+              const names = data.panel?.[r] ?? [];
+              if (names.length === 0) return null;
+              return (
+                <div key={r} className="flex items-start gap-3">
+                  <Tag color={ROLE_COLOR[r]} style={{ margin: 0, minWidth: 80, textAlign: 'center' }}>
+                    {ROLE_LABEL[r]}
+                  </Tag>
+                  <span className="flex-1">{names.join('，')}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
