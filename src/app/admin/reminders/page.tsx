@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Table, Tag, Button, Modal, Form, Input, Select, Switch, App,
-  Space, Popconfirm, TimePicker, DatePicker, Tooltip,
+  Space, Popconfirm, TimePicker, DatePicker, Tooltip, Radio,
 } from 'antd';
 import {
   BellOutlined, PlusOutlined, EditOutlined, DeleteOutlined,
@@ -13,11 +13,27 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import dayjs from 'dayjs';
 
+type RecipientType = 'user' | 'role' | 'chat_id';
+
 interface UserOption {
   id: string;
   name: string;
   has_feishu: boolean;
   roles: string[];
+}
+
+interface ChatOption {
+  chat_id: string;
+  name: string;
+  description?: string;
+}
+
+interface ReminderTargetRow {
+  id: string;
+  user_id: string | null;
+  recipient_type: RecipientType;
+  recipient_id: string | null;
+  users?: { name: string; feishu_open_id: string | null };
 }
 
 interface ReminderItem {
@@ -30,8 +46,9 @@ interface ReminderItem {
   send_date: string | null;
   next_send_at: string | null;
   is_active: boolean;
+  card_template: Record<string, unknown> | null;
   created_at: string;
-  reminder_targets?: Array<{ id: string; user_id: string; users?: { name: string; feishu_open_id: string | null } }>;
+  reminder_targets?: ReminderTargetRow[];
   reminder_logs?: Array<{ id: string; status: string; sent_at: string }>;
 }
 
@@ -57,6 +74,7 @@ export default function AdminRemindersPage() {
   const { message } = App.useApp();
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
+  const [chats, setChats] = useState<ChatOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ReminderItem | null>(null);
@@ -65,6 +83,8 @@ export default function AdminRemindersPage() {
   const [form] = Form.useForm();
 
   const frequency = Form.useWatch('frequency', form);
+  const recipientType = Form.useWatch('recipient_type', form) as RecipientType | undefined;
+  const useCard = Form.useWatch('use_card', form) as boolean | undefined;
 
   useEffect(() => {
     if (!authLoading && !isAdmin) router.replace('/');
@@ -94,22 +114,44 @@ export default function AdminRemindersPage() {
     }
   }, []);
 
+  const fetchChats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/feishu/chats');
+      if (!res.ok) return; // 群聊 API 失败不阻塞（可能飞书权限不够）
+      const data = await res.json();
+      setChats(data.chats || []);
+    } catch {
+      /* ignore — 群聊拉取失败时回退成手填 chat_id */
+    }
+  }, []);
+
   useEffect(() => {
     if (isAdmin) {
       fetchReminders();
       fetchUsers();
+      fetchChats();
     }
-  }, [isAdmin, fetchReminders, fetchUsers]);
+  }, [isAdmin, fetchReminders, fetchUsers, fetchChats]);
 
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
-    form.setFieldsValue({ frequency: 'once', send_time: dayjs('09:00', 'HH:mm') });
+    form.setFieldsValue({
+      frequency: 'once',
+      send_time: dayjs('09:00', 'HH:mm'),
+      recipient_type: 'user',
+      use_card: false,
+    });
     setModalOpen(true);
   };
 
   const openEdit = (item: ReminderItem) => {
     setEditing(item);
+    // 推断 recipient_type：看 targets 决定是 user / role / chat_id
+    const targets = item.reminder_targets ?? [];
+    const firstType: RecipientType = (targets[0]?.recipient_type as RecipientType) ?? 'user';
+    const allSameType = targets.every((t) => (t.recipient_type ?? 'user') === firstType);
+
     form.setFieldsValue({
       title: item.title,
       content: item.content,
@@ -118,7 +160,12 @@ export default function AdminRemindersPage() {
       send_day: item.send_day,
       send_date: item.send_date ? dayjs(item.send_date) : null,
       is_active: item.is_active,
-      user_ids: item.reminder_targets?.map((t) => t.user_id) || [],
+      recipient_type: allSameType ? firstType : 'user',
+      user_ids: targets.filter((t) => (t.recipient_type ?? 'user') === 'user').map((t) => t.user_id).filter(Boolean) as string[],
+      role_ids: targets.filter((t) => t.recipient_type === 'role').map((t) => t.recipient_id).filter(Boolean) as string[],
+      chat_id: targets.find((t) => t.recipient_type === 'chat_id')?.recipient_id ?? undefined,
+      use_card: !!item.card_template,
+      card_template: item.card_template ? JSON.stringify(item.card_template, null, 2) : '',
     });
     setModalOpen(true);
   };
@@ -126,6 +173,29 @@ export default function AdminRemindersPage() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      const rType: RecipientType = values.recipient_type ?? 'user';
+
+      // 把 3 种类型统一成 targets 数组
+      const targets: Array<{ recipient_type: RecipientType; recipient_id: string | null; user_id: string | null }> = [];
+      if (rType === 'user') {
+        for (const id of (values.user_ids ?? [])) targets.push({ recipient_type: 'user', recipient_id: id, user_id: id });
+      } else if (rType === 'role') {
+        for (const r of (values.role_ids ?? [])) targets.push({ recipient_type: 'role', recipient_id: r, user_id: null });
+      } else if (rType === 'chat_id') {
+        if (values.chat_id) targets.push({ recipient_type: 'chat_id', recipient_id: values.chat_id, user_id: null });
+      }
+
+      // 卡片模板（可选）
+      let cardTemplate: Record<string, unknown> | null = null;
+      if (values.use_card && values.card_template) {
+        try {
+          cardTemplate = JSON.parse(values.card_template);
+        } catch {
+          message.error('卡片 JSON 格式错误');
+          return;
+        }
+      }
+
       const body = {
         title: values.title,
         content: values.content || '',
@@ -134,7 +204,8 @@ export default function AdminRemindersPage() {
         send_day: values.frequency === 'weekly' ? values.send_day : null,
         send_date: values.frequency === 'once' ? values.send_date?.format('YYYY-MM-DD') : null,
         is_active: values.is_active ?? true,
-        user_ids: values.user_ids || [],
+        targets,
+        card_template: cardTemplate,
       };
 
       const url = editing ? `/api/admin/reminders/${editing.id}` : '/api/admin/reminders';
@@ -369,29 +440,75 @@ export default function AdminRemindersPage() {
                 </Form.Item>
               )}
             </div>
-            <Form.Item name="user_ids" label="提醒对象">
-              <Select
-                mode="multiple"
-                placeholder="选择用户（可多选）"
-                optionFilterProp="label"
-                options={users.map((u) => ({
-                  value: u.id,
-                  label: `${u.name}${u.has_feishu ? '' : ' (无飞书)'}`,
-                  disabled: false,
-                }))}
-                optionRender={(option) => (
-                  <div className="flex items-center justify-between">
-                    <span>{option.label}</span>
-                    {(() => {
-                      const u = users.find((u) => u.id === option.value);
-                      return u?.has_feishu
-                        ? <Tag color="green" className="ml-2">飞书</Tag>
-                        : <Tag color="orange" className="ml-2">无飞书</Tag>;
-                    })()}
-                  </div>
-                )}
-              />
+            <Form.Item name="recipient_type" label="收件人类型" rules={[{ required: true }]}>
+              <Radio.Group>
+                <Radio.Button value="user">按人</Radio.Button>
+                <Radio.Button value="role">按角色</Radio.Button>
+                <Radio.Button value="chat_id">按群聊</Radio.Button>
+              </Radio.Group>
             </Form.Item>
+            {recipientType === 'user' && (
+              <Form.Item name="user_ids" label="提醒对象" rules={[{ required: true, message: '请选择至少一个用户' }]}>
+                <Select
+                  mode="multiple"
+                  placeholder="选择用户（可多选）"
+                  optionFilterProp="label"
+                  options={users.map((u) => ({
+                    value: u.id,
+                    label: `${u.name}${u.has_feishu ? '' : ' (无飞书)'}`,
+                  }))}
+                  optionRender={(option) => (
+                    <div className="flex items-center justify-between">
+                      <span>{option.label}</span>
+                      {(() => {
+                        const u = users.find((u) => u.id === option.value);
+                        return u?.has_feishu
+                          ? <Tag color="green" className="ml-2">飞书</Tag>
+                          : <Tag color="orange" className="ml-2">无飞书</Tag>;
+                      })()}
+                    </div>
+                  )}
+                />
+              </Form.Item>
+            )}
+            {recipientType === 'role' && (
+              <Form.Item name="role_ids" label="角色" rules={[{ required: true, message: '请选择至少一个角色' }]}>
+                <Select
+                  mode="multiple"
+                  placeholder="选择角色（多选）"
+                  options={[
+                    { value: 'admin', label: '管理员' },
+                    { value: 'moderator', label: '版主' },
+                    { value: 'reviewer', label: '评委' },
+                    { value: 'course_admin', label: '公开管理员' },
+                    { value: 'contributor', label: '贡献者' },
+                  ]}
+                />
+              </Form.Item>
+            )}
+            {recipientType === 'chat_id' && (
+              <Form.Item name="chat_id" label="飞书群聊" rules={[{ required: true, message: '请选择群聊' }]}>
+                <Select
+                  showSearch
+                  placeholder={chats.length > 0 ? '选择群聊' : '拉取群聊失败，可手填 chat_id'}
+                  options={chats.map((c) => ({ value: c.chat_id, label: c.name }))}
+                  filterOption={(input, opt) => (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())}
+                />
+              </Form.Item>
+            )}
+            <Form.Item name="use_card" label="发送卡片（替代文本）" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+            {useCard && (
+              <Form.Item
+                name="card_template"
+                label="飞书卡片 JSON"
+                tooltip="完整飞书卡片 JSON；包含 header/elements 等结构"
+                rules={[{ required: true, message: '启用卡片后必填' }]}
+              >
+                <Input.TextArea rows={8} placeholder='{"header": {...}, "elements": [...]}' style={{ fontFamily: 'monospace' }} />
+              </Form.Item>
+            )}
             <Form.Item name="is_active" label="启用" valuePropName="checked">
               <Switch />
             </Form.Item>

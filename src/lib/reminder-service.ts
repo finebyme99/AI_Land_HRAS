@@ -2,7 +2,7 @@
 // 提醒服务 — 精简版：标题 + 频次 + 时间 + 对象 + 飞书自动发送
 
 import { getSupabaseAdmin } from './supabase-admin';
-import { sendFeishuMessage } from './feishu-message';
+import { sendFeishuMessage, sendFeishuCardMessage } from './feishu-message';
 
 export interface Reminder {
   id: string;
@@ -13,15 +13,20 @@ export interface Reminder {
   send_day: number | null;
   next_send_at: string | null;
   is_active: boolean;
+  card_template: Record<string, unknown> | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
+export type RecipientType = 'user' | 'role' | 'chat_id';
+
 export interface ReminderTarget {
   id: string;
   reminder_id: string;
-  user_id: string;
+  user_id: string | null;
+  recipient_type: RecipientType;
+  recipient_id: string | null;
 }
 
 /**
@@ -146,13 +151,14 @@ export async function executeReminders(dryRun = false): Promise<{
 
   if (error) throw new Error(`查询提醒失败: ${error.message}`);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = { total: 0, sent: 0, skipped: 0, failed: 0, noFeishuId: 0, details: [] as any[] };
 
   for (const reminder of dueReminders || []) {
-    // 获取提醒对象
+    // 获取提醒对象（含 recipient_type）
     const { data: targets } = await getSupabaseAdmin()
       .from('reminder_targets')
-      .select('user_id')
+      .select('user_id, recipient_type, recipient_id')
       .eq('reminder_id', reminder.id);
 
     if (!targets || targets.length === 0) {
@@ -161,62 +167,63 @@ export async function executeReminders(dryRun = false): Promise<{
       continue;
     }
 
-    // 批量查用户飞书ID
-    const userIds = targets.map((t) => t.user_id);
-    const { data: users } = await getSupabaseAdmin()
-      .from('users')
-      .select('id, feishu_open_id, name')
-      .in('id', userIds);
+    // 逐个 target 派发：user / role / chat_id
+    for (const target of targets) {
+      const rType = (target.recipient_type as RecipientType) ?? 'user';
+      const rId = target.recipient_id ?? target.user_id;
+      if (!rId) continue;
 
-    for (const user of users || []) {
+      if (rType === 'chat_id') {
+        // 群聊推送：直接发到 chat_id
+        result.total++;
+        const sendResult = await sendToRecipient(
+          reminder, rId, 'chat_id', dryRun, { chatId: rId },
+        );
+        tally(result, sendResult, reminder, rId);
+        continue;
+      }
+
+      if (rType === 'role') {
+        // 角色：展开为该 role 的所有用户
+        const { data: roleUsers } = await getSupabaseAdmin()
+          .from('users')
+          .select('id, feishu_open_id, name')
+          .contains('roles', [rId]);
+        if (!roleUsers || roleUsers.length === 0) {
+          result.details.push({
+            reminderId: reminder.id, title: reminder.title, userId: rId,
+            status: 'no_users', error: `角色 ${rId} 下无用户`,
+          });
+          continue;
+        }
+        for (const u of roleUsers) {
+          result.total++;
+          const sendResult = await sendToRecipient(
+            reminder, u.id, 'user', dryRun, { feishuOpenId: u.feishu_open_id, userId: u.id },
+          );
+          tally(result, sendResult, reminder, u.id);
+        }
+        continue;
+      }
+
+      // rType === 'user'
+      const { data: user } = await getSupabaseAdmin()
+        .from('users')
+        .select('id, feishu_open_id, name')
+        .eq('id', rId)
+        .maybeSingle();
+      if (!user) {
+        result.details.push({
+          reminderId: reminder.id, title: reminder.title, userId: rId,
+          status: 'user_not_found', error: '用户不存在',
+        });
+        continue;
+      }
       result.total++;
-
-      if (!user.feishu_open_id) {
-        result.noFeishuId++;
-        result.details.push({
-          reminderId: reminder.id,
-          title: reminder.title,
-          userId: user.id,
-          status: 'no_feishu_id',
-          error: '用户无飞书ID（可能是外部用户）',
-        });
-        continue;
-      }
-
-      if (dryRun) {
-        result.sent++;
-        result.details.push({
-          reminderId: reminder.id,
-          title: reminder.title,
-          userId: user.id,
-          status: 'dry_run',
-        });
-        continue;
-      }
-
-      const sendResult = await sendReminderToUser(
-        reminder.id,
-        user.id,
-        user.feishu_open_id,
-        reminder.title,
-        reminder.content
+      const sendResult = await sendToRecipient(
+        reminder, user.id, 'user', dryRun, { feishuOpenId: user.feishu_open_id, userId: user.id },
       );
-
-      if (sendResult.status === 'sent') {
-        result.sent++;
-      } else if (sendResult.status === 'skipped') {
-        result.skipped++;
-      } else {
-        result.failed++;
-      }
-
-      result.details.push({
-        reminderId: reminder.id,
-        title: reminder.title,
-        userId: user.id,
-        status: sendResult.status,
-        error: sendResult.error,
-      });
+      tally(result, sendResult, reminder, user.id);
     }
 
     // 更新下次发送时间
@@ -246,4 +253,98 @@ async function updateNextSend(reminder: Reminder) {
       .update({ next_send_at: nextDate.toISOString(), updated_at: new Date().toISOString() })
       .eq('id', reminder.id);
   }
+}
+
+/**
+ * 发送单条提醒给一个具体收件人（user / chat_id）
+ * 有 card_template 走卡片，否则走文本
+ */
+async function sendToRecipient(
+  reminder: Reminder,
+  refId: string,
+  kind: 'user' | 'chat_id',
+  dryRun: boolean,
+  ctx: { feishuOpenId?: string | null; userId?: string; chatId?: string },
+): Promise<{ status: string; error?: string; messageId?: string }> {
+  if (kind === 'user' && !ctx.feishuOpenId) {
+    return { status: 'no_feishu_id', error: '用户无飞书ID' };
+  }
+
+  if (dryRun) return { status: 'dry_run' };
+
+  // 1 分钟去重
+  const logQuery = getSupabaseAdmin()
+    .from('reminder_logs')
+    .select('id')
+    .eq('reminder_id', reminder.id);
+  if (ctx.userId) logQuery.eq('user_id', ctx.userId);
+  if (ctx.chatId) logQuery.eq('feishu_open_id', ctx.chatId);
+  const { data: recent } = await logQuery
+    .gte('sent_at', new Date(Date.now() - 60 * 1000).toISOString())
+    .maybeSingle();
+  if (recent) return { status: 'skipped', error: '1分钟内已发送过' };
+
+  let res;
+  if (reminder.card_template) {
+    // 飞书卡片
+    res = await sendFeishuCardMessage(
+      ctx.feishuOpenId ?? ctx.chatId ?? '',
+      kind === 'chat_id' ? 'chat_id' : 'open_id',
+      reminder.card_template as object,
+    );
+  } else {
+    // 文本
+    const text = `📌 ${reminder.title}\n\n${reminder.content}`;
+    res = await sendFeishuMessage({
+      recipientId: ctx.feishuOpenId ?? ctx.chatId ?? '',
+      recipientType: kind === 'chat_id' ? 'chat_id' : 'open_id',
+      messageType: 'text',
+      content: JSON.stringify({ text }),
+    });
+  }
+
+  // 写日志
+  await getSupabaseAdmin().from('reminder_logs').insert({
+    reminder_id: reminder.id,
+    user_id: ctx.userId ?? null,
+    feishu_open_id: kind === 'user' ? ctx.feishuOpenId : ctx.chatId ?? null,
+    status: res.status === 'sent' ? 'sent' : 'failed',
+    error_message: res.error ?? null,
+  });
+
+  return { status: res.status, error: res.error, messageId: res.messageId };
+}
+
+/**
+ * 把单条发送结果累加到 result 汇总里
+ */
+function tally(
+  result: {
+    sent: number;
+    skipped: number;
+    failed: number;
+    noFeishuId: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    details: any[];
+  },
+  sendResult: { status: string; error?: string },
+  reminder: Reminder,
+  refId: string,
+) {
+  if (sendResult.status === 'sent' || sendResult.status === 'dry_run') {
+    result.sent++;
+  } else if (sendResult.status === 'skipped') {
+    result.skipped++;
+  } else if (sendResult.status === 'no_feishu_id') {
+    result.noFeishuId++;
+  } else {
+    result.failed++;
+  }
+  result.details.push({
+    reminderId: reminder.id,
+    title: reminder.title,
+    userId: refId,
+    status: sendResult.status,
+    error: sendResult.error,
+  });
 }
