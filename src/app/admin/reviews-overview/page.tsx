@@ -47,6 +47,19 @@ interface SubmissionDTO {
   teamMembers: string;
   implementation: string;
   verifier: string;
+  // 量化对比
+  beforeHoursPerPerson: number | null;
+  beforePeopleCount: number | null;
+  afterHoursPerPerson: number | null;
+  afterPeopleCount: number | null;
+  oldOperationCount: number | null;
+  newOperationCount: number | null;
+  oldHoursPerTask: number | null;
+  newDuration: number | null;
+  oldPeopleCount: number | null;
+  newPeopleCount: number | null;
+  oldFrequency: string | null;
+  newFrequency: string | null;
 }
 
 interface OverviewResponse {
@@ -287,52 +300,52 @@ export default function ReviewsOverviewPage() {
       {modalSub && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
           onClick={() => setModalSub(null)}
         >
           <div
-            className="glass rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto"
-            style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}
+            className="rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl"
+            style={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 z-10 px-6 py-4 flex items-center justify-between"
-              style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+              style={{ background: '#ffffff', borderBottom: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
               <div>
                 <h3 className="text-base font-bold">{modalSub.title}</h3>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                <p className="text-xs mt-0.5" style={{ color: '#666' }}>
                   {modalSub.team && <Tag color="blue" style={{ margin: 0, marginRight: 6 }}>{modalSub.team}</Tag>}
-                  总分 <b style={{ color: 'var(--primary)' }}>{modalSub.totalScore ?? '—'}</b> · {modalSub.reviews.length} 条评审
+                  总分 <b style={{ color: '#1a3a8a' }}>{modalSub.totalScore != null ? modalSub.totalScore.toFixed(1) : '—'}</b> · {modalSub.reviews.length} 条评审
                 </p>
               </div>
               <button onClick={() => setModalSub(null)} className="text-xl" style={{ color: 'var(--text-muted)' }}>×</button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4" style={{ color: '#1a1a1a' }}>
               {modalSub.reviews.length === 0 ? (
-                <p className="text-sm text-center py-8" style={{ color: 'var(--text-muted)' }}>暂无评审记录</p>
+                <p className="text-sm text-center py-8" style={{ color: '#999' }}>暂无评审记录</p>
               ) : modalSub.reviews.map((r) => (
-                <div key={r.id} className="rounded-xl p-4" style={{ background: 'rgba(26,58,138,0.03)', border: '1px solid rgba(26,58,138,0.08)' }}>
+                <div key={r.id} className="rounded-xl p-4" style={{ background: '#f5f7fb', border: '1px solid rgba(26,58,138,0.15)' }}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{r.reviewerName}</span>
+                      <span className="font-semibold text-sm" style={{ color: '#1a1a1a' }}>{r.reviewerName}</span>
                       {r.reviewerRole && <Tag color={ROLE_COLOR[r.reviewerRole]} style={{ margin: 0 }}>{ROLE_LABEL[r.reviewerRole]}</Tag>}
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold" style={{ color: 'var(--primary)' }}>{r.weightedScore}</div>
-                      <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>加权总分</div>
+                      <div className="text-lg font-bold" style={{ color: '#1a3a8a' }}>{r.weightedScore}</div>
+                      <div className="text-[10px]" style={{ color: '#666' }}>加权总分</div>
                     </div>
                   </div>
                   {/* 各维度分 */}
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-2 text-xs">
                     {Object.entries(r.scores).map(([dim, val]) => (
                       <div key={dim} className="flex items-center justify-between">
-                        <span style={{ color: 'var(--text-secondary)' }}>{ROLE_DIM_LABEL[dim] ?? dim}</span>
-                        <span className="font-mono font-semibold">{val}</span>
+                        <span style={{ color: '#555' }}>{ROLE_DIM_LABEL[dim] ?? dim}</span>
+                        <span className="font-mono font-semibold" style={{ color: '#1a1a1a' }}>{val}</span>
                       </div>
                     ))}
                   </div>
                   {r.reason && (
-                    <p className="text-xs mt-2 pt-2" style={{ color: 'var(--text-secondary)', borderTop: '1px dashed rgba(0,0,0,0.06)' }}>
+                    <p className="text-xs mt-2 pt-2" style={{ color: '#333', borderTop: '1px dashed rgba(0,0,0,0.1)' }}>
                       {r.reason}
                     </p>
                   )}
@@ -347,16 +360,16 @@ export default function ReviewsOverviewPage() {
       {detailSub && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
           onClick={() => setDetailSub(null)}
         >
           <div
-            className="glass rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto"
-            style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}
+            className="rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl"
+            style={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 z-10 px-6 py-4"
-              style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+              style={{ background: '#ffffff', borderBottom: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-base font-bold">
@@ -373,14 +386,15 @@ export default function ReviewsOverviewPage() {
               </div>
             </div>
 
-            <div className="p-6 space-y-4 text-sm">
+            <div className="p-6 space-y-5" style={{ color: '#1a1a1a' }}>
+              {/* 量化对比（最显眼位置） */}
+              <QuantCard sub={detailSub} />
+
               {/* 提报 */}
               <div className="grid grid-cols-2 gap-3">
                 <Field label="提报人" value={detailSub.authorName} />
                 <Field label="小组成员" value={detailSub.teamMembers} />
                 <Field label="方案确认人" value={detailSub.verifier} />
-                <Field label="月均节省工时" value={detailSub.monthlySavedHours != null ? `${detailSub.monthlySavedHours} 小时` : ''} />
-                <Field label="提效比例" value={detailSub.efficiencyRate != null ? `${(detailSub.efficiencyRate * 100).toFixed(1)}%` : ''} />
                 <Field label="AI 成本" value={detailSub.aiCost} />
               </div>
 
@@ -402,25 +416,25 @@ export default function ReviewsOverviewPage() {
 
               {detailSub.beforeProcess && (
                 <Section title="原业务场景 & 流程">
-                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: 'var(--text-secondary)' }}>{detailSub.beforeProcess}</pre>
+                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: '#1a1a1a' }}>{detailSub.beforeProcess}</pre>
                 </Section>
               )}
 
               {detailSub.afterProcess && (
                 <Section title="改造后流程">
-                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: 'var(--text-secondary)' }}>{detailSub.afterProcess}</pre>
+                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: '#1a1a1a' }}>{detailSub.afterProcess}</pre>
                 </Section>
               )}
 
               {detailSub.implementation && (
                 <Section title="实现方式">
-                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: 'var(--text-secondary)' }}>{detailSub.implementation}</pre>
+                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: '#1a1a1a' }}>{detailSub.implementation}</pre>
                 </Section>
               )}
 
               {detailSub.extraValue && (
                 <Section title="其他价值">
-                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: 'var(--text-secondary)' }}>{detailSub.extraValue}</pre>
+                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: '#1a1a1a' }}>{detailSub.extraValue}</pre>
                 </Section>
               )}
 
@@ -428,13 +442,13 @@ export default function ReviewsOverviewPage() {
                 <Section title="相关链接">
                   {detailSub.demoLink && (
                     <a href={detailSub.demoLink} target="_blank" rel="noopener noreferrer"
-                      className="block text-xs text-blue-600 hover:underline mb-1">
+                      className="block text-xs hover:underline mb-1" style={{ color: '#1a3a8a' }}>
                       Demo: {detailSub.demoLink}
                     </a>
                   )}
                   {detailSub.recordUrl && (
                     <a href={detailSub.recordUrl} target="_blank" rel="noopener noreferrer"
-                      className="block text-xs text-blue-600 hover:underline">
+                      className="block text-xs hover:underline" style={{ color: '#1a3a8a' }}>
                       飞书记录: {detailSub.recordUrl}
                     </a>
                   )}
@@ -452,8 +466,8 @@ export default function ReviewsOverviewPage() {
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <div className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>{label}</div>
-      <div className="text-sm" style={{ color: value ? 'var(--foreground)' : 'var(--text-muted)' }}>
+      <div className="text-xs font-medium mb-0.5" style={{ color: '#666' }}>{label}</div>
+      <div className="text-sm font-medium" style={{ color: value ? '#1a1a1a' : '#999' }}>
         {value || '—'}
       </div>
     </div>
@@ -464,8 +478,109 @@ function Field({ label, value }: { label: string; value: string | null | undefin
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>{title}</div>
+      <div className="text-sm font-bold mb-2" style={{ color: '#1a1a1a' }}>{title}</div>
       <div>{children}</div>
+    </div>
+  );
+}
+
+/** 量化对比卡 — 弹窗最顶部，最显眼 */
+function QuantCard({ sub }: { sub: SubmissionDTO }) {
+  // 数据
+  const savedHours = sub.monthlySavedHours;
+  const effRate = sub.efficiencyRate;
+  // before/after 字段
+  const beforeH = sub.beforeHoursPerPerson;
+  const beforeP = sub.beforePeopleCount;
+  const afterH = sub.afterHoursPerPerson;
+  const afterP = sub.afterPeopleCount;
+  const oldOp = sub.oldOperationCount;
+  const newOp = sub.newOperationCount;
+  const oldDur = sub.oldHoursPerTask;
+  const newDur = sub.newDuration;
+  const hasHours = beforeH != null || afterH != null;
+  const hasPeople = beforeP != null || afterP != null;
+  const hasOps = oldOp != null || newOp != null;
+  const hasDur = oldDur != null || newDur != null;
+  const hasAny = savedHours != null || effRate != null || hasHours || hasPeople || hasOps || hasDur;
+  if (!hasAny) return null;
+
+  // 节省工时 = (原工时 - 新工时) × 原人数
+  const calcSaved = (beforeH != null && afterH != null && beforeP != null)
+    ? Math.round((beforeH - afterH) * beforeP * 10) / 10
+    : null;
+  const showSaved = savedHours ?? calcSaved;
+
+  return (
+    <div className="rounded-2xl p-5 shadow-sm"
+      style={{ background: 'linear-gradient(135deg, #1a3a8a 0%, #2d5aa0 100%)', color: '#fff' }}>
+      <div className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.8)' }}>
+        📊 量化数据
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {showSaved != null && (
+          <div>
+            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>月均节省工时</div>
+            <div className="text-2xl font-bold mt-0.5">
+              {typeof showSaved === 'number' ? showSaved.toFixed(1) : showSaved}
+              <span className="text-sm font-medium ml-1" style={{ color: 'rgba(255,255,255,0.8)' }}>小时</span>
+            </div>
+          </div>
+        )}
+        {effRate != null && (
+          <div>
+            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>提效比例</div>
+            <div className="text-2xl font-bold mt-0.5">
+              {(effRate * 100).toFixed(1)}
+              <span className="text-sm font-medium ml-1" style={{ color: 'rgba(255,255,255,0.8)' }}>%</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* before / after 对比行 */}
+      <div className="space-y-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+        {hasHours && (
+          <CompareRow
+            label="人均单次工时"
+            before={beforeH != null ? `${beforeH} 小时` : '—'}
+            after={afterH != null ? `${afterH} 小时` : '—'}
+          />
+        )}
+        {hasPeople && (
+          <CompareRow
+            label="涉及人数"
+            before={beforeP != null ? `${beforeP} 人` : '—'}
+            after={afterP != null ? `${afterP} 人` : '—'}
+          />
+        )}
+        {hasOps && (
+          <CompareRow
+            label="操作次数"
+            before={oldOp != null ? `${oldOp} 次` : '—'}
+            after={newOp != null ? `${newOp} 次` : '—'}
+          />
+        )}
+        {hasDur && (
+          <CompareRow
+            label="单次时长"
+            before={oldDur != null ? `${oldDur}` : '—'}
+            after={newDur != null ? `${newDur}` : '—'}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CompareRow({ label, before, after }: { label: string; before: string; after: string }) {
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <span className="w-20 shrink-0" style={{ color: 'rgba(255,255,255,0.7)' }}>{label}</span>
+      <span style={{ color: 'rgba(255,255,255,0.6)' }}>{before}</span>
+      <span style={{ color: 'rgba(255,255,255,0.6)' }}>→</span>
+      <b style={{ color: '#fff' }}>{after}</b>
     </div>
   );
 }
