@@ -259,7 +259,7 @@ function FeishuEnterpriseButtons() {
             : { background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(26,58,138,0.15)', color: 'var(--foreground)' }
           }
         >
-          {a.enterprise_name}飞书账号登录
+          {a.enterprise_name}飞书授权登录
         </button>
       ))}
     </div>

@@ -90,8 +90,13 @@ export default function FeishuAppsPage() {
         cancelText="取消"
       >
         <Form form={form} layout="vertical">
-          <Form.Item label="企业名称" name="enterprise_name" rules={[{ required: true }]}>
-            <Input placeholder="如：XX 公司" />
+          <Form.Item
+            label="企业代码"
+            name="enterprise_name"
+            rules={[{ required: true, message: '请输入企业代码' }]}
+            extra="建议使用 2-3 个字母的短码（如 ZT、GF、WX），将显示在登录按钮上"
+          >
+            <Input placeholder="如：ZT" />
           </Form.Item>
           <Form.Item label="App ID" name="app_id" rules={[{ required: true }]}>
             <Input placeholder="飞书开放平台 app_id" />
