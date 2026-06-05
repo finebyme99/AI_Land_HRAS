@@ -3,6 +3,14 @@
     {
       "path": "/api/admin/reminders/send",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/admin/reminders/send",
+      "schedule": "30 11 * * 1,3"
+    },
+    {
+      "path": "/api/cron/sync-courses",
+      "schedule": "40 11 * * *"
     }
   ]
 }
