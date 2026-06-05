@@ -53,6 +53,7 @@ export async function insertCourseRow(input: CourseInsertInput): Promise<InsertC
     .single();
 
   if (error) {
+    console.error('[courses-insert] insert failed:', { error: error.message, title, instructor });
     return { course: null, error: error.message };
   }
   return { course: data, error: null };
