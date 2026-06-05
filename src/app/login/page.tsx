@@ -257,16 +257,13 @@ function FeishuEnterpriseButtons() {
 
   return (
     <div className="space-y-2">
-      {apps.map((a, i) => (
+      {apps.map((a) => (
         <button
           key={a.app_id}
           onClick={() => go(a.app_id)}
           disabled={loading}
-          className="w-full h-12 rounded-xl text-base font-medium transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-          style={i === 0
-            ? { background: 'var(--gradient-primary)', color: 'white' }
-            : { background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(26,58,138,0.15)', color: 'var(--foreground)' }
-          }
+          className="w-full h-12 rounded-xl text-base font-medium text-white transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+          style={{ background: 'var(--gradient-primary)' }}
         >
           {a.enterprise_name}飞书授权登录
         </button>
