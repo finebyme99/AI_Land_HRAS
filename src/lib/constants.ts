@@ -7,15 +7,16 @@ import { RESOURCE_CATEGORIES } from '@/types';
  * 背景：飞书多维表格里 GUS HRBP 考勤签字报表的"方案确认用户"（薛佳玥 Hailey / 郭谦）
  * 在 users 表里没有 reviewer 角色，导致在前台看不到方案评审入口。
  *
+ * 注意：仅放未在 users.roles 里有 'reviewer' 的人。已确认有角色的人（JIAYUEXUE / 章佳媛）
+ * 不需要在此白名单里，删以免误导。
+ *
  * TODO：后续方案 — 改用 admin/users 后台加角色；或在 AI 大赛同步流程里自动从
  * 飞书"确认用户"字段回填 reviewer 角色到 users.roles。
- * 见 CLAUDE.md 跟进项。
+ * 见 memory/feedback_hardcoded_reviewer.md 跟进项。
  */
 export const HARDCODED_REVIEWER_NAMES: string[] = [
-  'JIAYUEXUE',
   '薛佳玥',
   '郭谦',
-  '章佳媛',
 ];
 
 /**
