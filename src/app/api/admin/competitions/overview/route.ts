@@ -37,11 +37,12 @@ export async function GET(request: NextRequest) {
   const supabase = getSupabaseAdmin();
 
   try {
-    // 1. 拉本期 submissions
+    // 1. 拉本期 submissions（只看"评审中"）
     const { data: subs, error: sErr } = await supabase
       .from('competition_submissions')
-      .select('id, proposal_no, title, team, submitter, status, monthly_saved_hours, created_at, period')
+      .select('id, proposal_no, title, team, submitter, status, monthly_saved_hours, created_at, period, track, scene_category, ai_tools, efficiency_rate, before_process, pain_points, after_process, demo_link, record_url, ai_cost, extra_value, team_members, implementation, verifier')
       .eq('period', period)
+      .eq('status', '评审中')
       .order('proposal_no', { ascending: true });
     if (sErr) throw sErr;
     const submissions = subs ?? [];
@@ -84,17 +85,43 @@ export async function GET(request: NextRequest) {
           roleScores[role] = Math.round(avg * 10) / 10;
         }
       });
-      // 跨角色总分
-      const allReviewed = subReviews.filter((r) => r.decision === 'reviewed' && r.reviewer_role);
-      const totalScore = allReviewed.length > 0
-        ? Math.round((allReviewed.reduce((s, r) => s + computeWeightedScore(r.scores ?? {}, r.reviewer_role as ReviewerRole), 0) / allReviewed.length) * 10) / 10
+      // 跨角色总分 = 三个角色均分之和（每角色 5 分制，含权重后最高 19.5/19.5/11 = 50）
+      const roleParts: number[] = [];
+      (['user', 'business', 'tech'] as ReviewerRole[]).forEach((r) => { if (roleScores[r] != null) roleParts.push(roleScores[r]!); });
+      const totalScore = roleParts.length > 0
+        ? Math.round(roleParts.reduce((a, b) => a + b, 0) * 10) / 10
         : null;
       // 状态
+      const allReviewed = subReviews.filter((r) => r.decision === 'reviewed' && r.reviewer_role);
       const reviewedRoles = new Set(allReviewed.map((r) => r.reviewer_role));
       const status: 'reviewed' | 'pending' = reviewedRoles.size >= 3 ? 'reviewed' : 'pending';
-      // team / submitter 在 DB 里是 people 字段（数组），扁平化成字符串
+      // 团队/提报人在 DB 里是 people 字段（数组），扁平化成字符串
       const teamArr = Array.isArray(sub.team) ? (sub.team as string[]) : (sub.team ? [String(sub.team)] : []);
       const submitterArr = Array.isArray(sub.submitter) ? (sub.submitter as string[]) : (sub.submitter ? [String(sub.submitter)] : []);
+      const aiToolsArr = Array.isArray(sub.ai_tools) ? (sub.ai_tools as string[]) : (sub.ai_tools ? [String(sub.ai_tools)] : []);
+      const painPointsArr = Array.isArray(sub.pain_points) ? (sub.pain_points as string[]) : (sub.pain_points ? [String(sub.pain_points)] : []);
+      const verifierArr = Array.isArray(sub.verifier) ? (sub.verifier as string[]) : (sub.verifier ? [String(sub.verifier)] : []);
+      // reviews 排序：先按角色（user→business→tech），再按加权分降序
+      const ROLE_ORDER: ReviewerRole[] = ['user', 'business', 'tech'];
+      const reviewsOut = subReviews
+        .map((r) => {
+          const role = r.reviewer_role;
+          return {
+            id: r.id,
+            reviewerName: r.reviewer?.name ?? '匿名',
+            reviewerRole: role,
+            decision: r.decision,
+            scores: r.scores ?? {},
+            weightedScore: role ? Math.round(computeWeightedScore(r.scores ?? {}, role) * 10) / 10 : 0,
+            reason: r.reason ?? '',
+          };
+        })
+        .sort((a, b) => {
+          const oa = a.reviewerRole ? ROLE_ORDER.indexOf(a.reviewerRole) : 99;
+          const ob = b.reviewerRole ? ROLE_ORDER.indexOf(b.reviewerRole) : 99;
+          if (oa !== ob) return oa - ob;
+          return b.weightedScore - a.weightedScore;
+        });
       return {
         id: sub.id,
         title: sub.title,
@@ -106,22 +133,27 @@ export async function GET(request: NextRequest) {
         totalScore,
         reviewCount: allReviewed.length,
         roleScores,
-        reviews: subReviews.map((r) => {
-          const role = r.reviewer_role;
-          return {
-            id: r.id,
-            reviewerName: r.reviewer?.name ?? '匿名',
-            reviewerRole: role,
-            decision: r.decision,
-            scores: r.scores ?? {},
-            weightedScore: role ? Math.round(computeWeightedScore(r.scores ?? {}, role) * 10) / 10 : 0,
-            reason: r.reason ?? '',
-          };
-        }),
+        reviews: reviewsOut,
+        // 方案详情（弹窗用）
+        track: sub.track ?? '',
+        sceneCategory: sub.scene_category ?? '',
+        aiTools: aiToolsArr,
+        monthlySavedHours: sub.monthly_saved_hours ?? null,
+        efficiencyRate: sub.efficiency_rate ?? null,
+        beforeProcess: sub.before_process ?? '',
+        painPoints: painPointsArr,
+        afterProcess: sub.after_process ?? '',
+        demoLink: sub.demo_link ?? '',
+        recordUrl: sub.record_url ?? '',
+        aiCost: sub.ai_cost ?? '',
+        extraValue: sub.extra_value ?? '',
+        teamMembers: Array.isArray(sub.team_members) ? sub.team_members.join(' / ') : (sub.team_members ?? ''),
+        implementation: sub.implementation ?? '',
+        verifier: verifierArr.join(' / '),
       };
     });
 
-    // 4. 顶部汇总
+    // 4. 顶部汇总（基于过滤后的 13 个"评审中"）
     const total = enriched.length;
     const reviewed = enriched.filter((s) => s.status === 'reviewed').length;
     const pending = total - reviewed;

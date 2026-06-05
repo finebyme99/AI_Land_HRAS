@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Spin, App, Select, Tag } from 'antd';
 import { TrophyOutlined, AuditOutlined, TeamOutlined, ArrowRightOutlined, RiseOutlined } from '@ant-design/icons';
@@ -32,6 +31,22 @@ interface SubmissionDTO {
   reviewCount: number;
   roleScores: Record<Role, number | null>;
   reviews: ReviewDTO[];
+  // 方案详情（弹窗用）
+  track: string;
+  sceneCategory: string;
+  aiTools: string[];
+  monthlySavedHours: number | null;
+  efficiencyRate: number | null;
+  beforeProcess: string;
+  painPoints: string[];
+  afterProcess: string;
+  demoLink: string;
+  recordUrl: string;
+  aiCost: string;
+  extraValue: string;
+  teamMembers: string;
+  implementation: string;
+  verifier: string;
 }
 
 interface OverviewResponse {
@@ -70,6 +85,15 @@ const ROLE_DIM_LABEL: Record<string, string> = {
   engineeringQuality: '工程质量与可落地性',
 };
 
+/** 各角色维度满分（5 分制 × 各自权重求和）
+ *  - user: 5×1.5 + 5×1.2 + 5×1.2 = 19.5
+ *  - business: 5×1.5 + 5×1.2 + 5×1.2 = 19.5
+ *  - tech: 5×1.2 + 5×1.0 = 11
+ *  - 总分上限: 19.5 + 19.5 + 11 = 50
+ */
+const ROLE_MAX: Record<Role, number> = { user: 19.5, business: 19.5, tech: 11 };
+const TOTAL_MAX = 50;
+
 export default function ReviewsOverviewPage() {
   const router = useRouter();
   const { message } = App.useApp();
@@ -79,6 +103,7 @@ export default function ReviewsOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [modalSub, setModalSub] = useState<SubmissionDTO | null>(null);
+  const [detailSub, setDetailSub] = useState<SubmissionDTO | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) router.replace('/');
@@ -207,15 +232,16 @@ export default function ReviewsOverviewPage() {
               {/* 总分 + 各角色分 */}
               <div className="flex items-baseline gap-2 mb-3">
                 <span className="text-2xl font-bold" style={{ color: 'var(--primary)' }}>
-                  {sub.totalScore ?? '—'}
+                  {sub.totalScore != null ? sub.totalScore.toFixed(1) : '—'}
                 </span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>/ 50 · {sub.reviewCount} 人评</span>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>/ {TOTAL_MAX} · {sub.reviewCount} 人评</span>
               </div>
 
               {/* 角色分进度条 */}
               <div className="space-y-1.5 mb-4">
                 {(['user', 'business', 'tech'] as Role[]).map((r) => {
                   const s = sub.roleScores[r];
+                  const max = ROLE_MAX[r];
                   return (
                     <div key={r} className="flex items-center gap-2 text-xs">
                       <Tag color={ROLE_COLOR[r]} style={{ margin: 0, minWidth: 56, textAlign: 'center' }}>
@@ -224,12 +250,12 @@ export default function ReviewsOverviewPage() {
                       <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.04)' }}>
                         <div className="h-full transition-all"
                           style={{
-                            width: s != null ? `${(s / 15) * 100}%` : '0%',
+                            width: s != null ? `${(s / max) * 100}%` : '0%',
                             background: s != null ? 'var(--gradient-primary)' : 'transparent',
                           }} />
                       </div>
-                      <span className="w-10 text-right font-mono" style={{ color: s != null ? 'var(--foreground)' : 'var(--text-muted)' }}>
-                        {s ?? '—'}
+                      <span className="w-20 text-right font-mono" style={{ color: s != null ? 'var(--foreground)' : 'var(--text-muted)' }}>
+                        {s != null ? `${s.toFixed(1)} / ${max}` : '—'}
                       </span>
                     </div>
                   );
@@ -245,11 +271,12 @@ export default function ReviewsOverviewPage() {
                 >
                   查看评审明细
                 </button>
-                <Link href={`/competitions/${sub.id}`}
+                <button
+                  onClick={() => setDetailSub(sub)}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
                   style={{ background: 'rgba(26,58,138,0.06)', color: 'var(--primary)' }}>
                   方案详情 <ArrowRightOutlined />
-                </Link>
+                </button>
               </div>
             </div>
           ))}
@@ -315,6 +342,130 @@ export default function ReviewsOverviewPage() {
           </div>
         </div>
       )}
+
+      {/* 方案详情 Modal */}
+      {detailSub && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setDetailSub(null)}
+        >
+          <div
+            className="glass rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto"
+            style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 px-6 py-4"
+              style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold">
+                    {detailSub.proposalNo ? `#${String(detailSub.proposalNo).padStart(3, '0')} ` : ''}
+                    {detailSub.title}
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {detailSub.team && <Tag color="blue" style={{ margin: 0 }}>{detailSub.team}</Tag>}
+                    {detailSub.track && <Tag color="purple" style={{ margin: 0 }}>{detailSub.track}</Tag>}
+                    {detailSub.sceneCategory && <Tag color="cyan" style={{ margin: 0 }}>{detailSub.sceneCategory}</Tag>}
+                  </div>
+                </div>
+                <button onClick={() => setDetailSub(null)} className="text-xl shrink-0 ml-2" style={{ color: 'var(--text-muted)' }}>×</button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4 text-sm">
+              {/* 提报 */}
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="提报人" value={detailSub.authorName} />
+                <Field label="小组成员" value={detailSub.teamMembers} />
+                <Field label="方案确认人" value={detailSub.verifier} />
+                <Field label="月均节省工时" value={detailSub.monthlySavedHours != null ? `${detailSub.monthlySavedHours} 小时` : ''} />
+                <Field label="提效比例" value={detailSub.efficiencyRate != null ? `${(detailSub.efficiencyRate * 100).toFixed(1)}%` : ''} />
+                <Field label="AI 成本" value={detailSub.aiCost} />
+              </div>
+
+              {detailSub.aiTools.length > 0 && (
+                <Section title="用到的 AI 工具">
+                  <div className="flex flex-wrap gap-1.5">
+                    {detailSub.aiTools.map((t) => <Tag key={t} color="geekblue" style={{ margin: 0 }}>{t}</Tag>)}
+                  </div>
+                </Section>
+              )}
+
+              {detailSub.painPoints.length > 0 && (
+                <Section title="核心痛点">
+                  <div className="flex flex-wrap gap-1.5">
+                    {detailSub.painPoints.map((p) => <Tag key={p} color="orange" style={{ margin: 0 }}>{p}</Tag>)}
+                  </div>
+                </Section>
+              )}
+
+              {detailSub.beforeProcess && (
+                <Section title="原业务场景 & 流程">
+                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: 'var(--text-secondary)' }}>{detailSub.beforeProcess}</pre>
+                </Section>
+              )}
+
+              {detailSub.afterProcess && (
+                <Section title="改造后流程">
+                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: 'var(--text-secondary)' }}>{detailSub.afterProcess}</pre>
+                </Section>
+              )}
+
+              {detailSub.implementation && (
+                <Section title="实现方式">
+                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: 'var(--text-secondary)' }}>{detailSub.implementation}</pre>
+                </Section>
+              )}
+
+              {detailSub.extraValue && (
+                <Section title="其他价值">
+                  <pre className="text-xs whitespace-pre-wrap font-sans" style={{ color: 'var(--text-secondary)' }}>{detailSub.extraValue}</pre>
+                </Section>
+              )}
+
+              {(detailSub.demoLink || detailSub.recordUrl) && (
+                <Section title="相关链接">
+                  {detailSub.demoLink && (
+                    <a href={detailSub.demoLink} target="_blank" rel="noopener noreferrer"
+                      className="block text-xs text-blue-600 hover:underline mb-1">
+                      Demo: {detailSub.demoLink}
+                    </a>
+                  )}
+                  {detailSub.recordUrl && (
+                    <a href={detailSub.recordUrl} target="_blank" rel="noopener noreferrer"
+                      className="block text-xs text-blue-600 hover:underline">
+                      飞书记录: {detailSub.recordUrl}
+                    </a>
+                  )}
+                </Section>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 详情弹窗里的小字段 */
+function Field({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div>
+      <div className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>{label}</div>
+      <div className="text-sm" style={{ color: value ? 'var(--foreground)' : 'var(--text-muted)' }}>
+        {value || '—'}
+      </div>
+    </div>
+  );
+}
+
+/** 详情弹窗里的分段 */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>{title}</div>
+      <div>{children}</div>
     </div>
   );
 }
