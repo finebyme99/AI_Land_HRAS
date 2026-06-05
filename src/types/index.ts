@@ -27,6 +27,7 @@ export interface AuthLog {
 export interface User {
   id: string;
   feishu_open_id: string;
+  feishu_tenant_key?: string | null;  // 新增
   name: string;
   avatar: string;
   department: string;
