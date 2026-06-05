@@ -24,14 +24,30 @@ export async function getTenantAccessToken(): Promise<string> {
 }
 
 // 用 code 换取 user_access_token
-export async function getFeishuUserToken(code: string): Promise<{
+export async function getFeishuUserToken(
+  code: string,
+  appId: string,
+  appSecret: string,
+): Promise<{
   access_token: string;
   refresh_token: string;
   open_id: string;
   union_id: string;
   user_id: string;
 }> {
-  const token = await getTenantAccessToken();
+  // 用调用方传入的 appId/appSecret 换取 tenant_access_token（不走环境变量，支持多租户）
+  const tenantRes = await fetch(`${FEISHU_API_BASE}/auth/v3/tenant_access_token/internal`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      app_id: appId,
+      app_secret: appSecret,
+    }),
+  });
+  const tenantData = await tenantRes.json();
+  if (tenantData.code !== 0) throw new Error(`获取 tenant_access_token 失败: ${tenantData.msg}`);
+  const token = tenantData.tenant_access_token;
+
   const res = await fetch(`${FEISHU_API_BASE}/authen/v1/oidc/access_token`, {
     method: 'POST',
     headers: {
@@ -70,12 +86,12 @@ export async function getFeishuUserInfo(userAccessToken: string): Promise<{
 }
 
 // 生成飞书 OAuth 授权 URL
-export function getFeishuAuthUrl(redirectUri: string): string {
+export function getFeishuAuthUrl(appId: string, redirectUri: string, state: string): string {
   const params = new URLSearchParams({
-    app_id: getEnv('FEISHU_APP_ID'),
+    app_id: appId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    state: Math.random().toString(36).substring(2),
+    state,
   });
   return `https://open.feishu.cn/open-apis/authen/v1/authorize?${params.toString()}`;
 }
