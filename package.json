@@ -17,6 +17,7 @@
     "bcryptjs": "^3.0.3",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
+    "pinyin-pro": "^3.28.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.12.4"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { SCORE_DIMENSIONS, type ReviewScores, type ReviewerRole } from '@/types';
+import { pinyin } from 'pinyin-pro';
 
 function computeWeightedScore(scores: ReviewScores, role: ReviewerRole): number {
   const dims = SCORE_DIMENSIONS[role];
@@ -197,10 +198,41 @@ export async function GET(request: NextRequest) {
       seenByRole[r.reviewer_role].add(name);
       panelByRole[r.reviewer_role].push(name);
     }
-    // 按姓名首字母排序：中文按拼音首字母，英文按字母
-    const collator = new Intl.Collator('zh-Hans-CN', { sensitivity: 'base' });
+    // 姓氏读音特例：pinyin-pro 默认读音对姓氏场景有偏，覆盖
+    const SURNAME_PINYIN: Record<string, string> = {
+      曾: 'zeng',  // 姓读 zēng，pinyin-pro 默认给 céng
+    };
+    function nameFirstLetter(name: string): string {
+      const c = (name[0] || '').trim();
+      if (/[A-Za-z]/.test(c)) return c.toUpperCase();
+      if (SURNAME_PINYIN[c]) return SURNAME_PINYIN[c][0].toUpperCase();
+      try {
+        const py = pinyin(c, { toneType: 'none', type: 'array' });
+        return (py[0]?.[0] || c).toUpperCase();
+      } catch {
+        return c.toUpperCase();
+      }
+    }
+    function nameSortKey(name: string): string {
+      const c = (name[0] || '').trim();
+      if (/[A-Za-z]/.test(c)) return c.toUpperCase();
+      // 全名拼音：逐字替换姓氏特例
+      let py: string;
+      try {
+        py = pinyin(name, { toneType: 'none', type: 'array' }).join('');
+      } catch {
+        return name.toUpperCase();
+      }
+      if (SURNAME_PINYIN[c]) py = SURNAME_PINYIN[c] + py.slice(1);
+      return py.toUpperCase();
+    }
     for (const role of ['user', 'business', 'tech'] as ReviewerRole[]) {
-      panelByRole[role].sort((a, b) => collator.compare(a, b));
+      panelByRole[role].sort((a, b) => {
+        const fa = nameFirstLetter(a);
+        const fb = nameFirstLetter(b);
+        if (fa !== fb) return fa.localeCompare(fb);
+        return nameSortKey(a).localeCompare(nameSortKey(b));
+      });
     }
 
     return NextResponse.json(
