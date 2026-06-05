@@ -98,6 +98,16 @@ export async function GET(request: NextRequest) {
       // 团队/提报人在 DB 里是 people 字段（数组），扁平化成字符串
       const teamArr = Array.isArray(sub.team) ? (sub.team as string[]) : (sub.team ? [String(sub.team)] : []);
       const submitterArr = Array.isArray(sub.submitter) ? (sub.submitter as string[]) : (sub.submitter ? [String(sub.submitter)] : []);
+      const teamMembersArr = Array.isArray(sub.team_members) ? (sub.team_members as string[]) : (sub.team_members ? [String(sub.team_members)] : []);
+      // contributors = submitter + team_members 整合去重，保留首次出现顺序
+      const seen = new Set<string>();
+      const contributorsArr: string[] = [];
+      for (const n of [...submitterArr, ...teamMembersArr]) {
+        const t = n?.trim();
+        if (!t || seen.has(t)) continue;
+        seen.add(t);
+        contributorsArr.push(t);
+      }
       const aiToolsArr = Array.isArray(sub.ai_tools) ? (sub.ai_tools as string[]) : (sub.ai_tools ? [String(sub.ai_tools)] : []);
       const painPointsArr = Array.isArray(sub.pain_points) ? (sub.pain_points as string[]) : (sub.pain_points ? [String(sub.pain_points)] : []);
       const verifierArr = Array.isArray(sub.verifier) ? (sub.verifier as string[]) : (sub.verifier ? [String(sub.verifier)] : []);
@@ -126,7 +136,9 @@ export async function GET(request: NextRequest) {
         id: sub.id,
         title: sub.title,
         team: teamArr.join(' / '),
-        authorName: submitterArr.join(' / '),
+        // contributors = 提报人 + 团队成员 整合去重
+        authorName: contributorsArr.join(' / '),
+        contributors: contributorsArr,
         proposalNo: sub.proposal_no,
         submittedAt: sub.created_at,
         status,
@@ -185,9 +197,10 @@ export async function GET(request: NextRequest) {
       seenByRole[r.reviewer_role].add(name);
       panelByRole[r.reviewer_role].push(name);
     }
-    // 姓名按字母/中文笔画粗排（这里用 localeCompare 简单处理）
+    // 按姓名首字母排序：中文按拼音首字母，英文按字母
+    const collator = new Intl.Collator('zh-Hans-CN', { sensitivity: 'base' });
     for (const role of ['user', 'business', 'tech'] as ReviewerRole[]) {
-      panelByRole[role].sort((a, b) => a.localeCompare(b, 'zh'));
+      panelByRole[role].sort((a, b) => collator.compare(a, b));
     }
 
     return NextResponse.json(

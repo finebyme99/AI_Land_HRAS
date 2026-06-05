@@ -24,6 +24,7 @@ interface SubmissionDTO {
   title: string;
   team: string;
   authorName: string;
+  contributors: string[];
   proposalNo: number | null;
   submittedAt: string;
   status: 'reviewed' | 'pending';
@@ -308,7 +309,7 @@ export default function ReviewsOverviewPage() {
         <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
           <div className="text-xs mb-3" style={{ color: '#888' }}>
             <TeamOutlined className="mr-1" />
-            本次 {data.period === '2605' ? '5 月' : data.period} 大赛评委团（不公布具体评分，仅供管理员复审参考）
+            本次 {data.period === '2605' ? '5 月' : data.period} 大赛评委团（按姓名首字母排序，不公布评分明细）
           </div>
           <div className="space-y-2 text-sm" style={{ color: '#666' }}>
             {(['user', 'business', 'tech'] as Role[]).map((r) => {
