@@ -218,13 +218,26 @@ function PasswordAuth() {
 }
 
 /** 多企业飞书登录按钮：动态从 /api/feishu-apps/public 拉 active 企业的 app_id + enterprise_name */
+const PREFERRED_ORDER = ['ZT', 'GF', 'WX'];
+
 function FeishuEnterpriseButtons() {
   const [apps, setApps] = useState<Array<{ app_id: string; enterprise_name: string }>>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetch('/api/feishu-apps/public').then(r => r.json()).then(j => {
-      if (j.apps) setApps(j.apps);
+      if (j.apps) {
+        // 按 PREFERRED_ORDER 排序：未知企业排到末尾
+        const sorted = [...j.apps].sort((a, b) => {
+          const ai = PREFERRED_ORDER.indexOf(a.enterprise_name);
+          const bi = PREFERRED_ORDER.indexOf(b.enterprise_name);
+          if (ai === -1 && bi === -1) return 0;
+          if (ai === -1) return 1;
+          if (bi === -1) return -1;
+          return ai - bi;
+        });
+        setApps(sorted);
+      }
     });
   }, []);
 
