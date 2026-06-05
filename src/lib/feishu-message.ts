@@ -402,3 +402,34 @@ export function buildErrorCard(message: string, formValue: Record<string, unknow
     ],
   };
 }
+
+/**
+ * PATCH im/v1/messages/{messageId}：用新卡片替换原消息
+ * 飞书 PATCH 接口需要 msg_type=interactive + content 是卡片 JSON 字符串
+ */
+export async function replaceFeishuCard(
+  messageId: string,
+  card: object,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const token = await getTenantAccessToken();
+    const res = await fetch(`${FEISHU_API_BASE}/im/v1/messages/${messageId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        msg_type: 'interactive',
+        content: JSON.stringify(card),
+      }),
+    });
+    const data = await res.json();
+    if (data.code !== 0) {
+      return { ok: false, error: data.msg || `HTTP ${res.status}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
