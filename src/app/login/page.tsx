@@ -225,6 +225,7 @@ const PREFERRED_ORDER = ['ZT', 'GF', 'WX'];
 
 function FeishuEnterpriseButtons() {
   const [apps, setApps] = useState<Array<{ app_id: string; enterprise_name: string }>>([]);
+  const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -241,7 +242,7 @@ function FeishuEnterpriseButtons() {
         });
         setApps(sorted);
       }
-    });
+    }).finally(() => setLoaded(true));
   }, []);
 
   const go = (appId: string) => {
@@ -249,8 +250,13 @@ function FeishuEnterpriseButtons() {
     window.location.href = `/api/auth/feishu?app_id=${encodeURIComponent(appId)}`;
   };
 
+  // 加载中：什么都不显示，避免闪"未配置"
+  if (!loaded) {
+    return <div className="h-12" aria-hidden="true" />;
+  }
+
+  // 加载完但没配：才显示"未配置"
   if (apps.length === 0) {
-    // 无 active 飞书应用配置 → 显示提示（管理员尚未录入）
     return (
       <div className="text-center text-sm py-3" style={{ color: 'var(--text-muted)' }}>
         飞书登录暂未配置，请联系 AILand 管理员
