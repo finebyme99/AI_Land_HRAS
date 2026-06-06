@@ -12,7 +12,7 @@ const roleOptions = [
   { value: 'user', label: '普通用户' },
   { value: 'contributor', label: '贡献者' },
   { value: 'reviewer', label: '评委' },
-  { value: 'course_admin', label: '公开管理员' },
+  { value: 'course_admin', label: 'AI 课程管理员' },
   { value: 'moderator', label: '版主' },
   { value: 'admin', label: '管理员' },
 ];
@@ -30,7 +30,7 @@ const roleLabels: Record<string, string> = {
   admin: '管理员',
   moderator: '版主',
   reviewer: '评委',
-  course_admin: '公开管理员',
+  course_admin: 'AI 课程管理员',
   contributor: '贡献者',
   user: '用户',
 };
