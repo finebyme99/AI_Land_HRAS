@@ -49,8 +49,8 @@ function decryptPayload(encryptKey: string, encryptedB64: string): string {
   const decipher = createDecipheriv('aes-256-cbc', key, iv);
   decipher.setAutoPadding(false);
   const dec = Buffer.concat([decipher.update(cipherText), decipher.final()]);
-  // 飞书在密文后追加 16 字节的随机串 + 明文，需裁掉尾部非 JSON 内容
-  const text = dec.toString('utf8').replace(/[ -]+$/, '');
+  // 飞书在密文后追加 16 字节的随机串（落在 0x00-0x1F 控制字符区间），需裁掉尾部控制字符
+  const text = dec.toString('utf8').replace(/[\x00-\x1F]+$/, '');
   return text;
 }
 
