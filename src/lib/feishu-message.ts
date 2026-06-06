@@ -2,6 +2,7 @@
 // 飞书消息发送服务
 
 import { getTenantAccessToken } from './feishu';
+import { COURSE_INPUT_CARD_TEMPLATE } from './feishu-card-templates';
 
 const FEISHU_API_BASE = 'https://open.feishu.cn/open-apis';
 
@@ -264,72 +265,10 @@ export function renderTemplate(template: string, variables: Record<string, any>)
 /**
  * 构建"补录本周 AI 公开课"的输入卡片
  * 用于周一 18:25 CST 推给 course_admin 用户
+ * JSON 来源：src/lib/feishu-card-templates.ts 的 COURSE_INPUT_CARD_TEMPLATE
  */
 export function buildCourseInputCard(): object {
-  return {
-    config: { wide_screen_mode: true },
-    header: {
-      title: { tag: 'plain_text', content: '📚 补录本周 AI 公开课' },
-      template: 'orange',
-    },
-    elements: [
-      {
-        tag: 'div',
-        text: {
-          tag: 'lark_md',
-          content: '请在 **本周公开课结束** 后填写，提交后立即同步到 AI 岛。',
-        },
-      },
-      { tag: 'hr' },
-      {
-        tag: 'form',
-        name: 'course_form',
-        elements: [
-          {
-            tag: 'input', name: 'title',
-            label: { tag: 'plain_text', content: '课程标题 *' },
-            placeholder: { tag: 'plain_text', content: '例：用 Claude Code 写周报' },
-            input: { type: 'text', max_length: 100 },
-          },
-          {
-            tag: 'input', name: 'instructor',
-            label: { tag: 'plain_text', content: '讲师 *' },
-            input: { type: 'text' },
-          },
-          {
-            tag: 'select_static', name: 'content_type',
-            label: { tag: 'plain_text', content: '内容形式 *' },
-            options: [['video', '视频'], ['doc', '文档']],
-          },
-          {
-            tag: 'date_picker', name: 'published_at',
-            label: { tag: 'plain_text', content: '开课日期' },
-            date_picker: { type: 'date' },
-          },
-          {
-            tag: 'input', name: 'cover_image',
-            label: { tag: 'plain_text', content: '封面图 URL' },
-            input: { type: 'text' },
-          },
-          {
-            tag: 'input', name: 'courseware_url',
-            label: { tag: 'plain_text', content: '课件链接' },
-            input: { type: 'text' },
-          },
-          {
-            tag: 'input', name: 'video_url',
-            label: { tag: 'plain_text', content: '视频链接' },
-            input: { type: 'text' },
-          },
-          {
-            tag: 'input', name: 'period',
-            label: { tag: 'plain_text', content: '期数（如：第 12 期）' },
-            input: { type: 'text', max_length: 50 },
-          },
-        ],
-      },
-    ],
-  };
+  return COURSE_INPUT_CARD_TEMPLATE.json;
 }
 
 /** 提交成功后替换原卡片的"已提交"提示 */

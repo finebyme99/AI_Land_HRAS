@@ -11,6 +11,7 @@ import {
   SendOutlined, ExperimentOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
+import { FEISHU_CARD_TEMPLATES, getFeishuCardTemplateById } from '@/lib/feishu-card-templates';
 import dayjs from 'dayjs';
 
 type RecipientType = 'user' | 'role' | 'chat_id';
@@ -85,6 +86,7 @@ export default function AdminRemindersPage() {
   const frequency = Form.useWatch('frequency', form);
   const recipientType = Form.useWatch('recipient_type', form) as RecipientType | undefined;
   const useCard = Form.useWatch('use_card', form) as boolean | undefined;
+  const cardTemplateId = Form.useWatch('card_template_id', form) as string | undefined;
 
   useEffect(() => {
     if (!authLoading && !isAdmin) router.replace('/');
@@ -152,6 +154,13 @@ export default function AdminRemindersPage() {
     const firstType: RecipientType = (targets[0]?.recipient_type as RecipientType) ?? 'user';
     const allSameType = targets.every((t) => (t.recipient_type ?? 'user') === firstType);
 
+    // 检测现有 card_template 匹配哪个预设 id
+    let matchedTemplateId: string | undefined;
+    if (item.card_template) {
+      const matchTpl = FEISHU_CARD_TEMPLATES.find((t) => JSON.stringify(t.json) === JSON.stringify(item.card_template));
+      matchedTemplateId = matchTpl?.id ?? '__custom__';
+    }
+
     form.setFieldsValue({
       title: item.title,
       content: item.content,
@@ -165,6 +174,7 @@ export default function AdminRemindersPage() {
       role_ids: targets.filter((t) => t.recipient_type === 'role').map((t) => t.recipient_id).filter(Boolean) as string[],
       chat_id: targets.find((t) => t.recipient_type === 'chat_id')?.recipient_id ?? undefined,
       use_card: !!item.card_template,
+      card_template_id: matchedTemplateId,
       card_template: item.card_template ? JSON.stringify(item.card_template, null, 2) : '',
     });
     setModalOpen(true);
@@ -258,17 +268,29 @@ export default function AdminRemindersPage() {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = async (specificId?: string) => {
     setSending(true);
     try {
-      const res = await fetch('/api/admin/reminders/send?mode=send', { method: 'POST' });
+      const url = specificId
+        ? `/api/admin/reminders/send?mode=send&id=${encodeURIComponent(specificId)}`
+        : '/api/admin/reminders/send?mode=send';
+      const res = await fetch(url, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '发送失败');
 
-      const parts = [`✅ ${data.sent} 成功`];
-      if (data.failed > 0) parts.push(`❌ ${data.failed} 失败`);
-      if (data.noFeishuId > 0) parts.push(`⚠️ ${data.noFeishuId} 无飞书ID`);
-      if (data.skipped > 0) parts.push(`⏭ ${data.skipped} 跳过`);
+      const parts = [];
+      if (data.mode === 'send-one') {
+        parts.push(`📤「${data.title}」已立即发送`);
+        parts.push(`✅ ${data.sent} 成功`);
+        if (data.failed > 0) parts.push(`❌ ${data.failed} 失败`);
+        if (data.noFeishuId > 0) parts.push(`⚠️ ${data.noFeishuId} 无飞书ID`);
+        if (data.skipped > 0) parts.push(`⏭ ${data.skipped} 跳过`);
+      } else {
+        parts.push(`✅ ${data.sent} 成功`);
+        if (data.failed > 0) parts.push(`❌ ${data.failed} 失败`);
+        if (data.noFeishuId > 0) parts.push(`⚠️ ${data.noFeishuId} 无飞书ID`);
+        if (data.skipped > 0) parts.push(`⏭ ${data.skipped} 跳过`);
+      }
 
       // 显示失败详情
       const failedDetails = data.details?.filter((d: any) => d.status === 'failed') || [];
@@ -353,9 +375,12 @@ export default function AdminRemindersPage() {
     {
       title: '操作',
       key: 'action',
-      width: 180,
+      width: 240,
       render: (_: any, record: ReminderItem) => (
         <Space size="small">
+          <Button type="link" size="small" icon={<SendOutlined />} onClick={() => handleSend(record.id)} loading={sending}>
+            立即发送
+          </Button>
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>编辑</Button>
           <Popconfirm title="确认删除？" onConfirm={() => handleDelete(record.id)}>
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
@@ -387,8 +412,8 @@ export default function AdminRemindersPage() {
             <Button icon={<ExperimentOutlined />} onClick={handlePreview} loading={previewing}>
               预览（发给自己）
             </Button>
-            <Button type="primary" danger icon={<SendOutlined />} onClick={handleSend} loading={sending}>
-              立即发送
+            <Button icon={<SendOutlined />} onClick={() => handleSend()} loading={sending}>
+              扫发到期
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
               创建提醒
@@ -500,14 +525,38 @@ export default function AdminRemindersPage() {
               <Switch />
             </Form.Item>
             {useCard && (
-              <Form.Item
-                name="card_template"
-                label="飞书卡片 JSON"
-                tooltip="完整飞书卡片 JSON；包含 header/elements 等结构"
-                rules={[{ required: true, message: '启用卡片后必填' }]}
-              >
-                <Input.TextArea rows={8} placeholder='{"header": {...}, "elements": [...]}' style={{ fontFamily: 'monospace' }} />
-              </Form.Item>
+              <>
+                <Form.Item
+                  name="card_template_id"
+                  label="卡片模板"
+                  tooltip="选预设（推荐），或选「自定义」自己贴 JSON"
+                  rules={[{ required: true, message: '启用卡片后必选模板' }]}
+                >
+                  <Select
+                    placeholder="选择卡片模板"
+                    options={[
+                      ...FEISHU_CARD_TEMPLATES.map((t) => ({ value: t.id, label: `${t.name} — ${t.description}` })),
+                      { value: '__custom__', label: '自定义（下面贴 JSON）' },
+                    ]}
+                    onChange={(v) => {
+                      if (v && v !== '__custom__') {
+                        const tpl = getFeishuCardTemplateById(v);
+                        if (tpl) form.setFieldValue('card_template', JSON.stringify(tpl.json, null, 2));
+                      } else {
+                        form.setFieldValue('card_template', '');
+                      }
+                    }}
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="card_template"
+                  label="飞书卡片 JSON（选预设自动填，可手动改）"
+                  tooltip="完整飞书卡片 JSON；包含 header/elements 等结构"
+                  rules={[{ required: true, message: '启用卡片后必填' }]}
+                >
+                  <Input.TextArea rows={8} placeholder='{"header": {...}, "elements": [...]}' style={{ fontFamily: 'monospace' }} />
+                </Form.Item>
+              </>
             )}
             <Form.Item name="is_active" label="启用" valuePropName="checked">
               <Switch />

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-import { executeReminders, sendPreviewToUser } from '@/lib/reminder-service';
+import { executeReminders, sendOneReminderNow, sendPreviewToUser } from '@/lib/reminder-service';
 
 async function requireAdmin(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
@@ -12,14 +12,16 @@ async function requireAdmin(request: NextRequest) {
 }
 
 // POST — 手动触发
-// ?mode=preview → 发预览给管理员自己
-// ?mode=send    → 实际发送给所有目标（默认）
+// ?mode=preview              → 发预览给管理员自己
+// ?mode=send                 → 发送所有到期的活跃提醒（按 next_send_at）
+// ?mode=send&id=<reminderId> → 立即发指定 reminder（绕过 next_send_at，按配置 targets 实时派发）
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ error: '仅管理员可操作' }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get('mode') || 'send';
+  const id = searchParams.get('id');
 
   try {
     if (mode === 'preview') {
@@ -54,7 +56,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 实际发送
+    if (mode === 'send' && id) {
+      // 立即发指定 reminder（绕过 next_send_at，不动下次时间）
+      const result = await sendOneReminderNow(id, false);
+      if (!result.found) {
+        return NextResponse.json({ error: 'reminder 不存在' }, { status: 404 });
+      }
+      if (!result.active) {
+        return NextResponse.json({ error: 'reminder 已停用' }, { status: 400 });
+      }
+      return NextResponse.json({ mode: 'send-one', ...result });
+    }
+
+    // 实际发送：所有到期的活跃提醒
     const result = await executeReminders(false);
     return NextResponse.json({ mode: 'send', ...result });
   } catch (error) {

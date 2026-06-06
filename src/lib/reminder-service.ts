@@ -129,6 +129,125 @@ export async function sendPreviewToUser(
 }
 
 /**
+ * 把一条 reminder 按其 targets（user/role/chat_id）派发出去
+ * 纯发送逻辑，不动 next_send_at；executeReminders 和 sendOneReminderNow 都用它
+ */
+export async function sendReminderToTargets(reminder: Reminder, dryRun = false): Promise<{
+  total: number;
+  sent: number;
+  skipped: number;
+  failed: number;
+  noFeishuId: number;
+  details: Array<{ reminderId: string; title: string; userId: string; status: string; error?: string }>;
+}> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = { total: 0, sent: 0, skipped: 0, failed: 0, noFeishuId: 0, details: [] as any[] };
+
+  // 获取提醒对象（含 recipient_type）
+  const { data: targets } = await getSupabaseAdmin()
+    .from('reminder_targets')
+    .select('user_id, recipient_type, recipient_id')
+    .eq('reminder_id', reminder.id);
+
+  if (!targets || targets.length === 0) {
+    return result;
+  }
+
+  // 逐个 target 派发：user / role / chat_id
+  for (const target of targets) {
+    const rType = (target.recipient_type as RecipientType) ?? 'user';
+    const rId = target.recipient_id ?? target.user_id;
+    if (!rId) continue;
+
+    if (rType === 'chat_id') {
+      // 群聊推送：直接发到 chat_id
+      result.total++;
+      const sendResult = await sendToRecipient(
+        reminder, rId, 'chat_id', dryRun, { chatId: rId },
+      );
+      tally(result, sendResult, reminder, rId);
+      continue;
+    }
+
+    if (rType === 'role') {
+      // 角色：展开为该 role 的所有用户
+      const { data: roleUsers } = await getSupabaseAdmin()
+        .from('users')
+        .select('id, feishu_open_id, name')
+        .contains('roles', [rId]);
+      if (!roleUsers || roleUsers.length === 0) {
+        result.details.push({
+          reminderId: reminder.id, title: reminder.title, userId: rId,
+          status: 'no_users', error: `角色 ${rId} 下无用户`,
+        });
+        continue;
+      }
+      for (const u of roleUsers) {
+        result.total++;
+        const sendResult = await sendToRecipient(
+          reminder, u.id, 'user', dryRun, { feishuOpenId: u.feishu_open_id, userId: u.id },
+        );
+        tally(result, sendResult, reminder, u.id);
+      }
+      continue;
+    }
+
+    // rType === 'user'
+    const { data: user } = await getSupabaseAdmin()
+      .from('users')
+      .select('id, feishu_open_id, name')
+      .eq('id', rId)
+      .maybeSingle();
+    if (!user) {
+      result.details.push({
+        reminderId: reminder.id, title: reminder.title, userId: rId,
+        status: 'user_not_found', error: '用户不存在',
+      });
+      continue;
+    }
+    result.total++;
+    const sendResult = await sendToRecipient(
+      reminder, user.id, 'user', dryRun, { feishuOpenId: user.feishu_open_id, userId: user.id },
+    );
+    tally(result, sendResult, reminder, user.id);
+  }
+
+  return result;
+}
+
+/**
+ * 立即发指定 reminder（绕过 next_send_at 调度检查，不更新下次时间）
+ * 用于"立即发送"按钮：用户手动触发，按当前 targets 实时派发
+ */
+export async function sendOneReminderNow(reminderId: string, dryRun = false): Promise<{
+  found: boolean;
+  active: boolean;
+  source: 'manual-force';
+  reminderId: string;
+  title: string;
+  total: number;
+  sent: number;
+  skipped: number;
+  failed: number;
+  noFeishuId: number;
+  details: Array<{ reminderId: string; title: string; userId: string; status: string; error?: string }>;
+}> {
+  const { data: reminder, error } = await getSupabaseAdmin()
+    .from('reminders')
+    .select('*')
+    .eq('id', reminderId)
+    .maybeSingle();
+  if (error || !reminder) {
+    return {
+      found: false, active: false, source: 'manual-force', reminderId, title: '',
+      total: 0, sent: 0, skipped: 0, failed: 0, noFeishuId: 0, details: [],
+    };
+  }
+  const r = await sendReminderToTargets(reminder, dryRun);
+  return { found: true, active: !!reminder.is_active, source: 'manual-force', reminderId, title: reminder.title, ...r };
+}
+
+/**
  * 执行一次提醒发送（供 cron 或手动触发）
  * dryRun=true 时只返回预览，不实际发送
  */
@@ -155,79 +274,17 @@ export async function executeReminders(dryRun = false): Promise<{
   const result = { total: 0, sent: 0, skipped: 0, failed: 0, noFeishuId: 0, details: [] as any[] };
 
   for (const reminder of dueReminders || []) {
-    // 获取提醒对象（含 recipient_type）
-    const { data: targets } = await getSupabaseAdmin()
-      .from('reminder_targets')
-      .select('user_id, recipient_type, recipient_id')
-      .eq('reminder_id', reminder.id);
+    // 派发到该 reminder 配置的 targets
+    const r = await sendReminderToTargets(reminder, dryRun);
+    result.total += r.total;
+    result.sent += r.sent;
+    result.skipped += r.skipped;
+    result.failed += r.failed;
+    result.noFeishuId += r.noFeishuId;
+    result.details.push(...r.details);
 
-    if (!targets || targets.length === 0) {
-      // 无对象，跳过但仍更新下次发送时间
-      await updateNextSend(reminder);
-      continue;
-    }
-
-    // 逐个 target 派发：user / role / chat_id
-    for (const target of targets) {
-      const rType = (target.recipient_type as RecipientType) ?? 'user';
-      const rId = target.recipient_id ?? target.user_id;
-      if (!rId) continue;
-
-      if (rType === 'chat_id') {
-        // 群聊推送：直接发到 chat_id
-        result.total++;
-        const sendResult = await sendToRecipient(
-          reminder, rId, 'chat_id', dryRun, { chatId: rId },
-        );
-        tally(result, sendResult, reminder, rId);
-        continue;
-      }
-
-      if (rType === 'role') {
-        // 角色：展开为该 role 的所有用户
-        const { data: roleUsers } = await getSupabaseAdmin()
-          .from('users')
-          .select('id, feishu_open_id, name')
-          .contains('roles', [rId]);
-        if (!roleUsers || roleUsers.length === 0) {
-          result.details.push({
-            reminderId: reminder.id, title: reminder.title, userId: rId,
-            status: 'no_users', error: `角色 ${rId} 下无用户`,
-          });
-          continue;
-        }
-        for (const u of roleUsers) {
-          result.total++;
-          const sendResult = await sendToRecipient(
-            reminder, u.id, 'user', dryRun, { feishuOpenId: u.feishu_open_id, userId: u.id },
-          );
-          tally(result, sendResult, reminder, u.id);
-        }
-        continue;
-      }
-
-      // rType === 'user'
-      const { data: user } = await getSupabaseAdmin()
-        .from('users')
-        .select('id, feishu_open_id, name')
-        .eq('id', rId)
-        .maybeSingle();
-      if (!user) {
-        result.details.push({
-          reminderId: reminder.id, title: reminder.title, userId: rId,
-          status: 'user_not_found', error: '用户不存在',
-        });
-        continue;
-      }
-      result.total++;
-      const sendResult = await sendToRecipient(
-        reminder, user.id, 'user', dryRun, { feishuOpenId: user.feishu_open_id, userId: user.id },
-      );
-      tally(result, sendResult, reminder, user.id);
-    }
-
-    // 更新下次发送时间
-    if (!dryRun) {
+    // 无对象时仍更新下次时间
+    if (r.total === 0) {
       await updateNextSend(reminder);
     }
   }

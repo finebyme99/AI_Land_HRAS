@@ -34,12 +34,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
   const body = await request.json();
-  const { title, content, frequency, send_time, send_day, send_date, is_active, user_ids } = body;
+  const { title, content, frequency, send_time, send_day, send_date, is_active, targets, user_ids, card_template } = body;
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (title !== undefined) updates.title = title;
   if (content !== undefined) updates.content = content;
   if (is_active !== undefined) updates.is_active = is_active;
+  if (card_template !== undefined) updates.card_template = card_template;
 
   if (frequency !== undefined) {
     updates.frequency = frequency;
@@ -61,12 +62,29 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // 更新对象
-  if (user_ids !== undefined) {
+  // 更新对象（targets 优先，兼容旧版 user_ids）
+  if (Array.isArray(targets) || Array.isArray(user_ids)) {
+    const newTargets: Array<{ user_id: string | null; recipient_type: string; recipient_id: string | null }> = [];
+    if (Array.isArray(targets)) {
+      for (const t of targets) {
+        if (!t || (!t.user_id && !t.recipient_id)) continue;
+        newTargets.push({
+          user_id: t.user_id ?? null,
+          recipient_type: t.recipient_type ?? 'user',
+          recipient_id: t.recipient_id ?? null,
+        });
+      }
+    } else if (Array.isArray(user_ids)) {
+      for (const uid of user_ids) {
+        newTargets.push({ user_id: uid, recipient_type: 'user', recipient_id: uid });
+      }
+    }
     await getSupabaseAdmin().from('reminder_targets').delete().eq('reminder_id', id);
-    if (user_ids.length > 0) {
-      const targets = user_ids.map((uid: string) => ({ reminder_id: id, user_id: uid }));
-      await getSupabaseAdmin().from('reminder_targets').insert(targets);
+    if (newTargets.length > 0) {
+      const { error: tErr } = await getSupabaseAdmin().from('reminder_targets').insert(
+        newTargets.map((t) => ({ reminder_id: id, ...t }))
+      );
+      if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
     }
   }
 
