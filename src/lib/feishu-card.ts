@@ -19,6 +19,18 @@ async function getEncryptKey(tenantKey: string): Promise<string | null> {
   return data?.encrypt_key ?? null;
 }
 
+/** 单租户 fallback：当 tenantKey 缺失但有唯一 active feishu_apps 时，返回该行的 encrypt_key */
+async function getSingleActiveEncryptKey(): Promise<string | null> {
+  const { data } = await getSupabaseAdmin()
+    .from('feishu_apps')
+    .select('id, encrypt_key')
+    .eq('status', 'active')
+    .not('encrypt_key', 'is', null);
+  // 多个 active + 有 encrypt_key 时无法判定，仍返回 null（安全失败）
+  if (!data || data.length !== 1) return null;
+  return data[0].encrypt_key;
+}
+
 /** 飞书回调验签（无加密 payload 时用） */
 function verifySignature(
   encryptKey: string,
@@ -85,10 +97,15 @@ export async function verifyAndDecryptCardEvent(
 
   // 加密 payload
   if (typeof envelope.encrypt === 'string') {
-    if (!tenantKey) return { ok: false, error: 'missing tenant_key' };
-    const encKey = await getEncryptKey(tenantKey);
+    let encKey: string | null = null;
+    if (tenantKey) {
+      encKey = await getEncryptKey(tenantKey);
+    } else {
+      // 单租户 fallback：仅 1 个 active + 有 encrypt_key 的 app 时用之
+      encKey = await getSingleActiveEncryptKey();
+    }
     if (!encKey) {
-      console.error('[feishu-card] no encrypt_key for tenant', tenantKey);
+      console.error('[feishu-card] no encrypt_key resolvable', { tenantKey });
       return { ok: false, error: 'no encrypt_key' };
     }
     try {
