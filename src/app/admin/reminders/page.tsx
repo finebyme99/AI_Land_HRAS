@@ -480,7 +480,7 @@ export default function AdminRemindersPage() {
                     { value: 'admin', label: '管理员' },
                     { value: 'moderator', label: '版主' },
                     { value: 'reviewer', label: '评委' },
-                    { value: 'course_admin', label: '公开管理员' },
+                    { value: 'course_admin', label: 'AI 课程管理员' },
                     { value: 'contributor', label: '贡献者' },
                   ]}
                 />
