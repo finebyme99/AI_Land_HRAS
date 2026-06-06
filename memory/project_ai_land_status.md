@@ -38,10 +38,13 @@ type: project
 
 | 路由 | 功能 |
 |------|------|
-| `/api/auth/feishu` | 飞书 OAuth 发起 |
-| `/api/auth/feishu/callback` | OAuth 回调 + cookie 设置 |
+| `/api/auth/feishu` | 飞书 OAuth 发起（多租户：?app_id=xxx） |
+| `/api/auth/feishu/callback` | OAuth 回调（联合主键 upsert + 写 auth_logs） |
 | `/api/auth/me` | 获取当前用户 |
 | `/api/auth/logout` | 登出 |
+| `/api/auth/login` `/api/auth/register` | 用户名密码兜底（**待下线**） |
+| `/api/feishu-apps` | 飞书多租户应用 CRUD + 测试连通性（admin） |
+| `/api/feishu-apps/public` | 公开列表（login 页用） |
 | `/api/topics` | 创建话题 |
 | `/api/comments` | 创建评论 |
 | `/api/answers` | 创建回答 |
@@ -51,29 +54,34 @@ type: project
 | `/api/competitions/sync` | 飞书 Base 赛事方案同步（服务端过滤 + 附件去重） |
 | `/api/competitions/reviews` | 评审评分（GET 查询 / POST 提交，8维加权） |
 | `/api/competitions/reviews/export` | 评审数据 CSV 导出（管理员） |
+| `/api/cron/feishu-apps-health` | 飞书多租户应用连通性（每天 3 AM UTC） |
 
 ## 已完成功能
 
 - Glassmorphism 全站风格（21 个页面重写）
-- 飞书 OAuth 登录（cookie session）
-- 角色权限控制（user/contributor/moderator/admin/reviewer）
+- 飞书多租户 OAuth 登录（feishu_apps 表 + 联合主键，支持 3+ 家企业）
+- 角色权限控制（user/contributor/moderator/admin/reviewer/course_admin）
 - 精选标记功能（admin/moderator）
 - 动态数据看板（IntersectionObserver 动画计数器）
-- 管理员后台（用户管理 + 平台设置 + 评审管理）
+- 管理员后台（用户管理 + 平台设置 + 评审管理 + 飞书应用配置 + 提醒管理）
 - 导航栏响应式（桌面胶囊 + 移动端抽屉 + 底部 tab）
 - HRAS Logo 集成
 - 评论/点赞/收藏 API
 - 话题/回答创建 API
 - AI大赛评审系统（8维加权评分，三类评委角色，Popconfirm 提交）
+- AI大赛评审一览页（CHO 复审）
 - 飞书同步优化（服务端过滤 + 附件去重 + 并行下载）
+- 飞书 cron（课程同步 / 智能提醒 / 多租户应用连通性）
+- 硬编码白名单清理（HARDCODED_REVIEWER_NAMES 已删，改 sync 回填）
 
 ## 待完成
 
-- [ ] 运行 `008_platform_settings_award_count.sql` 迁移（Supabase Dashboard）
-- [ ] 模块 feat 分支可能与 main 有分歧，需要检查/合并
+- [ ] GF 飞书登录 error 20029 排查（让 GF IT 在飞书开放平台配 redirect_uri 白名单）
+- [ ] WX 飞书应用凭证 + 录入
+- [ ] 8 个 single-tenant 调用点迁到 `getTenantAccessTokenFor`（**用户 2026-06-05 决定先不动**，等 1 周观察期过再定）
+- [ ] 1 周后下线用户名密码兜底
 - [ ] 内容审核后台（轻量实现）
 - [ ] 多语言支持
-- [ ] 飞书消息通知
 - [ ] mock-data.ts 清理（仍存在于 src/lib/）
 
 ## 设计系统
