@@ -55,7 +55,8 @@
   .gradient-text{background:var(--grad-1);-webkit-background-clip:text;background-clip:text;color:transparent}
 
   /* ───────────── Nav ───────────── */
-  .nav{position:fixed;inset:18px 24px auto 24px;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 22px 16px 28px;border-radius:999px;backdrop-filter:saturate(160%) blur(18px);-webkit-backdrop-filter:saturate(160%) blur(18px);background:rgba(255,255,255,.78);border:1px solid var(--line);transition:all .4s ease;box-shadow:0 1px 0 rgba(255,255,255,.6) inset, 0 8px 28px rgba(10,10,20,.06)}
+  .nav{position:fixed;inset:72px 24px auto 24px;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 22px 16px 28px;border-radius:999px;backdrop-filter:saturate(160%) blur(18px);-webkit-backdrop-filter:saturate(160%) blur(18px);background:rgba(255,255,255,.78);border:1px solid var(--line);transition:all .4s ease;box-shadow:0 1px 0 rgba(255,255,255,.6) inset, 0 8px 28px rgba(10,10,20,.06)}
+  body.banner-closed .nav{inset:18px 24px auto 24px}
   .nav.scrolled{box-shadow:var(--shadow-md);background:rgba(255,255,255,.92)}
   .brand{display:flex;align-items:center;gap:16px;letter-spacing:-.02em;min-width:0}
   .brand .hras-logo{width:auto;height:38px;flex:0 0 auto;display:block;object-fit:contain}
@@ -455,9 +456,89 @@
   .quote-card .mark{font-family:"Space Grotesk",sans-serif;font-size:120px;line-height:.5;background:var(--grad-1);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700}
   .quote-card blockquote{font-size:clamp(22px,2.6vw,32px);font-weight:600;letter-spacing:-.02em;line-height:1.4;max-width:760px;margin:24px auto 0}
   .quote-card .by{margin-top:24px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5);font-weight:600}
+
+  /* ─────────── 评审机制更新通知 ─────────── */
+  .update-banner{
+    position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:14px;
+    padding:14px 56px 14px 24px;color:#fff;font-size:14.5px;font-weight:500;letter-spacing:.01em;line-height:1.5;
+    text-align:center;background:linear-gradient(120deg,#5b5cff 0%,#00d4ff 55%,#ff5e8a 110%);
+    box-shadow:0 6px 24px rgba(91,92,255,.28);overflow:hidden;z-index:110;
+    animation:banner-glow 3.6s ease-in-out infinite;
+  }
+  .update-banner::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 18% 50%,rgba(255,255,255,.22),transparent 55%);pointer-events:none}
+  .update-banner::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.18) 50%,transparent 100%);transform:translateX(-100%);animation:banner-shine 6s ease-in-out infinite;pointer-events:none}
+  .update-banner-link{
+    position:relative;display:flex;align-items:center;justify-content:center;gap:14px;
+    color:#fff;flex:1;min-width:0;z-index:1;
+  }
+  .ub-icon{
+    display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;
+    background:rgba(255,255,255,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);flex-shrink:0;
+    animation:banner-pulse 2s ease-in-out infinite;
+  }
+  .ub-icon svg{width:14px;height:14px;stroke:#fff;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .ub-text{flex:1;min-width:0;text-shadow:0 1px 2px rgba(10,10,20,.18)}
+  .ub-text strong{font-weight:700;margin-right:6px;letter-spacing:.02em}
+  .ub-cta{
+    display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;
+    background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);
+    font-size:13px;font-weight:600;white-space:nowrap;transition:all .2s ease;flex-shrink:0;
+    text-shadow:0 1px 2px rgba(10,10,20,.18);
+  }
+  .ub-cta svg{width:12px;height:12px;stroke:#fff;stroke-width:2.6;fill:none;transition:transform .2s ease}
+  .update-banner-link:hover .ub-cta{background:rgba(255,255,255,.32);transform:translateX(2px)}
+  .update-banner-link:hover .ub-cta svg{transform:translateX(2px)}
+  .ub-close{
+    position:absolute;right:14px;top:50%;transform:translateY(-50%);
+    width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.15);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .2s,transform .2s;
+    font-size:20px;line-height:1;color:#fff;border:0;padding:0;z-index:2;
+  }
+  .ub-close:hover{background:rgba(255,255,255,.3);transform:translateY(-50%) scale(1.06)}
+  .update-banner.is-hidden{display:none}
+  @keyframes banner-glow{
+    0%,100%{box-shadow:0 6px 24px rgba(91,92,255,.28)}
+    50%{box-shadow:0 10px 36px rgba(91,92,255,.45),0 0 0 1px rgba(255,255,255,.12) inset}
+  }
+  @keyframes banner-shine{
+    0%,15%{transform:translateX(-100%)}
+    55%,100%{transform:translateX(100%)}
+  }
+  @keyframes banner-pulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.4)}
+    50%{box-shadow:0 0 0 8px rgba(255,255,255,0)}
+  }
+  @media (max-width:760px){
+    .update-banner{padding:11px 44px 11px 14px;font-size:13px;gap:8px}
+    .update-banner-link{gap:8px}
+    .ub-icon{width:22px;height:22px}
+    .ub-icon svg{width:12px;height:12px}
+    .ub-cta{font-size:12px;padding:4px 10px}
+    .ub-close{right:8px;width:22px;height:22px;font-size:16px}
+  }
+  @media (max-width:480px){
+    .update-banner-link{flex-wrap:wrap;justify-content:flex-start}
+    .ub-text{flex:1 1 100%;order:3;text-align:left;margin-top:2px}
+  }
 </style>
 </head>
 <body>
+
+<!-- ─────────── 评审机制更新通知 ─────────── -->
+<div class="update-banner" id="update-banner" role="region" aria-label="评审机制已更新通知">
+  <a class="update-banner-link" href="#process" aria-label="评审机制已更新，请详细了解新版评审机制">
+    <span class="ub-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+    </span>
+    <span class="ub-text">
+      <strong>评审机制已更新</strong>——为帮助大家以最佳状态参赛，请详细了解新版评审机制
+    </span>
+    <span class="ub-cta">了解评审机制
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+    </span>
+  </a>
+  <button class="ub-close" type="button" aria-label="关闭通知" onclick="document.getElementById('update-banner').classList.add('is-hidden');document.body.classList.add('banner-closed')">×</button>
+</div>
 
 <!-- ─────────── Nav ─────────── -->
 <nav class="nav" id="nav">
