@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { App, Button, Card, Form, Input, Modal, Space, Table } from 'antd';
+import { App, Button, Card, Checkbox, Form, Input, Modal, Space, Table } from 'antd';
 import { PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { FeishuApp } from '@/types';
 
@@ -109,6 +109,21 @@ export default function FeishuAppsPage() {
           </Form.Item>
           <Form.Item label="回调 URL" name="redirect_uri" rules={[{ required: true }]}>
             <Input placeholder="https://hras-ai-land.vercel.app/api/auth/feishu/callback" />
+          </Form.Item>
+          <Form.Item
+            name="redirect_uri_confirmed"
+            valuePropName="checked"
+            rules={[{
+              validator: (_, v) => v ? Promise.resolve() : Promise.reject(new Error('请确认已配置回调 URL')),
+            }]}
+            extra={
+              <span style={{ color: '#b3540e' }}>
+                ⚠️ 必勾：你（或对方 IT）已登录飞书开放平台后台，把上面的「回调 URL」加进该应用的「重定向 URL」白名单？<br />
+                没配的话，登录会报飞书 error 20029「重定向 URL 有误」。
+              </span>
+            }
+          >
+            <Checkbox>已确认在飞书开放平台配好「重定向 URL」白名单</Checkbox>
           </Form.Item>
         </Form>
       </Modal>
