@@ -71,12 +71,12 @@ export async function handleCourseCardSubmit(
       messageId,
       buildErrorCard(error || '写入失败', formValue as Record<string, unknown>),
     );
-    return { ok: false, error };
+    return { ok: false, error: error || '写入失败' };
   }
 
   await replaceFeishuCard(
     messageId,
-    buildSuccessCard({ id: course.id, title: course.title, instructor: formValue.instructor }),
+    buildSuccessCard({ id: course.id, title: course.title, instructor: formValue.instructor!.trim() }),
   );
   return { ok: true };
 }
