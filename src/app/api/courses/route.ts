@@ -32,7 +32,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const editor = await requireCourseEditor(request);
   if (!editor) {
-    return NextResponse.json({ error: '仅管理员或公开管理员可发布课程' }, { status: 403 });
+    return NextResponse.json({ error: '仅管理员或 AI 课程管理员可发布课程' }, { status: 403 });
   }
 
   try {
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const editor = await requireCourseEditor(request);
   if (!editor) {
-    return NextResponse.json({ error: '仅管理员或公开管理员可编辑课程' }, { status: 403 });
+    return NextResponse.json({ error: '仅管理员或 AI 课程管理员可编辑课程' }, { status: 403 });
   }
 
   const id = request.nextUrl.searchParams.get('id');
