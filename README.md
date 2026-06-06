@@ -26,8 +26,8 @@ npm run dev
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目 URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (API 路由用) |
-| `FEISHU_APP_ID` | 飞书应用 App ID |
-| `FEISHU_APP_SECRET` | 飞书应用 App Secret |
+
+> **飞书多租户说明（2026-06-05）**：飞书应用凭证**不再在 env 里**，改存 `feishu_apps` 表（admin UI 录入）。详见 `CONTRIBUTING.md` 和 `docs/superpowers/specs/2026-06-05-feishu-external-sso-design.md`。
 
 ## 项目结构
 

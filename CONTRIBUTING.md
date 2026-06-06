@@ -55,15 +55,27 @@ src/
 │   │   ├── reviews/       # 评审管理（大赛评审）
 │   │   ├── push/          # 飞书推送
 │   │   ├── reminders/     # 提醒管理
+│   │   ├── feishu-apps/   # 飞书多租户应用配置（CRUD + 测试连通性）
 │   │   └── settings/      # 平台设置
 │   ├── profile/           # 个人中心
-│   ├── login/             # 登录
+│   ├── login/             # 登录（多企业飞书按钮）
 │   └── api/               # API 路由
 │       ├── resources/     # 工具管理 API
 │       ├── cases/         # 案例 API
 │       │   ├── route.ts   # POST 创建 / PATCH 审核
 │       │   ├── admin/     # GET/PUT 管理员操作
 │       │   └── [id]/      # GET 单案例详情
+│       ├── auth/          # 认证
+│       │   ├── feishu/        # GET 发起 OAuth（多租户）
+│       │   ├── feishu/callback/  # GET OAuth 回调（联合主键 upsert）
+│       │   ├── login|register|logout|me/  # 用户名密码兜底
+│       │   └── email/         # 邮箱魔法链接（未启用）
+│       ├── feishu-apps/   # 飞书多企业配置 API
+│       │   ├── public/        # GET 公开列表（login 页用）
+│       │   └── route.ts       # GET/POST/PATCH/PUT admin CRUD + 测试连通性
+│       ├── cron/          # Vercel cron
+│       │   ├── sync-courses/  # 课程同步
+│       │   └── feishu-apps-health/  # 飞书多租户应用连通性
 │       └── users/         # 用户 API
 │           └── list/      # GET 轻量用户列表
 ├── components/            # 公共组件
@@ -74,16 +86,17 @@ src/
 │   ├── auth-context.tsx   # 认证上下文
 │   ├── supabase.ts        # Supabase 客户端
 │   ├── constants.ts       # 常量枚举
-│   └── supabase-admin.ts  # Supabase Admin 客户端
+│   ├── supabase-admin.ts  # Supabase Admin 客户端
+│   └── feishu-app-store.ts  # 飞书多租户应用 + auth_logs 数据访问
 └── types/
-    └── index.ts           # 类型定义
+    └── index.ts           # 类型定义（含 FeishuApp / AuthLog / User.feishu_tenant_key）
 ```
 
 ### 权限控制
 
 - `useAuth()` 提供 `{ user, isAdmin, isReviewer, isCourseAdmin, canManageCourses, loading, signOut, refreshUser }`
 - `isAdmin` 由 `user?.roles` 数组包含 `'admin'` 或 `'moderator'` 决定
-- `isReviewer` = `isAdmin` ∪ `roles.includes('reviewer')` ∪ 飞书硬编码白名单（`HARDCODED_REVIEWER_NAMES`，见 `src/lib/constants.ts`）
+- `isReviewer` = `isAdmin` ∪ `roles.includes('reviewer')`（**2026-06 硬编码白名单已删**，改用 `competitions/sync` 同步时回填）
 - `isCourseAdmin` = `roles.includes('course_admin')`；`canManageCourses` = `isAdmin` ∪ `isCourseAdmin`
 - 角色（DB key → 中文）：`admin` 管理员 / `moderator` 版主 / `reviewer` 评委 / `course_admin` 公开管理员 / `contributor` 贡献者 / `user` 普通用户
 - admin 操作：审核内容、编辑任意案例/工具/课程、标精选、管理用户
@@ -106,13 +119,12 @@ NEXT_PUBLIC_SUPABASE_URL=xxx
 NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
 SUPABASE_SERVICE_ROLE_KEY=xxx
 
-# 飞书 OAuth
-FEISHU_APP_ID=xxx
-FEISHU_APP_SECRET=xxx
-
 # 应用 URL
 NEXT_PUBLIC_APP_URL=https://hras-ai-land.vercel.app
 ```
+
+> **飞书多租户说明（2026-06-05）**：飞书 app 凭证**不再在 env 里**，改存 `feishu_apps` 表（admin UI 录入）。
+> 老的 `FEISHU_APP_ID` / `FEISHU_APP_SECRET` env 已迁到表里。**注意**：`feishu-message.ts` 等 8 个旧 single-tenant 调用点暂时还在用 env 的 deprecated shim，迁完才能删 env。
 
 ## 部署
 
