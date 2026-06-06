@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/feishu-apps-health",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-course-card",
+      "schedule": "25 10 * * 1"
     }
   ]
 }
