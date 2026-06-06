@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 现已改为 sync/route.ts 在每次同步时从 submissions.reviewers / verifier
   // 自动回填 reviewer 角色到 users.roles。
   const isReviewer = isAdmin || !!user?.roles?.includes('reviewer');
-  // 公开管理员：单独角色，用于课程模块的同步/发布/编辑
+  // AI 课程管理员：单独角色，用于课程模块的同步/发布/编辑
   const isCourseAdmin = !!user?.roles?.includes('course_admin');
   const canManageCourses = isAdmin || isCourseAdmin;
 
