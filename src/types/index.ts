@@ -5,6 +5,7 @@ export interface FeishuApp {
   tenant_key: string;
   enterprise_name: string;
   redirect_uri: string;
+  extra_redirect_uris: string[];
   status: 'active' | 'disabled';
   created_at: string;
   created_by: string | null;

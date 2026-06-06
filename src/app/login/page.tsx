@@ -35,6 +35,9 @@ function LoginForm() {
           {/* 飞书登录：多企业 */}
           <FeishuEnterpriseButtons />
 
+          {/* 开发模式：跳过飞书 OAuth（仅 dev 显示，生产永远不会出现） */}
+          {process.env.NODE_ENV !== 'production' && <DevSkipLogin />}
+
           {/* 分隔线 */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.08)' }} />
@@ -277,5 +280,71 @@ export default function LoginPage() {
     <Suspense fallback={<div className="min-h-[80vh] flex items-center justify-center" style={{ color: 'var(--text-muted)' }}>加载中...</div>}>
       <LoginForm />
     </Suspense>
+  );
+}
+
+/** Dev-only: 跳过飞书 OAuth，直接用第一个 admin 账号登录 */
+function DevSkipLogin() {
+  const [userIdInput, setUserIdInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const skip = async (userId?: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/dev-skip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userId ? { user_id: userId } : {}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'dev-skip 失败');
+      window.location.href = '/';
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'dev-skip 失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 p-3 rounded-lg" style={{ background: 'rgba(242,127,34,0.06)', border: '1px dashed rgba(242,127,34,0.4)' }}>
+      <p className="text-[11px] font-semibold mb-2" style={{ color: '#b3540e' }}>
+        🛠 Dev 模式（仅本地 dev 显示）— 跳过飞书 OAuth
+      </p>
+      <button
+        onClick={() => skip()}
+        disabled={loading}
+        className="w-full h-9 rounded-lg text-xs font-medium text-white transition-all hover:opacity-90 disabled:opacity-60"
+        style={{ background: '#F27F22' }}
+      >
+        {loading ? '登录中...' : '用第一个 admin 账号登录（推荐郭谦）'}
+      </button>
+      <details className="mt-2">
+        <summary className="text-[10px] cursor-pointer" style={{ color: 'var(--text-muted)' }}>
+          或用指定 user_id 登录
+        </summary>
+        <div className="flex gap-2 mt-2">
+          <input
+            type="text"
+            value={userIdInput}
+            onChange={(e) => setUserIdInput(e.target.value)}
+            placeholder="user uuid"
+            className="flex-1 h-8 px-2 rounded text-xs outline-none"
+            style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(26,58,138,0.12)' }}
+          />
+          <button
+            onClick={() => userIdInput && skip(userIdInput)}
+            disabled={loading || !userIdInput}
+            className="px-3 h-8 rounded text-xs font-medium"
+            style={{ background: 'rgba(26,58,138,0.1)', color: 'var(--primary)' }}
+          >
+            登录
+          </button>
+        </div>
+      </details>
+      {error && <p className="text-[11px] mt-2" style={{ color: '#dc2626' }}>{error}</p>}
+    </div>
   );
 }

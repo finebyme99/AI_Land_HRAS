@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFeishuAuthUrl } from '@/lib/feishu';
-import { getFeishuAppByAppId } from '@/lib/feishu-app-store';
+import { getFeishuAppByAppId, getRedirectUriForOrigin } from '@/lib/feishu-app-store';
 
 // GET /api/auth/feishu?app_id=xxx — 发起飞书 OAuth 登录
 export async function GET(request: NextRequest) {
@@ -17,9 +17,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login?error=app_disabled', request.url));
   }
 
+  // 按当前 origin 选 redirect_uri（本地 / 生产共享同一 app）
+  const redirectUri = getRedirectUriForOrigin(app, request.nextUrl.origin);
+
   // state 纯随机；app_id 单独存 cookie
   const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
-  const authUrl = getFeishuAuthUrl(app.app_id, app.redirect_uri, state);
+  const authUrl = getFeishuAuthUrl(app.app_id, redirectUri, state);
 
   const response = NextResponse.redirect(authUrl);
   response.cookies.set('feishu_oauth_state', state, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 300 });

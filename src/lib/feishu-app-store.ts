@@ -44,6 +44,7 @@ export async function createFeishuApp(input: {
   tenant_key: string;
   enterprise_name: string;
   redirect_uri: string;
+  extra_redirect_uris?: string[];
   created_by?: string;
 }): Promise<FeishuApp> {
   const { data, error } = await getSupabaseAdmin()
@@ -54,6 +55,7 @@ export async function createFeishuApp(input: {
       tenant_key: input.tenant_key,
       enterprise_name: input.enterprise_name,
       redirect_uri: input.redirect_uri,
+      extra_redirect_uris: input.extra_redirect_uris ?? [],
       created_by: input.created_by,
     })
     .select()
@@ -68,6 +70,19 @@ export async function updateFeishuAppStatus(id: string, status: 'active' | 'disa
     .update({ status })
     .eq('id', id);
   if (error) throw error;
+}
+
+/**
+ * 按请求 origin 选出合适的 redirect_uri。
+ * 优先 origin 匹配 extra_redirect_uris（同一 app 多环境共享），否则回退主 redirect_uri。
+ */
+export function getRedirectUriForOrigin(app: FeishuApp, origin: string): string {
+  const normalized = origin.replace(/\/$/, '');
+  if (Array.isArray(app.extra_redirect_uris)) {
+    const hit = app.extra_redirect_uris.find((u) => u.startsWith(normalized));
+    if (hit) return hit;
+  }
+  return app.redirect_uri;
 }
 
 export async function getAppSecret(app: FeishuApp): Promise<string> {

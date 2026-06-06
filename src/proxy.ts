@@ -9,6 +9,7 @@ const PUBLIC_PATHS = [
   '/api/auth/register',
   '/api/auth/login',
   '/api/auth/logout',
+  '/api/auth/dev-skip', // dev only — endpoint 内部 NODE_ENV 保护
   '/api/feishu-apps/public',
   '/api/feishu/card-callback',
   '/api/cron/weekly-course-card',

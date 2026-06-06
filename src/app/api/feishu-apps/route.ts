@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { listFeishuApps, createFeishuApp, updateFeishuAppStatus, getAppSecret } from '@/lib/feishu-app-store';
 import { getTenantAccessTokenFor } from '@/lib/feishu';
 
@@ -33,15 +34,33 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ app });
 }
 
-// PATCH /api/feishu-apps — 改 status（admin）
+// PATCH /api/feishu-apps — 改 status 或 extra_redirect_uris（admin）
 export async function PATCH(req: NextRequest) {
   const adminId = await requireAdmin();
   if (!adminId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-  const { id, status } = await req.json();
-  if (!id || !['active', 'disabled'].includes(status)) {
-    return NextResponse.json({ error: 'invalid' }, { status: 400 });
+  const body = await req.json();
+  const { id } = body;
+  if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
+
+  const updates: Record<string, unknown> = {};
+  if (body.status && ['active', 'disabled'].includes(body.status)) {
+    updates.status = body.status;
   }
-  await updateFeishuAppStatus(id, status);
+  if (Array.isArray(body.extra_redirect_uris)) {
+    // 过滤空字符串 + 校验是合法 URL
+    updates.extra_redirect_uris = body.extra_redirect_uris
+      .map((s: string) => String(s).trim())
+      .filter((s: string) => s.length > 0);
+  }
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'no fields to update' }, { status: 400 });
+  }
+
+  const { error } = await getSupabaseAdmin()
+    .from('feishu_apps')
+    .update(updates)
+    .eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
 

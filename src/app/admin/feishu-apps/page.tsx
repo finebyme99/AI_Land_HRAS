@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { App, Button, Card, Checkbox, Form, Input, Modal, Space, Table } from 'antd';
-import { PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { PlusOutlined, ThunderboltOutlined, EditOutlined } from '@ant-design/icons';
 import type { FeishuApp } from '@/types';
 
 export default function FeishuAppsPage() {
@@ -9,6 +9,9 @@ export default function FeishuAppsPage() {
   const [apps, setApps] = useState<FeishuApp[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editing, setEditing] = useState<FeishuApp | null>(null);
+  const [editForm] = Form.useForm();
   const [form] = Form.useForm();
 
   const load = async () => {
@@ -52,6 +55,30 @@ export default function FeishuAppsPage() {
     else msgApi.error(`连通失败：${j.error}`);
   };
 
+  const openEdit = (a: FeishuApp) => {
+    setEditing(a);
+    editForm.setFieldsValue({
+      extra_redirect_uris_text: (a.extra_redirect_uris ?? []).join('\n'),
+    });
+    setEditModalOpen(true);
+  };
+
+  const onSaveExtra = async () => {
+    if (!editing) return;
+    const values = await editForm.validateFields();
+    const list = String(values.extra_redirect_uris_text || '')
+      .split('\n')
+      .map((s: string) => s.trim())
+      .filter((s: string) => s.length > 0);
+    const r = await fetch('/api/feishu-apps', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editing.id, extra_redirect_uris: list }),
+    });
+    const j = await r.json();
+    if (r.ok) { msgApi.success('已保存'); setEditModalOpen(false); setEditing(null); load(); }
+    else msgApi.error(j.error);
+  };
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -67,12 +94,24 @@ export default function FeishuAppsPage() {
             { title: '企业名称', dataIndex: 'enterprise_name' },
             { title: 'App ID', dataIndex: 'app_id' },
             { title: 'Tenant Key', dataIndex: 'tenant_key' },
+            {
+              title: '回调 URL',
+              render: (_, a) => (
+                <div className="text-xs space-y-1">
+                  <div>主：<code>{a.redirect_uri}</code></div>
+                  {a.extra_redirect_uris?.length > 0 && (
+                    <div>额外：{a.extra_redirect_uris.map((u, i) => (<div key={i}><code>{u}</code></div>))}</div>
+                  )}
+                </div>
+              ),
+            },
             { title: '状态', dataIndex: 'status', render: (s) => s === 'active' ? '✅ active' : '⛔ disabled' },
             { title: '创建时间', dataIndex: 'created_at', render: (t) => new Date(t).toLocaleString() },
             {
               title: '操作', render: (_, a) => (
                 <Space>
                   <Button size="small" icon={<ThunderboltOutlined />} onClick={() => onTest(a)}>测试</Button>
+                  <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(a)}>额外回调</Button>
                   <Button size="small" onClick={() => onToggleStatus(a)}>{a.status === 'active' ? '禁用' : '启用'}</Button>
                 </Space>
               ),
@@ -107,8 +146,14 @@ export default function FeishuAppsPage() {
           <Form.Item label="Tenant Key" name="tenant_key" rules={[{ required: true }]}>
             <Input placeholder="飞书租户 key（企业管理员在飞书后台可查）" />
           </Form.Item>
-          <Form.Item label="回调 URL" name="redirect_uri" rules={[{ required: true }]}>
+          <Form.Item label="主回调 URL（生产用）" name="redirect_uri" rules={[{ required: true }]}>
             <Input placeholder="https://hras-ai-land.vercel.app/api/auth/feishu/callback" />
+          </Form.Item>
+          <Form.Item label="额外回调 URL（每行一个，如本地 dev）" name="extra_redirect_uris_text">
+            <Input.TextArea
+              rows={3}
+              placeholder={'http://localhost:3000/api/auth/feishu/callback\nhttp://192.168.x.x:3000/api/auth/feishu/callback'}
+            />
           </Form.Item>
           <Form.Item
             name="redirect_uri_confirmed"
@@ -118,12 +163,39 @@ export default function FeishuAppsPage() {
             }]}
             extra={
               <span style={{ color: '#b3540e' }}>
-                ⚠️ 必勾：你（或对方 IT）已登录飞书开放平台后台，把上面的「回调 URL」加进该应用的「重定向 URL」白名单？<br />
+                ⚠️ 必勾：你（或对方 IT）已登录飞书开放平台后台，把上面「主回调 URL + 每个额外回调 URL」都加进该应用的「重定向 URL」白名单？<br />
                 没配的话，登录会报飞书 error 20029「重定向 URL 有误」。
               </span>
             }
           >
-            <Checkbox>已确认在飞书开放平台配好「重定向 URL」白名单</Checkbox>
+            <Checkbox>已确认在飞书开放平台配好所有「重定向 URL」白名单</Checkbox>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={editing ? `编辑额外回调 URL — ${editing.enterprise_name}` : ''}
+        open={editModalOpen}
+        onOk={onSaveExtra}
+        onCancel={() => { setEditModalOpen(false); setEditing(null); }}
+        okText="保存"
+        cancelText="取消"
+      >
+        <Form form={editForm} layout="vertical">
+          <Form.Item
+            label="额外回调 URL（每行一个）"
+            name="extra_redirect_uris_text"
+            extra={
+              <span>
+                用于多环境共享同一 app（如本地 dev + 生产）。登录路由会按当前 origin 自动匹配。<br />
+                <strong>注意：每个 URL 都必须在飞书开放平台「重定向 URL」白名单里加好，否则飞书会报 20029 错误。</strong>
+              </span>
+            }
+          >
+            <Input.TextArea
+              rows={4}
+              placeholder={'http://localhost:3000/api/auth/feishu/callback'}
+            />
           </Form.Item>
         </Form>
       </Modal>
