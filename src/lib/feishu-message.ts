@@ -9,7 +9,7 @@ const FEISHU_API_BASE = 'https://open.feishu.cn/open-apis';
 export interface SendMessageParams {
   recipientId: string;
   recipientType: 'user_id' | 'open_id' | 'chat_id';
-  messageType: 'text' | 'interactive';
+  messageType: 'text' | 'post' | 'interactive';
   content: string | object;
   priority?: 'high' | 'medium' | 'low';
 }
@@ -18,6 +18,54 @@ export interface MessageResponse {
   messageId: string;
   status: 'sent' | 'failed';
   error?: string;
+}
+
+/** 检测内容里是否有 markdown 超链接 [text](url) */
+export function hasMarkdownLinks(text: string): boolean {
+  return /\[[^\]]+\]\([^)]+\)/.test(text);
+}
+
+/**
+ * 把 reminder title + content 转成飞书 post（富文本）或 text 负载
+ *  - 有 [text](url) → post（带 title 头 + 富文本行）
+ *  - 无链接 → 纯 text（保持现状）
+ */
+export function buildReminderContent(title: string, content: string): {
+  msg_type: 'text' | 'post';
+  content: object;
+} {
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const matches = [...content.matchAll(linkRegex)];
+
+  if (matches.length === 0) {
+    return {
+      msg_type: 'text',
+      content: { text: `📌 ${title}\n\n${content}` },
+    };
+  }
+
+  // 拆 content 为 token 序列：text 段和 link 段交替
+  const tokens: Array<{ tag: 'text' | 'a'; text: string; href?: string }> = [];
+  let lastIndex = 0;
+  for (const m of matches) {
+    const before = content.slice(lastIndex, m.index!);
+    if (before) tokens.push({ tag: 'text', text: before });
+    tokens.push({ tag: 'a', text: m[1], href: m[2] });
+    lastIndex = m.index! + m[0].length;
+  }
+  if (lastIndex < content.length) {
+    tokens.push({ tag: 'text', text: content.slice(lastIndex) });
+  }
+
+  return {
+    msg_type: 'post',
+    content: {
+      zh_cn: {
+        title: `📌 ${title}`,
+        content: [tokens],
+      },
+    },
+  };
 }
 
 /**

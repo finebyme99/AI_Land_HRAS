@@ -2,7 +2,7 @@
 // 提醒服务 — 精简版：标题 + 频次 + 时间 + 对象 + 飞书自动发送
 
 import { getSupabaseAdmin } from './supabase-admin';
-import { sendFeishuMessage, sendFeishuCardMessage } from './feishu-message';
+import { sendFeishuMessage, sendFeishuCardMessage, buildReminderContent } from './feishu-message';
 
 export interface Reminder {
   id: string;
@@ -350,13 +350,13 @@ async function sendToRecipient(
       reminder.card_template as object,
     );
   } else {
-    // 文本
-    const text = `📌 ${reminder.title}\n\n${reminder.content}`;
+    // 文本 或 post（富文本，含 [text](url) 超链接时）
+    const built = buildReminderContent(reminder.title, reminder.content || '');
     res = await sendFeishuMessage({
       recipientId: ctx.feishuOpenId ?? ctx.chatId ?? '',
       recipientType: kind === 'chat_id' ? 'chat_id' : 'open_id',
-      messageType: 'text',
-      content: JSON.stringify({ text }),
+      messageType: built.msg_type,
+      content: JSON.stringify(built.content),
     });
   }
 

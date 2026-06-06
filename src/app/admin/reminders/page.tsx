@@ -444,8 +444,16 @@ export default function AdminRemindersPage() {
             <Form.Item name="title" label="提醒标题" rules={[{ required: true, message: '请输入标题' }]}>
               <Input placeholder="例：评审进度提醒" />
             </Form.Item>
-            <Form.Item name="content" label="提醒内容">
-              <Input.TextArea rows={3} placeholder="将作为飞书消息正文发送" />
+            <Form.Item
+              name="content"
+              label="提醒内容"
+              extra={
+                <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                  支持超链接语法 <code>[显示文本](https://url)</code> — 含链接时自动用富文本（post）发送，否则用纯文本
+                </span>
+              }
+            >
+              <Input.TextArea rows={4} placeholder="例：本周评审截止 [评审入口](https://example.com)\n\n也可纯文本多行" />
             </Form.Item>
             <div className="flex gap-4">
               <Form.Item name="frequency" label="频次" rules={[{ required: true }]} className="flex-1">
