@@ -10,25 +10,19 @@ import type { ColumnsType } from 'antd/es/table';
 
 const roleOptions = [
   { value: 'user', label: '普通用户' },
-  { value: 'contributor', label: '贡献者' },
   { value: 'course_admin', label: 'AI 课程管理员' },
-  { value: 'moderator', label: '版主' },
   { value: 'admin', label: '管理员' },
 ];
 
 const roleColors: Record<string, string> = {
   admin: 'red',
-  moderator: 'orange',
   course_admin: 'blue',
-  contributor: 'green',
   user: 'default',
 };
 
 const roleLabels: Record<string, string> = {
   admin: '管理员',
-  moderator: '版主',
   course_admin: 'AI 课程管理员',
-  contributor: '贡献者',
   user: '用户',
 };
 
@@ -272,7 +266,7 @@ export default function AdminUsersPage() {
       },
     },
     {
-      title: '角色',
+      title: '系统角色',
       dataIndex: 'roles',
       key: 'roles',
       width: 220,
