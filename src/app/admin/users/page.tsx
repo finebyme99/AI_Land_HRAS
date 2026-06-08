@@ -220,14 +220,18 @@ export default function AdminUsersPage() {
       key: 'action',
       width: 100,
       render: (_, record) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<KeyOutlined />}
-          onClick={() => showResetModal(record.id, record.name)}
-        >
-          重置密码
-        </Button>
+        record.username ? (
+          <Button
+            type="link"
+            size="small"
+            icon={<KeyOutlined />}
+            onClick={() => showResetModal(record.id, record.name)}
+          >
+            重置密码
+          </Button>
+        ) : (
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>飞书登录</span>
+        )
       ),
     },
   ];

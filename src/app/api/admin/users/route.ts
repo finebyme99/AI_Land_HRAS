@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import bcrypt from 'bcryptjs';
 
 // 验证当前用户是否为 admin
 async function requireAdmin(request: NextRequest) {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: users, error } = await getSupabaseAdmin()
       .from('users')
-      .select('id, feishu_open_id, name, avatar, department, roles, bio, points, level, created_at')
+      .select('id, feishu_open_id, username, name, avatar, department, roles, bio, points, level, created_at')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -94,12 +95,29 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: '密码至少6位' }, { status: 400 });
     }
 
-    // 使用 Supabase Admin API 更新密码
-    const { error } = await getSupabaseAdmin().auth.admin.updateUserById(userId, {
-      password: newPassword,
-    });
+    // 检查用户是否有 username（注册用户才有密码）
+    const { data: targetUser, error: fetchError } = await getSupabaseAdmin()
+      .from('users')
+      .select('id, name, username')
+      .eq('id', userId)
+      .single();
 
-    if (error) throw error;
+    if (fetchError || !targetUser) {
+      return NextResponse.json({ error: '用户不存在' }, { status: 404 });
+    }
+
+    if (!targetUser.username) {
+      return NextResponse.json({ error: '飞书用户没有密码，无法重置' }, { status: 400 });
+    }
+
+    // bcrypt hash 新密码并更新
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const { error: updateError } = await getSupabaseAdmin()
+      .from('users')
+      .update({ password_hash: passwordHash })
+      .eq('id', userId);
+
+    if (updateError) throw updateError;
 
     return NextResponse.json({ success: true, message: '密码重置成功' });
   } catch (err) {
