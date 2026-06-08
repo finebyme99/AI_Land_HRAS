@@ -38,15 +38,6 @@ function LoginForm() {
           {process.env.NODE_ENV !== 'production' && <DevSkipLogin />}
 
           {/* 用户名密码登录/注册 已下线（2026-06-05，commit f5e16bc） */}
-
-          <div className="mt-6 pt-5 text-center" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              飞书用户请选择您所在的企业登录
-            </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              建议从飞书工作台「AILand」应用图标进入
-            </p>
-          </div>
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: 'var(--text-muted)' }}>
@@ -103,6 +94,9 @@ function FeishuEnterpriseButtons() {
 
   return (
     <div className="space-y-2">
+      <p className="text-xs text-center mb-3" style={{ color: 'var(--text-muted)' }}>
+        飞书用户请选择您所在的企业登录
+      </p>
       {apps.map((a) => (
         <button
           key={a.app_id}
