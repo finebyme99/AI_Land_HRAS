@@ -40,7 +40,7 @@ export default function CompetitionsPage() {
       if (data.error) throw new Error(data.error);
       setItems((data.items ?? [])
         .filter((i: Submission) => i.status === '评审中')
-        .sort((a: Submission, b: Submission) => (b.monthlySavedHours ?? 0) - (a.monthlySavedHours ?? 0)),
+        .sort((a: Submission, b: Submission) => (a.sceneCategory ?? '').localeCompare(b.sceneCategory ?? '', 'zh-CN')),
       );
       setLoaded(true);
     } catch (err) {
@@ -346,7 +346,7 @@ export default function CompetitionsPage() {
                           {loaded && displayItems.length > 0 && (
                             <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
                               style={{ background: 'rgba(242, 127, 34, 0.08)', color: '#b3540e' }}>
-                              按照提报人填写的月度节省工时降序排列
+                              按场景分类排列
                             </span>
                           )}
                         </p>
