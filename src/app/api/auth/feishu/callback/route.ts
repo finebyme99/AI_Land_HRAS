@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
       await admin.from('users').update({
         name: feishuUser.name,
         avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
+        last_active_at: new Date().toISOString(),
       }).eq('id', userId);
     } else {
       // 兜底：第一个 admin 提升
@@ -86,6 +87,7 @@ export async function GET(request: NextRequest) {
         avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
         department: '',
         roles: isFirstAdmin ? ['admin'] : ['user'],
+        last_active_at: new Date().toISOString(),
       }).select('id').single();
       if (error) throw error;
       userId = newUser.id;

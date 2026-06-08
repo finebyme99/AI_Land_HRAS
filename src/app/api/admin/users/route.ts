@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: users, error } = await getSupabaseAdmin()
       .from('users')
-      .select('id, feishu_open_id, username, name, avatar, department, roles, reviewer_roles, bio, points, level, created_at')
+      .select('id, feishu_open_id, username, name, avatar, department, roles, reviewer_roles, bio, points, level, created_at, last_active_at')
       .order('created_at', { ascending: false });
 
     if (error) throw error;

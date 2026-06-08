@@ -303,14 +303,36 @@ export default function AdminUsersPage() {
       title: '注册时间',
       dataIndex: 'created_at',
       key: 'created_at',
-      width: 160,
+      width: 120,
       render: (val: string) => new Date(val).toLocaleDateString('zh-CN'),
       sorter: (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    },
+    {
+      title: '最近活跃',
+      dataIndex: 'last_active_at',
+      key: 'last_active_at',
+      width: 120,
+      render: (val: string | null) => val ? new Date(val).toLocaleDateString('zh-CN') : '-',
+      sorter: (a, b) => new Date(a.last_active_at || 0).getTime() - new Date(b.last_active_at || 0).getTime(),
+    },
+    {
+      title: '飞书 Open ID',
+      key: 'feishu_id',
+      width: 200,
+      render: (_, record) => {
+        if (!record.feishu_open_id) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>-</span>;
+        return (
+          <span className="text-xs font-mono" title={record.feishu_open_id}>
+            {record.feishu_open_id.length > 20 ? record.feishu_open_id.slice(0, 20) + '...' : record.feishu_open_id}
+          </span>
+        );
+      },
     },
     {
       title: '操作',
       key: 'action',
       width: 100,
+      fixed: 'right',
       render: (_, record) => (
         record.username ? (
           <Button

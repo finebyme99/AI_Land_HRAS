@@ -29,6 +29,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '用户名或密码错误' }, { status: 401 });
     }
 
+    // 更新最近活跃时间
+    await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', user.id);
+
     // 设置 cookie session
     const response = NextResponse.json({ ok: true });
 

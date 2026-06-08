@@ -39,6 +39,7 @@ export interface User {
   points: number;
   level: 'AI新手' | 'AI探索者' | 'AI达人' | 'AI专家';
   created_at: string;
+  last_active_at?: string | null;
 }
 
 // ============ 案例 ============
