@@ -37,7 +37,7 @@ function LoginForm() {
           {/* 开发模式：跳过飞书 OAuth（仅 dev 显示，生产永远不会出现） */}
           {process.env.NODE_ENV !== 'production' && <DevSkipLogin />}
 
-          {/* 用户名密码登录/注册 已下线（2026-06-05，commit 6c1a4d2） */}
+          {/* 用户名密码登录/注册 已下线（2026-06-05，commit f5e16bc） */}
 
           <div className="mt-6 pt-5 text-center" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
