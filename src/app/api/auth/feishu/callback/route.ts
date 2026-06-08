@@ -74,8 +74,8 @@ export async function GET(request: NextRequest) {
     if (existingUser) {
       userId = existingUser.id;
       userRoles = existingUser.roles || ['user'];
-      userDept = contactInfo.department || existingUser.department || '';
-      userEmpId = contactInfo.employee_id || existingUser.employee_id || '';
+      userDept = Array.isArray(contactInfo.department) ? contactInfo.department.join(' / ') : (contactInfo.department || existingUser.department || '');
+      userEmpId = contactInfo.employee_no || existingUser.employee_id || '';
       await admin.from('users').update({
         name: feishuUser.name,
         avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
@@ -87,21 +87,22 @@ export async function GET(request: NextRequest) {
       // 兜底：第一个 admin 提升
       const { count } = await admin.from('users').select('id', { count: 'exact', head: true }).contains('roles', ['admin']);
       const isFirstAdmin = (count || 0) === 0;
+      const newDept = Array.isArray(contactInfo.department) ? contactInfo.department.join(' / ') : (contactInfo.department || '');
       const { data: newUser, error } = await admin.from('users').insert({
         feishu_open_id: feishuUser.open_id,
         feishu_tenant_key: feishuUser.tenant_key,
         name: feishuUser.name,
         avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
-        department: contactInfo.department || '',
-        employee_id: contactInfo.employee_id || '',
+        department: newDept,
+        employee_id: contactInfo.employee_no || '',
         roles: isFirstAdmin ? ['admin'] : ['user'],
         last_active_at: new Date().toISOString(),
       }).select('id').single();
       if (error) throw error;
       userId = newUser.id;
       userRoles = isFirstAdmin ? ['admin'] : ['user'];
-      userDept = contactInfo.department || '';
-      userEmpId = contactInfo.employee_id || '';
+      userDept = newDept;
+      userEmpId = contactInfo.employee_no || '';
     }
 
     // 8. 写 cookie

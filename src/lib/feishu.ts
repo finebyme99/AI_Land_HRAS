@@ -90,13 +90,15 @@ export async function getFeishuUserInfo(userAccessToken: string): Promise<{
   return data.data;
 }
 
-/** 用 user_access_token 调 contact/v3/users/{user_id} 拿部门 + 工号 */
+/** 用 user_access_token 调 contact/v3/users/{user_id} 拿部门 + 工号
+ * 飞书 API 实际返 employee_no（不是 employee_id）+ 偶尔有 department
+ */
 export async function getFeishuUserContactInfo(
   userAccessToken: string,
   userId: string,
 ): Promise<{
-  department?: string;
-  employee_id?: string;
+  department?: string | string[];
+  employee_no?: string;
 }> {
   const res = await fetch(
     `${FEISHU_API_BASE}/contact/v3/users/${userId}`,
@@ -104,12 +106,11 @@ export async function getFeishuUserContactInfo(
   );
   const data = await res.json();
   if (data.code !== 0) {
-    // permission denied (code 99991672) or user not found — silently return empty
     return {};
   }
   return {
     department: data.data?.user?.department,
-    employee_id: data.data?.user?.employee_id,
+    employee_no: data.data?.user?.employee_no,
   };
 }
 
