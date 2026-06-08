@@ -120,11 +120,14 @@ export default function AdminUsersPage() {
     }
   };
 
-  const filtered = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.department?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = users.filter((u) => {
+    if (!search.trim()) return true;
+    const keywords = search.split(/[,，、\s]+/).filter(Boolean);
+    return keywords.some((kw) => {
+      const lower = kw.toLowerCase();
+      return u.name.toLowerCase().includes(lower) || u.department?.toLowerCase().includes(lower);
+    });
+  });
 
   const handleBatchSetReviewerRoles = async () => {
     if (reviewerModalRoles.length === 0) {
@@ -346,7 +349,7 @@ export default function AdminUsersPage() {
           </div>
           <Space>
             <Input
-              placeholder="搜索姓名或部门"
+              placeholder="搜索姓名或部门（多个用逗号分隔）"
               prefix={<SearchOutlined />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
