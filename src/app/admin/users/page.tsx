@@ -51,6 +51,7 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [batchLoading, setBatchLoading] = useState(false);
+  const [pageSize, setPageSize] = useState(20);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [resetUserName, setResetUserName] = useState('');
@@ -340,7 +341,12 @@ export default function AdminUsersPage() {
             selectedRowKeys,
             onChange: (keys) => setSelectedRowKeys(keys as string[]),
           }}
-          pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 人` }}
+          pagination={{
+            pageSize,
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 人`,
+            onChange: (_, size) => setPageSize(size),
+          }}
           scroll={{ x: 800 }}
         />
       </div>
