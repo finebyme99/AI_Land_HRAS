@@ -426,7 +426,7 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
           {/* 评分表单 */}
           {!reviewerRole ? (
             <div className="text-center py-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-              请先在页面顶部选择评委角色后再评分
+              暂未分配评委角色，无法评分
             </div>
           ) : (
             <div>

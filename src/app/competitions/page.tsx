@@ -84,7 +84,7 @@ export default function CompetitionsPage() {
     fetchData();
   }, [period]);
 
-  // 评委加载评审记录，已有评审则锁定角色
+  // 评委加载评审记录，已有评审则锁定角色；无评审记录则使用管理员分配的角色
   useEffect(() => {
     if (isReviewer) {
       fetch('/api/competitions/reviews?mine=true')
@@ -119,6 +119,18 @@ export default function CompetitionsPage() {
           if (reviewed.length > 0) {
             setReviewerRole(reviewed[0].reviewer_role!);
             setRoleLocked(true);
+          } else {
+            // 无评审记录，使用管理员分配的角色
+            const assignedRoles = user?.reviewer_roles || [];
+            if (assignedRoles.length === 1) {
+              // 只有一个角色，直接使用
+              setReviewerRole(assignedRoles[0] as ReviewerRole);
+              setRoleLocked(true);
+            } else if (assignedRoles.length > 1) {
+              // 多个角色，默认选第一个
+              setReviewerRole(assignedRoles[0] as ReviewerRole);
+              setRoleLocked(false); // 允许切换
+            }
           }
         })
         .catch((err) => {
@@ -126,7 +138,7 @@ export default function CompetitionsPage() {
           message.error(err.message || '加载评审记录失败');
         });
     }
-  }, [isReviewer]);
+  }, [isReviewer, user]);
 
   const handleReview = async (submissionId: string, scores: ReviewScores, reviewerRole: ReviewerRole, reason?: string) => {
     try {
@@ -376,44 +388,53 @@ export default function CompetitionsPage() {
                     </div>
                   </div>
 
-                  {/* 评委角色选择 + 评审进度 */}
+                  {/* 评委角色 + 评审进度 */}
                   {isReviewer && loaded && items.length > 0 && (
                     <div className="mb-5">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-xl mb-3"
                         style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
                         <span className="text-xs font-semibold" style={{ color: 'var(--primary)' }}>我的角色</span>
                         <div className="flex items-center gap-2">
-                          {([
-                            { key: 'user' as ReviewerRole, label: '用户评委', icon: <UserOutlined /> },
-                            { key: 'business' as ReviewerRole, label: '业务评委', icon: <BankOutlined /> },
-                            { key: 'tech' as ReviewerRole, label: '技术评委', icon: <CodeOutlined /> },
-                          ]).map((r) => (
-                            <button
-                              key={r.key}
-                              onClick={() => !roleLocked && setReviewerRole(r.key)}
-                              disabled={roleLocked}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                              style={{
-                                background: reviewerRole === r.key ? 'var(--primary)' : 'rgba(255,255,255,0.6)',
-                                color: reviewerRole === r.key ? '#fff' : 'var(--text-secondary)',
-                                border: reviewerRole === r.key ? 'none' : '1px solid rgba(26,58,138,0.12)',
-                                boxShadow: reviewerRole === r.key ? '0 4px 12px rgba(26,58,138,0.25)' : 'none',
-                              }}
-                            >
-                              {r.icon} {r.label}
-                            </button>
-                          ))}
+                          {(() => {
+                            const assignedRoles = user?.reviewer_roles || [];
+                            const roleButtons = [
+                              { key: 'user' as ReviewerRole, label: '用户评委', icon: <UserOutlined /> },
+                              { key: 'business' as ReviewerRole, label: '业务评委', icon: <BankOutlined /> },
+                              { key: 'tech' as ReviewerRole, label: '技术评委', icon: <CodeOutlined /> },
+                            ];
+                            // 只显示管理员分配的角色，无分配则不显示
+                            if (assignedRoles.length === 0 && !isAdmin) return null;
+                            const availableRoles = isAdmin
+                              ? roleButtons  // 管理员可选所有角色
+                              : roleButtons.filter((r) => assignedRoles.includes(r.key));
+                            return availableRoles.map((r) => (
+                              <button
+                                key={r.key}
+                                onClick={() => !roleLocked && setReviewerRole(r.key)}
+                                disabled={roleLocked}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                style={{
+                                  background: reviewerRole === r.key ? 'var(--primary)' : 'rgba(255,255,255,0.6)',
+                                  color: reviewerRole === r.key ? '#fff' : 'var(--text-secondary)',
+                                  border: reviewerRole === r.key ? 'none' : '1px solid rgba(26,58,138,0.12)',
+                                  boxShadow: reviewerRole === r.key ? '0 4px 12px rgba(26,58,138,0.25)' : 'none',
+                                }}
+                              >
+                                {r.icon} {r.label}
+                              </button>
+                            ));
+                          })()}
                           {roleLocked && (
                             <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                              角色已锁定
+                              {user?.reviewer_roles?.length === 1 ? '角色已由管理员指定' : '角色已锁定'}
+                            </span>
+                          )}
+                          {!reviewerRole && (user?.reviewer_roles?.length ?? 0) === 0 && !isAdmin && (
+                            <span className="text-[11px]" style={{ color: '#b3540e' }}>
+                              暂未分配评委角色，请联系管理员
                             </span>
                           )}
                         </div>
-                        {!reviewerRole && !roleLocked && (
-                          <span className="text-[11px]" style={{ color: '#b3540e' }}>
-                            请选择评委角色后开始评分
-                          </span>
-                        )}
                       </div>
                       <div className="flex items-center px-4 py-2 rounded-xl text-xs"
                         style={{ background: 'rgba(26,58,138,0.015)', border: '1px solid rgba(26,58,138,0.04)' }}>

@@ -53,11 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const isAdmin = !!user?.roles?.some((r) => ['admin', 'moderator'].includes(r));
-  // reviewer 角色：来自 admin/moderator 继承，或 users.roles 里有 'reviewer'。
-  // 历史曾经用 HARDCODED_REVIEWER_NAMES 白名单兜底飞书"方案确认用户"，
-  // 现已改为 sync/route.ts 在每次同步时从 submissions.reviewers / verifier
-  // 自动回填 reviewer 角色到 users.roles。
-  const isReviewer = isAdmin || !!user?.roles?.includes('reviewer');
+  // reviewer 判定：admin/moderator 继承，或 users.reviewer_roles 有分配角色
+  const isReviewer = isAdmin || (user?.reviewer_roles?.length ?? 0) > 0;
   // AI 课程管理员：单独角色，用于课程模块的同步/发布/编辑
   const isCourseAdmin = !!user?.roles?.includes('course_admin');
   const canManageCourses = isAdmin || isCourseAdmin;

@@ -34,6 +34,7 @@ export interface User {
   avatar: string;
   department: string;
   roles: string[];
+  reviewer_roles?: string[]; // 管理员分配的评委角色：user/business/tech
   bio: string;
   points: number;
   level: 'AI新手' | 'AI探索者' | 'AI达人' | 'AI专家';

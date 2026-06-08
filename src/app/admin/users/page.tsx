@@ -35,6 +35,18 @@ const roleLabels: Record<string, string> = {
   user: '用户',
 };
 
+const reviewerRoleLabels: Record<string, string> = {
+  user: '用户评委',
+  business: '业务评委',
+  tech: '技术评委',
+};
+
+const reviewerRoleColors: Record<string, string> = {
+  user: 'blue',
+  business: 'orange',
+  tech: 'green',
+};
+
 const levelColors: Record<string, string> = {
   'AI新手': 'default',
   'AI探索者': 'blue',
@@ -57,6 +69,8 @@ export default function AdminUsersPage() {
   const [resetUserName, setResetUserName] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [form] = Form.useForm();
+  const [reviewerModalOpen, setReviewerModalOpen] = useState(false);
+  const [reviewerModalRoles, setReviewerModalRoles] = useState<string[]>([]);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -112,25 +126,46 @@ export default function AdminUsersPage() {
       u.department?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleBatchAction = (action: 'add_reviewer' | 'remove_reviewer') => {
-    const actionLabel = action === 'add_reviewer' ? '授予评委' : '清除评委';
+  const handleBatchSetReviewerRoles = async () => {
+    if (reviewerModalRoles.length === 0) {
+      message.warning('请至少选择一个评委角色');
+      return;
+    }
+    setBatchLoading(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: selectedRowKeys, action: 'set_reviewer_roles', reviewerRoles: reviewerModalRoles }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '操作失败');
+
+      message.success(`分配评委角色完成：成功 ${data.success} 人，失败 ${data.failed} 人`);
+      setSelectedRowKeys([]);
+      setReviewerModalOpen(false);
+      fetchUsers();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '操作失败';
+      message.error(msg);
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const handleBatchClearReviewerRoles = () => {
     const selectedUsers = users.filter((u) => selectedRowKeys.includes(u.id));
-    const reviewerCount = selectedUsers.filter((u) => u.roles?.includes('reviewer')).length;
+    const withRoles = selectedUsers.filter((u) => u.reviewer_roles?.length).length;
 
     modal.confirm({
-      title: `批量${actionLabel}`,
+      title: '批量清除评委角色',
       content: (
         <div>
           <p>已选择 <strong>{selectedUsers.length}</strong> 位用户</p>
-          {action === 'remove_reviewer' && (
-            <p>其中 <strong>{reviewerCount}</strong> 位当前有评委角色</p>
-          )}
-          {action === 'add_reviewer' && (
-            <p>其中 <strong>{selectedUsers.length - reviewerCount}</strong> 位将新增评委角色</p>
-          )}
+          <p>其中 <strong>{withRoles}</strong> 位当前有评委角色</p>
         </div>
       ),
-      okText: `确认${actionLabel}`,
+      okText: '确认清除',
       cancelText: '取消',
       onOk: async () => {
         setBatchLoading(true);
@@ -138,12 +173,12 @@ export default function AdminUsersPage() {
           const res = await fetch('/api/admin/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userIds: selectedRowKeys, action }),
+            body: JSON.stringify({ userIds: selectedRowKeys, action: 'clear_reviewer_roles' }),
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || '操作失败');
 
-          message.success(`批量${actionLabel}完成：成功 ${data.success} 人，失败 ${data.failed} 人`);
+          message.success(`清除评委角色完成：成功 ${data.success} 人，失败 ${data.failed} 人`);
           setSelectedRowKeys([]);
           fetchUsers();
         } catch (err: unknown) {
@@ -221,6 +256,22 @@ export default function AdminUsersPage() {
       ),
     },
     {
+      title: '评委角色',
+      key: 'reviewer_roles',
+      width: 150,
+      render: (_, record) => {
+        const roles = record.reviewer_roles || [];
+        if (roles.length === 0) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>-</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {roles.map((r) => (
+              <Tag key={r} color={reviewerRoleColors[r] || 'default'}>{reviewerRoleLabels[r] || r}</Tag>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
       title: '角色',
       dataIndex: 'roles',
       key: 'roles',
@@ -290,7 +341,7 @@ export default function AdminUsersPage() {
           <div>
             <h1 className="text-xl font-bold">用户管理</h1>
             <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-              共 {users.length} 位注册用户，当前评委 {users.filter((u) => u.roles?.includes('reviewer')).length} 人
+              共 {users.length} 位注册用户，当前评委 {users.filter((u) => (u.reviewer_roles?.length ?? 0) > 0).length} 人
             </p>
           </div>
           <Space>
@@ -314,17 +365,17 @@ export default function AdminUsersPage() {
                   type="primary"
                   icon={<TeamOutlined />}
                   loading={batchLoading}
-                  onClick={() => handleBatchAction('add_reviewer')}
+                  onClick={() => { setReviewerModalRoles([]); setReviewerModalOpen(true); }}
                 >
-                  批量授予评委
+                  分配评委角色
                 </Button>
                 <Button
                   danger
                   icon={<UserDeleteOutlined />}
                   loading={batchLoading}
-                  onClick={() => handleBatchAction('remove_reviewer')}
+                  onClick={handleBatchClearReviewerRoles}
                 >
-                  批量清除评委
+                  清除评委角色
                 </Button>
                 <Button onClick={() => setSelectedRowKeys([])}>取消选择</Button>
               </Space>
@@ -350,6 +401,34 @@ export default function AdminUsersPage() {
           scroll={{ x: 800 }}
         />
       </div>
+
+      <Modal
+        title="分配评委角色"
+        open={reviewerModalOpen}
+        onOk={handleBatchSetReviewerRoles}
+        onCancel={() => setReviewerModalOpen(false)}
+        confirmLoading={batchLoading}
+        okText="确认分配"
+        cancelText="取消"
+      >
+        <div className="mt-4">
+          <p className="mb-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            已选择 <strong>{selectedRowKeys.length}</strong> 位用户，请选择要分配的评委角色：
+          </p>
+          <Select
+            mode="multiple"
+            value={reviewerModalRoles}
+            onChange={setReviewerModalRoles}
+            style={{ width: '100%' }}
+            placeholder="选择评委角色"
+            options={[
+              { value: 'user', label: '用户评委' },
+              { value: 'business', label: '业务评委' },
+              { value: 'tech', label: '技术评委' },
+            ]}
+          />
+        </div>
+      </Modal>
 
       <Modal
         title={`重置密码 - ${resetUserName}`}

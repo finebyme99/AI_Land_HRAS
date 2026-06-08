@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: users, error } = await getSupabaseAdmin()
       .from('users')
-      .select('id, feishu_open_id, username, name, avatar, department, roles, bio, points, level, created_at')
+      .select('id, feishu_open_id, username, name, avatar, department, roles, reviewer_roles, bio, points, level, created_at')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -46,15 +46,10 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    const { userId, roles } = await request.json();
+    const { userId, roles, reviewer_roles } = await request.json();
 
-    if (!userId || !roles) {
+    if (!userId) {
       return NextResponse.json({ error: '缺少参数' }, { status: 400 });
-    }
-
-    const validRoles = ['user', 'contributor', 'reviewer', 'course_admin', 'moderator', 'admin'];
-    if (!Array.isArray(roles) || !roles.every((r: string) => validRoles.includes(r))) {
-      return NextResponse.json({ error: '无效角色' }, { status: 400 });
     }
 
     // 不能修改自己的角色
@@ -62,11 +57,27 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: '不能修改自己的角色' }, { status: 400 });
     }
 
+    const updateData: Record<string, unknown> = {};
+    if (roles) {
+      const validRoles = ['user', 'contributor', 'reviewer', 'course_admin', 'moderator', 'admin'];
+      if (!Array.isArray(roles) || !roles.every((r: string) => validRoles.includes(r))) {
+        return NextResponse.json({ error: '无效角色' }, { status: 400 });
+      }
+      updateData.roles = roles;
+    }
+    if (reviewer_roles !== undefined) {
+      const validReviewerRoles = ['user', 'business', 'tech'];
+      if (!Array.isArray(reviewer_roles) || !reviewer_roles.every((r: string) => validReviewerRoles.includes(r))) {
+        return NextResponse.json({ error: '无效评委角色' }, { status: 400 });
+      }
+      updateData.reviewer_roles = reviewer_roles;
+    }
+
     const { data: user, error } = await getSupabaseAdmin()
       .from('users')
-      .update({ roles })
+      .update(updateData)
       .eq('id', userId)
-      .select('id, name, avatar, department, roles, points, level, created_at')
+      .select('id, name, avatar, department, roles, reviewer_roles, points, level, created_at')
       .single();
 
     if (error) throw error;
@@ -85,13 +96,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { userIds, action } = await request.json();
+    const { userIds, action, reviewerRoles } = await request.json();
 
     if (!Array.isArray(userIds) || userIds.length === 0) {
       return NextResponse.json({ error: '缺少用户 ID 列表' }, { status: 400 });
     }
 
-    if (!['add_reviewer', 'remove_reviewer'].includes(action)) {
+    if (!['add_reviewer', 'remove_reviewer', 'set_reviewer_roles', 'clear_reviewer_roles'].includes(action)) {
       return NextResponse.json({ error: '无效操作' }, { status: 400 });
     }
 
@@ -122,19 +133,33 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        let newRoles = [...(userData.roles || [])];
+        let updateData: Record<string, unknown> = {};
 
         if (action === 'add_reviewer') {
-          if (!newRoles.includes('reviewer')) {
-            newRoles.push('reviewer');
+          // 兼容旧逻辑：添加 reviewer 角色
+          let newRoles = [...(userData.roles || [])];
+          if (!newRoles.includes('reviewer')) newRoles.push('reviewer');
+          updateData = { roles: newRoles };
+        } else if (action === 'remove_reviewer') {
+          // 兼容旧逻辑：移除 reviewer 角色
+          let newRoles = (userData.roles || []).filter((r: string) => r !== 'reviewer');
+          updateData = { roles: newRoles };
+        } else if (action === 'set_reviewer_roles') {
+          // 新逻辑：设置具体的评委角色
+          if (!Array.isArray(reviewerRoles)) {
+            failed++;
+            details.push(`${userData.name}: 缺少 reviewerRoles 参数`);
+            continue;
           }
-        } else {
-          newRoles = newRoles.filter((r: string) => r !== 'reviewer');
+          updateData = { reviewer_roles: reviewerRoles };
+        } else if (action === 'clear_reviewer_roles') {
+          // 新逻辑：清空评委角色
+          updateData = { reviewer_roles: [] };
         }
 
         const { error: updateError } = await supabase
           .from('users')
-          .update({ roles: newRoles })
+          .update(updateData)
           .eq('id', userId);
 
         if (updateError) {
