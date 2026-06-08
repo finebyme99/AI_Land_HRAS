@@ -229,6 +229,7 @@ export default function AdminUsersPage() {
     {
       title: '用户',
       key: 'user',
+      width: 180,
       render: (_, record) => (
         <div className="flex items-center gap-3">
           <Avatar src={record.avatar || undefined} icon={<UserOutlined />} />
@@ -434,7 +435,7 @@ export default function AdminUsersPage() {
             showTotal: (total) => `共 ${total} 人`,
             onChange: (_, size) => setPageSize(size),
           }}
-          scroll={{ x: 800 }}
+          scroll={{ x: 1400 }}
         />
       </div>
 
