@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Table, Avatar, Tag, Select, Input, Spin, App, Button, Modal, Form, Space } from 'antd';
-import { UserOutlined, SearchOutlined, KeyOutlined, TeamOutlined, UserDeleteOutlined } from '@ant-design/icons';
+import { Table, Avatar, Tag, Select, Input, Spin, App, Button, Modal, Form, Space, Tooltip, message as antMessage } from 'antd';
+import { UserOutlined, SearchOutlined, KeyOutlined, TeamOutlined, UserDeleteOutlined, CopyOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import type { User } from '@/types';
 import type { ColumnsType } from 'antd/es/table';
@@ -318,13 +318,33 @@ export default function AdminUsersPage() {
     {
       title: '飞书 Open ID',
       key: 'feishu_id',
-      width: 200,
+      width: 180,
+      ellipsis: true,
       render: (_, record) => {
         if (!record.feishu_open_id) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>-</span>;
+        const id = record.feishu_open_id;
         return (
-          <span className="text-xs font-mono" title={record.feishu_open_id}>
-            {record.feishu_open_id.length > 20 ? record.feishu_open_id.slice(0, 20) + '...' : record.feishu_open_id}
-          </span>
+          <Tooltip title={
+            <span className="flex items-center gap-2">
+              <span className="font-mono text-xs">{id}</span>
+              <CopyOutlined
+                className="cursor-pointer hover:text-blue-400"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(id);
+                  antMessage.success('已复制');
+                }}
+              />
+            </span>
+          }>
+            <span className="text-xs font-mono cursor-pointer hover:text-blue-500"
+              onClick={() => {
+                navigator.clipboard.writeText(id);
+                antMessage.success('已复制');
+              }}>
+              {id}
+            </span>
+          </Tooltip>
         );
       },
     },
