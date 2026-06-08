@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -38,19 +37,11 @@ function LoginForm() {
           {/* 开发模式：跳过飞书 OAuth（仅 dev 显示，生产永远不会出现） */}
           {process.env.NODE_ENV !== 'production' && <DevSkipLogin />}
 
-          {/* 分隔线 */}
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.08)' }} />
-            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>无飞书账号</span>
-            <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.08)' }} />
-          </div>
-
-          {/* 用户名密码登录/注册 */}
-          <PasswordAuth />
+          {/* 用户名密码登录/注册 已下线（2026-06-05，commit 6c1a4d2） */}
 
           <div className="mt-6 pt-5 text-center" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              飞书用户请选择您所在的企业登录；无飞书账号请注册
+              飞书用户请选择您所在的企业登录
             </p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
               建议从飞书工作台「AILand」应用图标进入
@@ -62,160 +53,6 @@ function LoginForm() {
           登录即表示同意社区使用规范
         </p>
       </div>
-    </div>
-  );
-}
-
-/** 用户名密码登录/注册组件 */
-function PasswordAuth() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleSubmit = async () => {
-    setError('');
-
-    if (!username || !password) {
-      setError('请输入用户名和密码');
-      return;
-    }
-    if (mode === 'register' && password !== confirmPassword) {
-      setError('两次密码不一致');
-      return;
-    }
-    if (password.length < 6) {
-      setError('密码至少 6 位');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || '操作失败');
-      } else {
-        window.location.href = '/';
-      }
-    } catch {
-      setError('网络错误，请稍后重试');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div>
-      {/* 切换 Tab */}
-      <div className="flex rounded-lg overflow-hidden mb-4" style={{ background: 'rgba(0,0,0,0.03)' }}>
-        <button
-          onClick={() => { setMode('login'); setError(''); }}
-          className="flex-1 py-2 text-xs font-medium transition-all"
-          style={{
-            background: mode === 'login' ? 'rgba(255,255,255,0.8)' : 'transparent',
-            color: mode === 'login' ? 'var(--primary)' : 'var(--text-muted)',
-            boxShadow: mode === 'login' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-          }}
-        >
-          登录
-        </button>
-        <button
-          onClick={() => { setMode('register'); setError(''); }}
-          className="flex-1 py-2 text-xs font-medium transition-all"
-          style={{
-            background: mode === 'register' ? 'rgba(255,255,255,0.8)' : 'transparent',
-            color: mode === 'register' ? 'var(--primary)' : 'var(--text-muted)',
-            boxShadow: mode === 'register' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-          }}
-        >
-          注册
-        </button>
-      </div>
-
-      {/* 表单 */}
-      <div className="space-y-3">
-        <div>
-          <label className="block text-[11px] font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>用户名</label>
-          <div className="relative">
-            <UserOutlined className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => { setUsername(e.target.value); setError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              placeholder="2-20 个字符"
-              className="w-full h-10 pl-8 pr-3 rounded-lg text-sm outline-none transition-all"
-              style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(26,58,138,0.12)', color: 'var(--foreground)' }}
-              autoFocus
-            />
-          </div>
-          {mode === 'register' && (
-            <p className="text-[11px] mt-1" style={{ color: '#b3540e' }}>
-              请使用本人真实姓名或飞书名注册，否则无法正常开通权限
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="block text-[11px] font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>密码</label>
-          <div className="relative">
-            <LockOutlined className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: 'var(--text-muted)' }} />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              placeholder="至少 6 位"
-              className="w-full h-10 pl-8 pr-3 rounded-lg text-sm outline-none transition-all"
-              style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(26,58,138,0.12)', color: 'var(--foreground)' }}
-            />
-          </div>
-        </div>
-        {mode === 'register' && (
-          <div>
-            <label className="block text-[11px] font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>确认密码</label>
-            <div className="relative">
-              <LockOutlined className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: 'var(--text-muted)' }} />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
-                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                placeholder="再次输入密码"
-                className="w-full h-10 pl-8 pr-3 rounded-lg text-sm outline-none transition-all"
-                style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(26,58,138,0.12)', color: 'var(--foreground)' }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {error && (
-        <p className="text-[11px] mt-2" style={{ color: '#dc2626' }}>{error}</p>
-      )}
-
-      <button
-        onClick={handleSubmit}
-        disabled={loading}
-        className="w-full h-10 mt-4 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-        style={{ background: 'var(--primary)' }}
-      >
-        {loading ? (
-          <>
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            {mode === 'register' ? '注册中...' : '登录中...'}
-          </>
-        ) : (
-          mode === 'register' ? '注册并登录' : '登录'
-        )}
-      </button>
     </div>
   );
 }

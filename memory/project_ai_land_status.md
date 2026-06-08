@@ -76,8 +76,7 @@ type: project
 
 ## 待完成
 
-- [ ] GF 飞书登录 error 20029 排查（让 GF IT 在飞书开放平台配 redirect_uri 白名单）
-- [ ] WX 飞书应用凭证 + 录入
+- [ ] 验证 WX 飞书登录（让 WX 用户走一遍）
 - [ ] 8 个 single-tenant 调用点迁到 `getTenantAccessTokenFor`（**用户 2026-06-05 决定先不动**，等 1 周观察期过再定）
 - [ ] 1 周后下线用户名密码兜底
 - [ ] 内容审核后台（轻量实现）
