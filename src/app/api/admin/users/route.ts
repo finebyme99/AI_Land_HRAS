@@ -75,3 +75,35 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: '修改角色失败' }, { status: 500 });
   }
 }
+
+// PUT /api/admin/users — 重置用户密码
+export async function PUT(request: NextRequest) {
+  const admin = await requireAdmin(request);
+  if (!admin) {
+    return NextResponse.json({ error: '无权限' }, { status: 403 });
+  }
+
+  try {
+    const { userId, newPassword } = await request.json();
+
+    if (!userId || !newPassword) {
+      return NextResponse.json({ error: '缺少参数' }, { status: 400 });
+    }
+
+    if (newPassword.length < 6) {
+      return NextResponse.json({ error: '密码至少6位' }, { status: 400 });
+    }
+
+    // 使用 Supabase Admin API 更新密码
+    const { error } = await getSupabaseAdmin().auth.admin.updateUserById(userId, {
+      password: newPassword,
+    });
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, message: '密码重置成功' });
+  } catch (err) {
+    console.error('重置密码失败:', err);
+    return NextResponse.json({ error: '重置密码失败' }, { status: 500 });
+  }
+}

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Table, Avatar, Tag, Select, Input, Spin, App } from 'antd';
-import { UserOutlined, SearchOutlined } from '@ant-design/icons';
+import { Table, Avatar, Tag, Select, Input, Spin, App, Button, Modal, Form } from 'antd';
+import { UserOutlined, SearchOutlined, KeyOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import type { User } from '@/types';
 import type { ColumnsType } from 'antd/es/table';
@@ -44,11 +44,16 @@ const levelColors: Record<string, string> = {
 
 export default function AdminUsersPage() {
   const router = useRouter();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const { user, isAdmin, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [resetUserName, setResetUserName] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [form] = Form.useForm();
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -104,6 +109,36 @@ export default function AdminUsersPage() {
       u.department?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const showResetModal = (userId: string, userName: string) => {
+    setResetUserId(userId);
+    setResetUserName(userName);
+    setResetModalOpen(true);
+    form.resetFields();
+  };
+
+  const handleResetPassword = async () => {
+    try {
+      const values = await form.validateFields();
+      setResetLoading(true);
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: resetUserId, newPassword: values.newPassword }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '重置失败');
+      }
+      message.success(`已重置 ${resetUserName} 的密码`);
+      setResetModalOpen(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '重置失败';
+      message.error(msg);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -126,6 +161,16 @@ export default function AdminUsersPage() {
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{record.department || '未设置部门'}</div>
           </div>
         </div>
+      ),
+    },
+    {
+      title: '来源',
+      key: 'source',
+      width: 100,
+      render: (_, record) => (
+        <Tag color={record.feishu_open_id ? 'blue' : 'default'}>
+          {record.feishu_open_id ? '飞书用户' : '注册用户'}
+        </Tag>
       ),
     },
     {
@@ -171,21 +216,24 @@ export default function AdminUsersPage() {
       sorter: (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
     },
     {
-      title: '标签',
-      key: 'tags',
-      width: 160,
+      title: '操作',
+      key: 'action',
+      width: 100,
       render: (_, record) => (
-        <div className="flex flex-wrap gap-1">
-          {(record.roles ?? []).map((r) => (
-            <Tag key={r} color={roleColors[r]}>{roleLabels[r] ?? r}</Tag>
-          ))}
-        </div>
+        <Button
+          type="link"
+          size="small"
+          icon={<KeyOutlined />}
+          onClick={() => showResetModal(record.id, record.name)}
+        >
+          重置密码
+        </Button>
       ),
     },
   ];
 
   return (
-    <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
@@ -210,9 +258,32 @@ export default function AdminUsersPage() {
           rowKey="id"
           loading={loading}
           pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 人` }}
-          scroll={{ x: 700 }}
+          scroll={{ x: 800 }}
         />
       </div>
+
+      <Modal
+        title={`重置密码 - ${resetUserName}`}
+        open={resetModalOpen}
+        onOk={handleResetPassword}
+        onCancel={() => setResetModalOpen(false)}
+        confirmLoading={resetLoading}
+        okText="确认重置"
+        cancelText="取消"
+      >
+        <Form form={form} layout="vertical" className="mt-4">
+          <Form.Item
+            name="newPassword"
+            label="新密码"
+            rules={[
+              { required: true, message: '请输入新密码' },
+              { min: 6, message: '密码至少6位' },
+            ]}
+          >
+            <Input.Password placeholder="请输入新密码（至少6位）" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }
