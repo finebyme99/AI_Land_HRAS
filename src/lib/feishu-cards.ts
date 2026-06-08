@@ -214,16 +214,6 @@ export function buildResourceCard(resource: {
 }) {
   const bodyElements: unknown[] = [];
 
-  // ── Logo 图片 ──
-  if (resource.logo) {
-    bodyElements.push({
-      tag: 'img',
-      img_key: resource.logo, // 可能是 Supabase URL，卡片不一定支持
-      alt: { tag: 'plain_text', content: resource.name },
-      mode: 'fit_horizontal',
-    });
-  }
-
   // ── 正文区 ──
   const contentElements: unknown[] = [
     {
@@ -235,14 +225,13 @@ export function buildResourceCard(resource: {
     },
   ];
 
-  // 描述：分隔线后
+  // 描述
   if (resource.description) {
-    contentElements.push({ tag: 'hr', margin: '4px 0px 4px 0px' });
     contentElements.push({
       tag: 'markdown',
       content: `**工具简介：** ${truncate(resource.description, 150)}`,
       text_align: 'left',
-      text_size: 'notation',
+      text_size: 'normal_v2',
       margin: '4px 4px 4px 4px',
     });
   }

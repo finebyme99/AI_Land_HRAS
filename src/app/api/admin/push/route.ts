@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
           target_chat_name: chat_name || chat_id,
           card_json: card,
           status: result.messageId ? 'sent' : 'failed',
-          error_message: result.messageId ? null : '发送失败',
+          error_message: result.messageId ? null : (result.error || '发送失败'),
           pushed_by: userId,
         });
 
