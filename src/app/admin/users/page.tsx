@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Table, Avatar, Tag, Select, Input, Spin, App, Button, Modal, Form, Space, Tooltip, message as antMessage } from 'antd';
+import { Table, Avatar, Tag, Select, Input, Spin, App, Button, Modal, Form, Space, Tooltip } from 'antd';
 import { UserOutlined, SearchOutlined, KeyOutlined, TeamOutlined, UserDeleteOutlined, CopyOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import type { User } from '@/types';
@@ -333,7 +333,7 @@ export default function AdminUsersPage() {
                 onClick={(e) => {
                   e.stopPropagation();
                   navigator.clipboard.writeText(id);
-                  antMessage.success('已复制');
+                  message.success('已复制');
                 }}
               />
             </span>
@@ -341,7 +341,7 @@ export default function AdminUsersPage() {
             <span className="text-xs font-mono cursor-pointer hover:text-blue-500"
               onClick={() => {
                 navigator.clipboard.writeText(id);
-                antMessage.success('已复制');
+                message.success('已复制');
               }}>
               {id}
             </span>
