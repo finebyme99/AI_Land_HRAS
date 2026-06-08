@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Table, Avatar, Tag, Select, Input, Spin, App, Button, Modal, Form } from 'antd';
-import { UserOutlined, SearchOutlined, KeyOutlined } from '@ant-design/icons';
+import { Table, Avatar, Tag, Select, Input, Spin, App, Button, Modal, Form, Space } from 'antd';
+import { UserOutlined, SearchOutlined, KeyOutlined, TeamOutlined, UserDeleteOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import type { User } from '@/types';
 import type { ColumnsType } from 'antd/es/table';
@@ -49,6 +49,8 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [batchLoading, setBatchLoading] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [resetUserName, setResetUserName] = useState('');
@@ -108,6 +110,50 @@ export default function AdminUsersPage() {
       u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.department?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleBatchAction = (action: 'add_reviewer' | 'remove_reviewer') => {
+    const actionLabel = action === 'add_reviewer' ? '授予评委' : '清除评委';
+    const selectedUsers = users.filter((u) => selectedRowKeys.includes(u.id));
+    const reviewerCount = selectedUsers.filter((u) => u.roles?.includes('reviewer')).length;
+
+    modal.confirm({
+      title: `批量${actionLabel}`,
+      content: (
+        <div>
+          <p>已选择 <strong>{selectedUsers.length}</strong> 位用户</p>
+          {action === 'remove_reviewer' && (
+            <p>其中 <strong>{reviewerCount}</strong> 位当前有评委角色</p>
+          )}
+          {action === 'add_reviewer' && (
+            <p>其中 <strong>{selectedUsers.length - reviewerCount}</strong> 位将新增评委角色</p>
+          )}
+        </div>
+      ),
+      okText: `确认${actionLabel}`,
+      cancelText: '取消',
+      onOk: async () => {
+        setBatchLoading(true);
+        try {
+          const res = await fetch('/api/admin/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userIds: selectedRowKeys, action }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || '操作失败');
+
+          message.success(`批量${actionLabel}完成：成功 ${data.success} 人，失败 ${data.failed} 人`);
+          setSelectedRowKeys([]);
+          fetchUsers();
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : '操作失败';
+          message.error(msg);
+        } finally {
+          setBatchLoading(false);
+        }
+      },
+    });
+  };
 
   const showResetModal = (userId: string, userName: string) => {
     setResetUserId(userId);
@@ -243,24 +289,57 @@ export default function AdminUsersPage() {
           <div>
             <h1 className="text-xl font-bold">用户管理</h1>
             <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-              共 {users.length} 位注册用户
+              共 {users.length} 位注册用户，当前评委 {users.filter((u) => u.roles?.includes('reviewer')).length} 人
             </p>
           </div>
-          <Input
-            placeholder="搜索姓名或部门"
-            prefix={<SearchOutlined />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ maxWidth: 280 }}
-            allowClear
-          />
+          <Space>
+            <Input
+              placeholder="搜索姓名或部门"
+              prefix={<SearchOutlined />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ maxWidth: 280 }}
+              allowClear
+            />
+          </Space>
         </div>
+
+        {selectedRowKeys.length > 0 && (
+          <div className="mb-4 p-3 rounded-lg" style={{ background: 'var(--primary-bg, #f0f5ff)', border: '1px solid var(--primary-border, #d6e4ff)' }}>
+            <div className="flex items-center justify-between">
+              <span>已选择 <strong>{selectedRowKeys.length}</strong> 位用户</span>
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<TeamOutlined />}
+                  loading={batchLoading}
+                  onClick={() => handleBatchAction('add_reviewer')}
+                >
+                  批量授予评委
+                </Button>
+                <Button
+                  danger
+                  icon={<UserDeleteOutlined />}
+                  loading={batchLoading}
+                  onClick={() => handleBatchAction('remove_reviewer')}
+                >
+                  批量清除评委
+                </Button>
+                <Button onClick={() => setSelectedRowKeys([])}>取消选择</Button>
+              </Space>
+            </div>
+          </div>
+        )}
 
         <Table
           columns={columns}
           dataSource={filtered}
           rowKey="id"
           loading={loading}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (keys) => setSelectedRowKeys(keys as string[]),
+          }}
           pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 人` }}
           scroll={{ x: 800 }}
         />

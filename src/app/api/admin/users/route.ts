@@ -77,6 +77,84 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+// POST /api/admin/users — 批量更新用户角色
+export async function POST(request: NextRequest) {
+  const admin = await requireAdmin(request);
+  if (!admin) {
+    return NextResponse.json({ error: '无权限' }, { status: 403 });
+  }
+
+  try {
+    const { userIds, action } = await request.json();
+
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return NextResponse.json({ error: '缺少用户 ID 列表' }, { status: 400 });
+    }
+
+    if (!['add_reviewer', 'remove_reviewer'].includes(action)) {
+      return NextResponse.json({ error: '无效操作' }, { status: 400 });
+    }
+
+    const supabase = getSupabaseAdmin();
+    let success = 0;
+    let failed = 0;
+    const details: string[] = [];
+
+    for (const userId of userIds) {
+      try {
+        // 获取当前用户角色
+        const { data: userData, error: fetchError } = await supabase
+          .from('users')
+          .select('id, name, roles')
+          .eq('id', userId)
+          .single();
+
+        if (fetchError || !userData) {
+          failed++;
+          details.push(`${userId}: 用户不存在`);
+          continue;
+        }
+
+        // 不能修改自己的角色
+        if (userId === admin.id) {
+          failed++;
+          details.push(`${userData.name}: 不能修改自己的角色`);
+          continue;
+        }
+
+        let newRoles = [...(userData.roles || [])];
+
+        if (action === 'add_reviewer') {
+          if (!newRoles.includes('reviewer')) {
+            newRoles.push('reviewer');
+          }
+        } else {
+          newRoles = newRoles.filter((r: string) => r !== 'reviewer');
+        }
+
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ roles: newRoles })
+          .eq('id', userId);
+
+        if (updateError) {
+          failed++;
+          details.push(`${userData.name}: 更新失败`);
+        } else {
+          success++;
+        }
+      } catch {
+        failed++;
+        details.push(`${userId}: 操作异常`);
+      }
+    }
+
+    return NextResponse.json({ success, failed, details });
+  } catch {
+    return NextResponse.json({ error: '批量操作失败' }, { status: 500 });
+  }
+}
+
 // PUT /api/admin/users — 重置用户密码
 export async function PUT(request: NextRequest) {
   const admin = await requireAdmin(request);
