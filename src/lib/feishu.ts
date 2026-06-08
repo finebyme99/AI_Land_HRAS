@@ -90,6 +90,29 @@ export async function getFeishuUserInfo(userAccessToken: string): Promise<{
   return data.data;
 }
 
+/** 用 user_access_token 调 contact/v3/users/{user_id} 拿部门 + 工号 */
+export async function getFeishuUserContactInfo(
+  userAccessToken: string,
+  userId: string,
+): Promise<{
+  department?: string;
+  employee_id?: string;
+}> {
+  const res = await fetch(
+    `${FEISHU_API_BASE}/contact/v3/users/${userId}`,
+    { headers: { Authorization: `Bearer ${userAccessToken}` } },
+  );
+  const data = await res.json();
+  if (data.code !== 0) {
+    // permission denied (code 99991672) or user not found — silently return empty
+    return {};
+  }
+  return {
+    department: data.data?.user?.department,
+    employee_id: data.data?.user?.employee_id,
+  };
+}
+
 // 生成飞书 OAuth 授权 URL
 export function getFeishuAuthUrl(appId: string, redirectUri: string, state: string): string {
   const params = new URLSearchParams({

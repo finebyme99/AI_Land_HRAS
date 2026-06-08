@@ -116,7 +116,7 @@ export default function AdminUsersPage() {
     const keywords = search.split(/[,，、\s]+/).filter(Boolean);
     return keywords.some((kw) => {
       const lower = kw.toLowerCase();
-      return u.name.toLowerCase().includes(lower) || u.department?.toLowerCase().includes(lower);
+      return u.name.toLowerCase().includes(lower) || u.department?.toLowerCase().includes(lower) || u.employee_id?.toLowerCase().includes(lower);
     });
   });
 
@@ -229,13 +229,16 @@ export default function AdminUsersPage() {
     {
       title: '用户',
       key: 'user',
-      width: 180,
+      width: 220,
       render: (_, record) => (
         <div className="flex items-center gap-3">
           <Avatar src={record.avatar || undefined} icon={<UserOutlined />} />
           <div>
             <div className="font-medium text-sm">{record.name}</div>
-            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{record.department || '未设置部门'}</div>
+            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {record.department || '未设置部门'}
+              {record.employee_id ? ` · 工号 ${record.employee_id}` : ''}
+            </div>
           </div>
         </div>
       ),
@@ -383,7 +386,7 @@ export default function AdminUsersPage() {
           </div>
           <Space>
             <Input
-              placeholder="搜索姓名或部门（多个用逗号分隔）"
+              placeholder="搜索姓名/部门/工号（多个用逗号分隔）"
               prefix={<SearchOutlined />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}

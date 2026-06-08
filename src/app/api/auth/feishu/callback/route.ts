@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFeishuUserToken, getFeishuUserInfo } from '@/lib/feishu';
+import { getFeishuUserToken, getFeishuUserInfo, getFeishuUserContactInfo } from '@/lib/feishu';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { getFeishuAppByAppId, getAppSecret, logAuth } from '@/lib/feishu-app-store';
 import { cookies } from 'next/headers';
@@ -42,6 +42,9 @@ export async function GET(request: NextRequest) {
     // 5. 拿飞书用户信息（含 tenant_key）
     const feishuUser = await getFeishuUserInfo(tokenData.access_token);
 
+    // 5b. 拿飞书用户 contact 信息（部门 + 工号）— 失败时静默返回空
+    const contactInfo = await getFeishuUserContactInfo(tokenData.access_token, feishuUser.user_id);
+
     // 6. tenant_key 一致性检查
     if (feishuUser.tenant_key !== app.tenant_key) {
       await logAuth({
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest) {
     const admin = getSupabaseAdmin();
     const { data: existingUser } = await admin
       .from('users')
-      .select('id, roles, department')
+      .select('id, roles, department, employee_id')
       .eq('feishu_tenant_key', feishuUser.tenant_key)
       .eq('feishu_open_id', feishuUser.open_id)
       .maybeSingle();
@@ -66,14 +69,18 @@ export async function GET(request: NextRequest) {
     let userId: string;
     let userRoles: string[] = ['user'];
     let userDept = '';
+    let userEmpId = '';
 
     if (existingUser) {
       userId = existingUser.id;
       userRoles = existingUser.roles || ['user'];
-      userDept = existingUser.department || '';
+      userDept = contactInfo.department || existingUser.department || '';
+      userEmpId = contactInfo.employee_id || existingUser.employee_id || '';
       await admin.from('users').update({
         name: feishuUser.name,
         avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
+        department: userDept,
+        employee_id: userEmpId,
         last_active_at: new Date().toISOString(),
       }).eq('id', userId);
     } else {
@@ -85,13 +92,16 @@ export async function GET(request: NextRequest) {
         feishu_tenant_key: feishuUser.tenant_key,
         name: feishuUser.name,
         avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
-        department: '',
+        department: contactInfo.department || '',
+        employee_id: contactInfo.employee_id || '',
         roles: isFirstAdmin ? ['admin'] : ['user'],
         last_active_at: new Date().toISOString(),
       }).select('id').single();
       if (error) throw error;
       userId = newUser.id;
       userRoles = isFirstAdmin ? ['admin'] : ['user'];
+      userDept = contactInfo.department || '';
+      userEmpId = contactInfo.employee_id || '';
     }
 
     // 8. 写 cookie

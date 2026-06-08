@@ -29,6 +29,7 @@ export interface User {
   id: string;
   feishu_open_id: string;
   feishu_tenant_key?: string | null;
+  employee_id?: string | null; // 工号
   username?: string | null;
   name: string;
   avatar: string;
