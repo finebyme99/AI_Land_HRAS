@@ -3,7 +3,17 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Spin, App, Select, Tag } from 'antd';
-import { TrophyOutlined, AuditOutlined, TeamOutlined, ArrowRightOutlined, RiseOutlined } from '@ant-design/icons';
+import {
+  TrophyOutlined,
+  AuditOutlined,
+  TeamOutlined,
+  ArrowRightOutlined,
+  SyncOutlined,
+  ClockCircleOutlined,
+  RiseOutlined,
+  ThunderboltOutlined,
+  DollarOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import HighlightSweep from '@/components/HighlightSweep';
 
@@ -48,6 +58,8 @@ interface SubmissionDTO {
   teamMembers: string;
   implementation: string;
   verifier: string;
+  reuseValue: string | null;
+  reuseValueLevel: string | null;
   // 量化对比
   beforeHoursPerPerson: number | null;
   beforePeopleCount: number | null;
@@ -65,7 +77,15 @@ interface SubmissionDTO {
 
 interface OverviewResponse {
   period: string;
-  summary: { total: number; reviewed: number; pending: number; avgScore: number | null };
+  summary: {
+    total: number;
+    reviewed: number;
+    pending: number;
+    avgScore: number | null;
+    totalSavedHours: number;
+    avgEfficiencyRate: number | null;
+    reuseValueCounts: Record<string, number>;
+  };
   submissions: SubmissionDTO[];
   panel: Record<Role, string[]>;
 }
@@ -100,14 +120,7 @@ const ROLE_DIM_LABEL: Record<string, string> = {
   engineeringQuality: '工程质量与可落地性',
 };
 
-/** 各角色维度满分（5 分制 × 各自权重求和）
- *  - user: 5×1.5 + 5×1.2 + 5×1.2 = 19.5
- *  - business: 5×1.5 + 5×1.2 + 5×1.2 = 19.5
- *  - tech: 5×1.2 + 5×1.0 = 11
- *  - 总分上限: 19.5 + 19.5 + 11 = 50
- */
-const ROLE_MAX: Record<Role, number> = { user: 19.5, business: 19.5, tech: 11 };
-const TOTAL_MAX = 50;
+const TOTAL_MAX = 100;
 
 export default function ReviewsOverviewPage() {
   const router = useRouter();
@@ -138,6 +151,36 @@ export default function ReviewsOverviewPage() {
     }
   }, [period, message]);
 
+  // 从飞书同步
+  const [syncing, setSyncing] = useState(false);
+  const handleSync = async () => {
+    setSyncing(true);
+    message.loading({ content: '正在从飞书同步，附件较多时可能需要几分钟…', key: 'sync', duration: 0 });
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5 * 60 * 1000);
+      const res = await fetch(`/api/competitions/sync?period=${period}`, {
+        method: 'POST',
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const attMsg = data.attachments
+        ? `（附件：${data.attachments.downloaded} 新下载，${data.attachments.skipped} 已跳过）`
+        : '';
+      message.success({ content: `已同步 ${data.synced} 条方案${attMsg}`, key: 'sync' });
+      await fetchData();
+    } catch (err) {
+      const msg = err instanceof DOMException && err.name === 'AbortError'
+        ? '同步超时，请稍后重试'
+        : err instanceof Error ? err.message : '同步失败';
+      message.error({ content: msg, key: 'sync' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   useEffect(() => { if (isAdmin) fetchData(); }, [isAdmin, fetchData]);
 
   const teams = useMemo(() => {
@@ -149,14 +192,19 @@ export default function ReviewsOverviewPage() {
   const visibleSubs = useMemo(() => {
     let list = data?.submissions ?? [];
     if (teamFilter !== 'all') list = list.filter((s) => s.team === teamFilter);
-    // 默认按总分降序
     list = [...list].sort((a, b) => (b.totalScore ?? -1) - (a.totalScore ?? -1));
-    // 全局排名（基于未过滤的全集按 totalScore 排）
     const fullSorted = [...(data?.submissions ?? [])].sort((a, b) => (b.totalScore ?? -1) - (a.totalScore ?? -1));
     const rankMap = new Map<string, number>();
     fullSorted.forEach((s, i) => rankMap.set(s.id, i + 1));
     return list.map((s) => ({ ...s, rank: rankMap.get(s.id) ?? 0 }));
   }, [data, teamFilter]);
+
+  const topByHours = useMemo(() => {
+    return [...(data?.submissions ?? [])]
+      .filter((s) => s.monthlySavedHours != null && s.monthlySavedHours > 0)
+      .sort((a, b) => (b.monthlySavedHours ?? 0) - (a.monthlySavedHours ?? 0))
+      .slice(0, 5);
+  }, [data]);
 
   if (authLoading) {
     return <div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>;
@@ -173,26 +221,104 @@ export default function ReviewsOverviewPage() {
           </span>
           <HighlightSweep text="HRAS AI 大赛 · 评审一览" className="text-2xl font-bold" gradient="linear-gradient(135deg, #0F2057 0%, #1a3a8a 50%, #2d5aa0 100%)" />
         </div>
-        <Select
-          value={period}
-          onChange={setPeriod}
-          options={PERIOD_OPTIONS}
-          style={{ width: 160 }}
-          size="middle"
-        />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
+            style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
+          >
+            <SyncOutlined spin={syncing} /> 从飞书同步
+          </button>
+          <Select
+            value={period}
+            onChange={setPeriod}
+            options={PERIOD_OPTIONS}
+            style={{ width: 160 }}
+            size="middle"
+          />
+        </div>
       </div>
 
-      {/* 顶部汇总条 */}
+      {/* 顶部总卡片 */}
       {data && (
-        <div className="glass rounded-xl px-5 py-3 mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm"
-          style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-          <span className="flex items-center gap-1.5 font-semibold" style={{ color: 'var(--primary)' }}>
-            <TrophyOutlined /> {period} · 评审进度
-          </span>
-          <span>参赛 <b style={{ color: 'var(--foreground)' }}>{data.summary.total}</b></span>
-          <span>已评 <b style={{ color: '#16a34a' }}>{data.summary.reviewed}</b></span>
-          <span>未评 <b style={{ color: '#b3540e' }}>{data.summary.pending}</b></span>
-          <span>平均 <b style={{ color: 'var(--foreground)' }}>{data.summary.avgScore ?? '—'}</b></span>
+        <div className="glass rounded-2xl p-5 mb-4" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <StatBox
+              icon={<TrophyOutlined />}
+              label="参赛方案"
+              value={String(data.summary.total)}
+              sub={`已评 ${data.summary.reviewed} / 未评 ${data.summary.pending}`}
+              color="var(--primary)"
+            />
+            <StatBox
+              icon={<ClockCircleOutlined />}
+              label="总节省工时"
+              value={`${data.summary.totalSavedHours}h`}
+              sub="月均合计"
+              color="#16a34a"
+            />
+            <StatBox
+              icon={<ThunderboltOutlined />}
+              label="平均提效率"
+              value={data.summary.avgEfficiencyRate != null ? `${(data.summary.avgEfficiencyRate * 100).toFixed(1)}%` : '—'}
+              sub="所有方案均值"
+              color="#d97706"
+            />
+            <StatBox
+              icon={<RiseOutlined />}
+              label="平均得分"
+              value={data.summary.avgScore != null ? `${data.summary.avgScore.toFixed(1)}` : '—'}
+              sub={`/ ${TOTAL_MAX} · 100 制`}
+              color="#7c3aed"
+            />
+          </div>
+
+          {/* 节省工时 Top 5 */}
+          {topByHours.length > 0 && (
+            <div>
+              <div className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                <RiseOutlined /> 节省工时 Top 5
+              </div>
+              <div className="space-y-1.5">
+                {topByHours.map((s, i) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs"
+                    style={{ background: i === 0 ? 'rgba(255,215,0,0.08)' : i === 1 ? 'rgba(192,192,192,0.08)' : i === 2 ? 'rgba(205,127,50,0.08)' : 'rgba(0,0,0,0.02)' }}
+                  >
+                    <span className="w-5 text-center font-bold" style={{ color: i < 3 ? '#d97706' : 'var(--text-muted)' }}>
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 truncate font-medium" style={{ color: 'var(--foreground)' }}>
+                      {s.proposalNo ? `#${String(s.proposalNo).padStart(3, '0')} ` : ''}{s.title}
+                    </span>
+                    <span className="font-mono font-semibold" style={{ color: '#16a34a' }}>
+                      {s.monthlySavedHours?.toFixed(1)}h
+                    </span>
+                    {s.efficiencyRate != null && (
+                      <span className="font-mono" style={{ color: 'var(--text-muted)' }}>
+                        {(s.efficiencyRate * 100).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 复用价值分布 */}
+          {Object.keys(data.summary.reuseValueCounts).length > 0 && (
+            <div className="mt-4 pt-3 flex items-center gap-2 flex-wrap" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>复用价值分布:</span>
+              {Object.entries(data.summary.reuseValueCounts).map(([level, count]) => (
+                <span key={level} className="inline-flex items-center gap-1">
+                  <ReuseLevelTag level={level} />
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>({count})</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -214,9 +340,7 @@ export default function ReviewsOverviewPage() {
             }}
           >{opt.label}</button>
         ))}
-        <span className="ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>
-          <RiseOutlined /> 按总分降序
-        </span>
+        <span className="ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>按总分降序</span>
       </div>
 
       {/* 卡片网格 */}
@@ -229,68 +353,79 @@ export default function ReviewsOverviewPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {visibleSubs.map((sub) => (
-            <div key={sub.id} className="glass rounded-[20px] p-5 transition-all hover:-translate-y-0.5 hover:shadow-md relative overflow-hidden"
+            <div key={sub.id} className="glass rounded-[20px] overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md relative"
               style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-              {/* 排名徽章 — 角标 */}
               <RankBadge rank={sub.rank} />
-              {/* 头：提案号 + 状态 */}
-              <div className="flex items-center justify-between mb-2 pl-12">
-                <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                  {sub.proposalNo ? `#${String(sub.proposalNo).padStart(3, '0')}` : '—'}
-                </span>
-                <Tag color={sub.status === 'reviewed' ? 'green' : 'orange'} style={{ margin: 0 }}>
-                  {sub.status === 'reviewed' ? '✓ 已评' : `⏳ ${sub.reviewCount}/3`}
-                </Tag>
+
+              {/* 头部 */}
+              <div className="p-5 pb-3">
+                <div className="flex items-center justify-between mb-1.5 pl-12">
+                  <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                    {sub.proposalNo ? `#${String(sub.proposalNo).padStart(3, '0')}` : '—'}
+                  </span>
+                  <Tag color={sub.status === 'reviewed' ? 'green' : 'orange'} style={{ margin: 0 }}>
+                    {sub.status === 'reviewed' ? '已评' : `${sub.reviewCount}/3`}
+                  </Tag>
+                </div>
+                <h3 className="text-sm font-semibold mb-1 line-clamp-2" style={{ color: 'var(--foreground)' }}>
+                  {sub.title}
+                </h3>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {sub.team && <Tag color="blue" style={{ margin: 0, marginRight: 4 }}>{sub.team}</Tag>}
+                  {sub.authorName}
+                </p>
               </div>
 
-              {/* 标题 */}
-              <h3 className="text-base font-semibold mb-1 line-clamp-2">{sub.title}</h3>
-              <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-                {sub.team && <Tag color="blue" style={{ margin: 0, marginRight: 6 }}>{sub.team}</Tag>}
-                {sub.authorName}
-              </p>
-
-              {/* 总分 + 各角色分 */}
-              <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-2xl font-bold" style={{ color: 'var(--primary)' }}>
-                  {sub.totalScore != null ? sub.totalScore.toFixed(1) : '—'}
-                </span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>/ {TOTAL_MAX} · {sub.reviewCount} 人评</span>
+              {/* 一、量化数据 */}
+              <div className="px-5 py-3" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                <div className="text-[10px] font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  一、量化数据
+                </div>
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  <MetricMini label="月省工时" value={sub.monthlySavedHours != null ? `${sub.monthlySavedHours.toFixed(1)}h` : '—'} highlight />
+                  <MetricMini label="提效比例" value={sub.efficiencyRate != null ? `${(sub.efficiencyRate * 100).toFixed(0)}%` : '—'} highlight />
+                  <MetricMini label="Token费/月" value={sub.aiCost ? `¥${sub.aiCost}` : '—'} />
+                </div>
+                <BeforeAfterMini sub={sub} />
               </div>
 
-              {/* 角色分进度条 */}
-              <div className="space-y-1.5 mb-4">
-                {(['user', 'business', 'tech'] as Role[]).map((r) => {
-                  const s = sub.roleScores[r];
-                  const max = ROLE_MAX[r];
-                  return (
-                    <div key={r} className="flex items-center gap-2 text-xs">
-                      <Tag color={ROLE_COLOR[r]} style={{ margin: 0, minWidth: 56, textAlign: 'center' }}>
-                        {ROLE_LABEL[r]}
-                      </Tag>
-                      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.04)' }}>
-                        <div className="h-full transition-all"
-                          style={{
-                            width: s != null ? `${(s / max) * 100}%` : '0%',
-                            background: s != null ? 'var(--gradient-primary)' : 'transparent',
-                          }} />
-                      </div>
-                      <span className="w-20 text-right font-mono" style={{ color: s != null ? 'var(--foreground)' : 'var(--text-muted)' }}>
-                        {s != null ? `${s.toFixed(1)} / ${max}` : '—'}
-                      </span>
-                    </div>
-                  );
-                })}
+              {/* 二、评审得分 */}
+              <div className="px-5 py-3" style={{ borderTop: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
+                <div className="text-[10px] font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  二、评审得分
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold" style={{ color: 'var(--primary)' }}>
+                    {sub.totalScore != null ? sub.totalScore.toFixed(1) : '—'}
+                  </span>
+                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>/ {TOTAL_MAX}</span>
+                  <span className="text-xs ml-auto" style={{ color: 'var(--text-muted)' }}>{sub.reviewCount} 人评</span>
+                </div>
+              </div>
+
+              {/* 三、未来复用推广价值 */}
+              <div className="px-5 py-3" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                <div className="text-[10px] font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  三、未来复用推广价值
+                </div>
+                {sub.reuseValueLevel || sub.reuseValue ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {sub.reuseValueLevel && <ReuseLevelTag level={sub.reuseValueLevel} />}
+                    {sub.reuseValue && <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>{sub.reuseValue.match(/x\d+/i)?.[0] ?? sub.reuseValue}</Tag>}
+                  </div>
+                ) : (
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>暂无数据</span>
+                )}
               </div>
 
               {/* 操作按钮 */}
-              <div className="flex items-center gap-2">
+              <div className="px-5 py-3 flex items-center gap-2" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
                 <button
                   onClick={() => setModalSub(sub)}
                   className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
                   style={{ background: 'var(--primary)', color: '#fff' }}
                 >
-                  查看评审明细
+                  评审明细
                 </button>
                 <button
                   onClick={() => setDetailSub(sub)}
@@ -304,12 +439,12 @@ export default function ReviewsOverviewPage() {
         </div>
       )}
 
-      {/* 评委团 footer — 仅 admin 可见（页面已 gate） */}
+      {/* 评委团 footer */}
       {data && data.panel && (
         <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
           <div className="text-xs mb-3" style={{ color: '#888' }}>
             <TeamOutlined className="mr-1" />
-            本次 {data.period === '2605' ? '5 月' : data.period} 大赛评委团（按姓名首字母排序，不公布评分明细）
+            本次 {data.period === '2605' ? '5 月' : data.period} 大赛评委团（按姓名首字母排序）
           </div>
           <div className="space-y-2 text-sm" style={{ color: '#666' }}>
             {(['user', 'business', 'tech'] as Role[]).map((r) => {
@@ -346,7 +481,7 @@ export default function ReviewsOverviewPage() {
                 <h3 className="text-base font-bold">{modalSub.title}</h3>
                 <p className="text-xs mt-0.5" style={{ color: '#666' }}>
                   {modalSub.team && <Tag color="blue" style={{ margin: 0, marginRight: 6 }}>{modalSub.team}</Tag>}
-                  总分 <b style={{ color: '#1a3a8a' }}>{modalSub.totalScore != null ? modalSub.totalScore.toFixed(1) : '—'}</b> · {modalSub.reviews.length} 条评审
+                  总分 <b style={{ color: '#1a3a8a' }}>{modalSub.totalScore != null ? modalSub.totalScore.toFixed(1) : '—'}</b> / {TOTAL_MAX} · {modalSub.reviews.length} 条评审
                 </p>
               </div>
               <button onClick={() => setModalSub(null)} className="text-xl" style={{ color: 'var(--text-muted)' }}>×</button>
@@ -364,10 +499,9 @@ export default function ReviewsOverviewPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-bold" style={{ color: '#1a3a8a' }}>{r.weightedScore}</div>
-                      <div className="text-[10px]" style={{ color: '#666' }}>加权总分</div>
+                      <div className="text-[10px]" style={{ color: '#666' }}>加权总分 / 100</div>
                     </div>
                   </div>
-                  {/* 各维度分 */}
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-2 text-xs">
                     {Object.entries(r.scores).map(([dim, val]) => (
                       <div key={dim} className="flex items-center justify-between">
@@ -412,6 +546,7 @@ export default function ReviewsOverviewPage() {
                     {detailSub.team && <Tag color="blue" style={{ margin: 0 }}>{detailSub.team}</Tag>}
                     {detailSub.track && <Tag color="purple" style={{ margin: 0 }}>{detailSub.track}</Tag>}
                     {detailSub.sceneCategory && <Tag color="cyan" style={{ margin: 0 }}>{detailSub.sceneCategory}</Tag>}
+                    {detailSub.reuseValueLevel && <ReuseLevelTag level={detailSub.reuseValueLevel} />}
                   </div>
                 </div>
                 <button onClick={() => setDetailSub(null)} className="text-xl shrink-0 ml-2" style={{ color: 'var(--text-muted)' }}>×</button>
@@ -419,15 +554,20 @@ export default function ReviewsOverviewPage() {
             </div>
 
             <div className="p-6 space-y-5" style={{ color: '#1a1a1a' }}>
-              {/* 量化对比（最显眼位置） */}
               <QuantCard sub={detailSub} />
 
-              {/* 提报 */}
               <div className="grid grid-cols-2 gap-3">
                 <Field label="提报人" value={detailSub.authorName} />
                 <Field label="小组成员" value={detailSub.teamMembers} />
                 <Field label="方案确认人" value={detailSub.verifier} />
-                <Field label="AI 成本" value={detailSub.aiCost} />
+                <Field label="Token 费用/月" value={detailSub.aiCost ? `¥${detailSub.aiCost}` : null} />
+                <div>
+                  <div className="text-xs font-medium mb-0.5" style={{ color: '#666' }}>复用价值</div>
+                  <div className="flex items-center gap-2">
+                    {detailSub.reuseValueLevel ? <ReuseLevelTag level={detailSub.reuseValueLevel} /> : <span className="text-sm" style={{ color: '#999' }}>—</span>}
+                    {detailSub.reuseValue && <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>{detailSub.reuseValue.match(/x\d+/i)?.[0] ?? detailSub.reuseValue}</Tag>}
+                  </div>
+                </div>
               </div>
 
               {detailSub.aiTools.length > 0 && (
@@ -494,7 +634,78 @@ export default function ReviewsOverviewPage() {
   );
 }
 
-/** 详情弹窗里的小字段 */
+/* ─── 子组件 ─── */
+
+function StatBox({ icon, label, value, sub, color }: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub: string;
+  color: string;
+}) {
+  return (
+    <div className="rounded-xl p-3 flex items-start gap-2.5" style={{ background: 'rgba(0,0,0,0.02)' }}>
+      <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-sm" style={{ background: `${color}15`, color }}>
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</div>
+        <div className="text-lg font-bold leading-tight truncate" style={{ color }}>{value}</div>
+        <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{sub}</div>
+      </div>
+    </div>
+  );
+}
+
+function MetricMini({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="flex flex-col items-center px-2 py-1.5 rounded-md" style={{ background: 'rgba(255,255,255,0.5)' }}>
+      <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span className="text-sm font-bold font-mono" style={{ color: highlight ? '#16a34a' : 'var(--foreground)' }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function BeforeAfterMini({ sub }: { sub: SubmissionDTO }) {
+  const items: { label: string; before: string; after: string }[] = [];
+  if (sub.beforeHoursPerPerson != null || sub.afterHoursPerPerson != null) {
+    items.push({
+      label: '人均工时',
+      before: sub.beforeHoursPerPerson != null ? `${sub.beforeHoursPerPerson}h` : '—',
+      after: sub.afterHoursPerPerson != null ? `${sub.afterHoursPerPerson}h` : '—',
+    });
+  }
+  if (sub.beforePeopleCount != null || sub.afterPeopleCount != null) {
+    items.push({
+      label: '涉及人数',
+      before: sub.beforePeopleCount != null ? `${sub.beforePeopleCount}人` : '—',
+      after: sub.afterPeopleCount != null ? `${sub.afterPeopleCount}人` : '—',
+    });
+  }
+  if (sub.oldOperationCount != null || sub.newOperationCount != null) {
+    items.push({
+      label: '操作次数',
+      before: sub.oldOperationCount != null ? `${sub.oldOperationCount}次` : '—',
+      after: sub.newOperationCount != null ? `${sub.newOperationCount}次` : '—',
+    });
+  }
+  if (items.length === 0) return null;
+  return (
+    <div className="space-y-0.5 mt-1.5 pt-1.5" style={{ borderTop: '1px dashed rgba(0,0,0,0.06)' }}>
+      {items.map((it) => (
+        <div key={it.label} className="flex items-center gap-2 text-[11px]">
+          <span className="w-12 shrink-0" style={{ color: 'var(--text-muted)' }}>{it.label}</span>
+          <span style={{ color: 'var(--text-muted)' }}>{it.before}</span>
+          <span style={{ color: 'var(--text-muted)' }}>→</span>
+          <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{it.after}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
@@ -506,7 +717,6 @@ function Field({ label, value }: { label: string; value: string | null | undefin
   );
 }
 
-/** 详情弹窗里的分段 */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
@@ -516,12 +726,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-/** 量化对比卡 — 弹窗最顶部，最显眼 */
 function QuantCard({ sub }: { sub: SubmissionDTO }) {
-  // 数据
   const savedHours = sub.monthlySavedHours;
   const effRate = sub.efficiencyRate;
-  // before/after 字段
   const beforeH = sub.beforeHoursPerPerson;
   const beforeP = sub.beforePeopleCount;
   const afterH = sub.afterHoursPerPerson;
@@ -537,7 +744,6 @@ function QuantCard({ sub }: { sub: SubmissionDTO }) {
   const hasAny = savedHours != null || effRate != null || hasHours || hasPeople || hasOps || hasDur;
   if (!hasAny) return null;
 
-  // 节省工时 = (原工时 - 新工时) × 原人数
   const calcSaved = (beforeH != null && afterH != null && beforeP != null)
     ? Math.round((beforeH - afterH) * beforeP * 10) / 10
     : null;
@@ -547,9 +753,8 @@ function QuantCard({ sub }: { sub: SubmissionDTO }) {
     <div className="rounded-2xl p-5 shadow-sm"
       style={{ background: 'linear-gradient(135deg, #1a3a8a 0%, #2d5aa0 100%)', color: '#fff' }}>
       <div className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.8)' }}>
-        📊 量化数据
+        量化数据
       </div>
-
       <div className="grid grid-cols-2 gap-3 mb-4">
         {showSaved != null && (
           <div>
@@ -570,37 +775,11 @@ function QuantCard({ sub }: { sub: SubmissionDTO }) {
           </div>
         )}
       </div>
-
-      {/* before / after 对比行 */}
       <div className="space-y-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-        {hasHours && (
-          <CompareRow
-            label="人均单次工时"
-            before={beforeH != null ? `${beforeH} 小时` : '—'}
-            after={afterH != null ? `${afterH} 小时` : '—'}
-          />
-        )}
-        {hasPeople && (
-          <CompareRow
-            label="涉及人数"
-            before={beforeP != null ? `${beforeP} 人` : '—'}
-            after={afterP != null ? `${afterP} 人` : '—'}
-          />
-        )}
-        {hasOps && (
-          <CompareRow
-            label="操作次数"
-            before={oldOp != null ? `${oldOp} 次` : '—'}
-            after={newOp != null ? `${newOp} 次` : '—'}
-          />
-        )}
-        {hasDur && (
-          <CompareRow
-            label="单次时长"
-            before={oldDur != null ? `${oldDur}` : '—'}
-            after={newDur != null ? `${newDur}` : '—'}
-          />
-        )}
+        {hasHours && <CompareRow label="人均单次工时" before={beforeH != null ? `${beforeH} 小时` : '—'} after={afterH != null ? `${afterH} 小时` : '—'} />}
+        {hasPeople && <CompareRow label="涉及人数" before={beforeP != null ? `${beforeP} 人` : '—'} after={afterP != null ? `${afterP} 人` : '—'} />}
+        {hasOps && <CompareRow label="操作次数" before={oldOp != null ? `${oldOp} 次` : '—'} after={newOp != null ? `${newOp} 次` : '—'} />}
+        {hasDur && <CompareRow label="单次时长" before={oldDur != null ? `${oldDur}` : '—'} after={newDur != null ? `${newDur}` : '—'} />}
       </div>
     </div>
   );
@@ -617,9 +796,7 @@ function CompareRow({ label, before, after }: { label: string; before: string; a
   );
 }
 
-/** 排名徽章 — 卡片左上角角标 */
 function RankBadge({ rank }: { rank: number }) {
-  // 前 3 名用金银铜色，其余用灰色
   const styleMap: Record<number, { bg: string; color: string; label: string }> = {
     1: { bg: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#5a3a00', label: '🥇' },
     2: { bg: 'linear-gradient(135deg, #E8E8E8, #B0B0B0)', color: '#3a3a3a', label: '🥈' },
@@ -630,20 +807,34 @@ function RankBadge({ rank }: { rank: number }) {
     <div
       className="absolute top-0 left-0 flex items-center justify-center font-bold"
       style={{
-        width: 44,
-        height: 44,
-        background: s.bg,
-        color: s.color,
+        width: 44, height: 44,
+        background: s.bg, color: s.color,
         borderBottomRightRadius: 12,
-        fontSize: 16,
-        lineHeight: 1,
-        boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-        zIndex: 1,
+        fontSize: 16, lineHeight: 1,
+        boxShadow: '0 2px 6px rgba(0,0,0,0.1)', zIndex: 1,
       }}
       title={`第 ${rank} 名`}
     >
       {s.label ? <span className="text-base mr-0.5">{s.label}</span> : null}
       <span style={{ marginLeft: s.label ? -2 : 0 }}>{rank}</span>
     </div>
+  );
+}
+
+/** 复用价值等级 Tag — 金银铜色 */
+function ReuseLevelTag({ level }: { level: string }) {
+  const styleMap: Record<string, { bg: string; color: string; border: string }> = {
+    '金': { bg: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#5a3a00', border: '1px solid rgba(255,165,0,0.3)' },
+    '银': { bg: 'linear-gradient(135deg, #E8E8E8, #C0C0C0)', color: '#3a3a3a', border: '1px solid rgba(192,192,192,0.5)' },
+    '铜': { bg: 'linear-gradient(135deg, #CD7F32, #A0522D)', color: '#fff', border: '1px solid rgba(160,82,45,0.3)' },
+  };
+  const s = styleMap[level] ?? { bg: 'rgba(124,58,237,0.1)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.2)' };
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold"
+      style={{ background: s.bg, color: s.color, border: s.border, fontSize: 11 }}
+    >
+      {level === '金' ? '🥇 金' : level === '银' ? '🥈 银' : level === '铜' ? '🥉 铜' : level}
+    </span>
   );
 }

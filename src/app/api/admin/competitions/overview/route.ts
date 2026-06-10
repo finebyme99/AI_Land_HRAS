@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     // 1. 拉本期 submissions（只看"评审中"）
     const { data: subs, error: sErr } = await supabase
       .from('competition_submissions')
-      .select('id, proposal_no, title, team, submitter, status, monthly_saved_hours, created_at, period, track, scene_category, ai_tools, efficiency_rate, before_process, pain_points, after_process, demo_link, record_url, ai_cost, extra_value, team_members, implementation, verifier, before_hours_per_person, before_people_count, after_hours_per_person, after_people_count, old_operation_count, new_operation_count, old_hours_per_task, new_duration, old_people_count, new_people_count, old_frequency, new_frequency')
+      .select('id, proposal_no, title, team, submitter, status, monthly_saved_hours, created_at, period, track, scene_category, ai_tools, efficiency_rate, before_process, pain_points, after_process, demo_link, record_url, ai_cost, extra_value, team_members, implementation, verifier, before_hours_per_person, before_people_count, after_hours_per_person, after_people_count, old_operation_count, new_operation_count, old_hours_per_task, new_duration, old_people_count, new_people_count, old_frequency, new_frequency, reuse_value, reuse_value_level')
       .eq('period', period)
       .eq('status', '评审中')
       .order('proposal_no', { ascending: true });
@@ -78,12 +78,13 @@ export async function GET(request: NextRequest) {
           roleScores[role] = Math.round(avg * 10) / 10;
         }
       });
-      // 跨角色总分 = 三个角色均分之和（每角色 5 分制，含权重后最高 19.5/19.5/11 = 50）
+      // 跨角色总分 = 三个角色均分之和，转换为 100 制（×2）
       const roleParts: number[] = [];
       (['user', 'business', 'tech'] as ReviewerRole[]).forEach((r) => { if (roleScores[r] != null) roleParts.push(roleScores[r]!); });
-      const totalScore = roleParts.length > 0
+      const rawTotal = roleParts.length > 0
         ? Math.round(roleParts.reduce((a, b) => a + b, 0) * 10) / 10
         : null;
+      const totalScore = rawTotal != null ? Math.round(rawTotal * 2 * 10) / 10 : null;
       // 状态
       const allReviewed = subReviews.filter((r) => r.decision === 'reviewed' && r.reviewer_role);
       const reviewedRoles = new Set(allReviewed.map((r) => r.reviewer_role));
@@ -115,7 +116,7 @@ export async function GET(request: NextRequest) {
             reviewerRole: role,
             decision: r.decision,
             scores: r.scores ?? {},
-            weightedScore: role ? Math.round(computeWeightedScore(r.scores ?? {}, role) * 10) / 10 : 0,
+            weightedScore: role ? Math.round(computeWeightedScore(r.scores ?? {}, role) * 2 * 10) / 10 : 0,
             reason: r.reason ?? '',
           };
         })
@@ -168,6 +169,8 @@ export async function GET(request: NextRequest) {
         newPeopleCount: sub.new_people_count ?? null,
         oldFrequency: sub.old_frequency ?? null,
         newFrequency: sub.new_frequency ?? null,
+        reuseValue: sub.reuse_value ?? null,
+        reuseValueLevel: sub.reuse_value_level ?? null,
       };
     });
 
@@ -179,7 +182,22 @@ export async function GET(request: NextRequest) {
     const avgScore = scored.length > 0
       ? Math.round((scored.reduce((s, x) => s + (x.totalScore ?? 0), 0) / scored.length) * 10) / 10
       : null;
-
+    // 复用价值等级分布（直接用 reuseValueLevel 字段）
+    const reuseValueCounts: Record<string, number> = {};
+    for (const s of enriched) {
+      const level = s.reuseValueLevel;
+      if (!level) continue;
+      reuseValueCounts[level] = (reuseValueCounts[level] ?? 0) + 1;
+    }
+    // 总节省工时
+    const totalSavedHours = Math.round(
+      enriched.reduce((s, x) => s + (x.monthlySavedHours ?? 0), 0) * 10,
+    ) / 10;
+    // 平均提效比例
+    const withRate = enriched.filter((s) => s.efficiencyRate != null);
+    const avgEfficiencyRate = withRate.length > 0
+      ? Math.round((withRate.reduce((s, x) => s + (x.efficiencyRate ?? 0), 0) / withRate.length) * 1000) / 1000
+      : null;
     // 5. 评委团（按角色聚合本期所有已评审的人）
     const panelByRole: Record<ReviewerRole, string[]> = { user: [], business: [], tech: [] };
     const seenByRole: Record<ReviewerRole, Set<string>> = { user: new Set(), business: new Set(), tech: new Set() };
@@ -231,7 +249,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         period,
-        summary: { total, reviewed, pending, avgScore },
+        summary: { total, reviewed, pending, avgScore, totalSavedHours, avgEfficiencyRate, reuseValueCounts },
         submissions: enriched,
         panel: panelByRole,
       },

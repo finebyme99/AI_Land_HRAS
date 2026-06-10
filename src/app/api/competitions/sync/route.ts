@@ -25,14 +25,14 @@ function errMsg(err: any): string {
 
 // 飞书字段名 → 前端字段名映射
 const FIELD_NAME_MAP: Record<string, string> = {
-  '方案标题_AI': 'title',
+  '项目标题': 'title',
   '提交人': 'submitter',
   '提报人团队': 'team',
   '请选择提报赛道': 'track',
   '提效/增值场景分类': 'sceneCategory',
   'AI工具': 'aiTools',
-  '提报提效比例': 'efficiencyRate',
-  '提报月均节省工时': 'monthlySavedHours',
+  '提效比例': 'efficiencyRate',
+  '月节省工时': 'monthlySavedHours',
   '原场景与流程_AI润色': 'beforeProcess',
   '核心痛点': 'painPoints',
   '现工作流程': 'afterProcess',
@@ -63,6 +63,8 @@ const FIELD_NAME_MAP: Record<string, string> = {
   'Demo链接': 'demoLink',
   '量化数据来源': 'dataSource',
   '量化数据来源说明': 'dataSourceNote',
+  '推广复用价值系数': 'reuseValue',
+  '推广复用价值等级': 'reuseValueLevel',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,8 +106,35 @@ function mapRecord(record: any): Record<string, unknown> {
 }
 
 // GET: 从 Supabase 读取已同步的数据
+// ?discover=fields → 返回飞书多维表格实际字段名 vs FIELD_NAME_MAP 对比
 export async function GET(request: NextRequest) {
   const period = request.nextUrl.searchParams.get('period') ?? '2605';
+
+  // 字段发现模式
+  if (request.nextUrl.searchParams.get('discover') === 'fields') {
+    try {
+      const token = await getTenantAccessToken();
+      const fieldsUrl = `${FEISHU_API}/bitable/v1/apps/${BASE_APP}/tables/${TABLE_ID}/fields?page_size=100`;
+      const res = await fetch(fieldsUrl, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (!res.ok || json.code !== 0) {
+        return NextResponse.json({ error: `飞书 API 错误: ${json.msg}` }, { status: 502 });
+      }
+      const feishuFields: string[] = (json.data?.items ?? []).map((f: { field_name?: string }) => f.field_name ?? '');
+      const mappedNames = new Set(Object.keys(FIELD_NAME_MAP));
+      const matched = feishuFields.filter((n) => mappedNames.has(n));
+      const unmatchedFeishu = feishuFields.filter((n) => !mappedNames.has(n));
+      const unmatchedCode = [...mappedNames].filter((n) => !feishuFields.includes(n));
+      return NextResponse.json({
+        feishuFields,
+        matched,
+        unmatchedFeishu,   // 多维表格有，代码没映射
+        unmatchedCode,     // 代码有映射，多维表格没找到（可能是改名了）
+      });
+    } catch (e) {
+      return NextResponse.json({ error: errMsg(e) }, { status: 500 });
+    }
+  }
 
   try {
     const supabase = getSupabaseAdmin();
@@ -386,6 +415,8 @@ export async function POST(request: NextRequest) {
         demo_link: mapped.demoLink ?? null,
         data_source: mapped.dataSource ?? null,
         data_source_note: mapped.dataSourceNote ?? null,
+        reuse_value: mapped.reuseValue ?? null,
+        reuse_value_level: mapped.reuseValueLevel ?? null,
       });
     }
 
