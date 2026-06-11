@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     // 1. 拉本期 submissions（只看"评审中"）
     const { data: subs, error: sErr } = await supabase
       .from('competition_submissions')
-      .select('id, proposal_no, title, team, submitter, status, monthly_saved_hours, created_at, period, track, scene_category, ai_tools, efficiency_rate, before_process, pain_points, after_process, demo_link, record_url, ai_cost, extra_value, team_members, implementation, verifier, before_hours_per_person, before_people_count, after_hours_per_person, after_people_count, old_operation_count, new_operation_count, old_hours_per_task, new_duration, old_people_count, new_people_count, old_frequency, new_frequency, reuse_value, reuse_value_level')
+      .select('id, proposal_no, title, team, submitter, status, monthly_saved_hours, created_at, period, track, scene_category, ai_tools, efficiency_rate, before_process, pain_points, after_process, demo_link, record_url, ai_cost, extra_value, team_members, implementation, verifier, before_hours_per_person, before_people_count, after_hours_per_person, after_people_count, old_operation_count, new_operation_count, old_hours_per_task, new_duration, old_people_count, new_people_count, old_frequency, new_frequency, reuse_value, reuse_value_level, monthly_saved_cost, cost_reduction_note, implementation_link')
       .eq('period', period)
       .eq('status', '评审中')
       .order('proposal_no', { ascending: true });
@@ -171,6 +171,9 @@ export async function GET(request: NextRequest) {
         newFrequency: sub.new_frequency ?? null,
         reuseValue: sub.reuse_value ?? null,
         reuseValueLevel: sub.reuse_value_level ?? null,
+        monthlySavedCost: sub.monthly_saved_cost ?? null,
+        costReductionNote: sub.cost_reduction_note ?? null,
+        implementationLink: sub.implementation_link ?? null,
       };
     });
 
@@ -188,6 +191,13 @@ export async function GET(request: NextRequest) {
       const level = s.reuseValueLevel;
       if (!level) continue;
       reuseValueCounts[level] = (reuseValueCounts[level] ?? 0) + 1;
+    }
+    // 复用价值描述分布（按 reuseValue 原文分组 — "跨多个BU/多个条线可用 x3" 等具体描述）
+    const reuseValueDistribution: Record<string, number> = {};
+    for (const s of enriched) {
+      const desc = s.reuseValue;
+      if (!desc) continue;
+      reuseValueDistribution[desc] = (reuseValueDistribution[desc] ?? 0) + 1;
     }
     // 总节省工时
     const totalSavedHours = Math.round(
@@ -249,7 +259,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         period,
-        summary: { total, reviewed, pending, avgScore, totalSavedHours, avgEfficiencyRate, reuseValueCounts },
+        summary: { total, reviewed, pending, avgScore, totalSavedHours, avgEfficiencyRate, reuseValueCounts, reuseValueDistribution },
         submissions: enriched,
         panel: panelByRole,
       },

@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTenantAccessToken } from '@/lib/feishu';
 import { getSupabaseAdmin, ensureBucket, uploadToStorage } from '@/lib/supabase-admin';
 
-const BASE_APP = 'Hc6DbL3Wia2ejMsQn7TcE9g2njc';
-const TABLE_ID = 'tbl12tkH7lOR9rrq';
+const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
+const TABLE_ID = 'tbl9WJyxl9bbtYjb';
+const WIKI_TOKEN = 'LRROwulJciI7JYkIT55cQtdpnze';
+const VIEW_ID = 'vewEjYjj9S';
+const LEGACY_TABLE_ID = 'tbl12tkH7lOR9rrq';  // 旧"方案提交"表 — 用于关联 id
 const FEISHU_API = 'https://open.feishu.cn/open-apis';
 const BUCKET = 'competition-attachments';
 
@@ -23,63 +26,74 @@ function errMsg(err: any): string {
   try { return JSON.stringify(err); } catch { return String(err); }
 }
 
-// 飞书字段名 → 前端字段名映射
+// 飞书选项 ID → 汉字 status（AI大赛状态 / 赛事状态 字段共用同一组 opt）
+const FEISHU_STATUS_MAP: Record<string, string> = {
+  'optxLj2E2B': '待提交人补充方案',
+  'optM3cOYIf': '待提交人调整方案',
+  'opt0wYpR4p': '评审中',
+  'optyEbcJfg': '终审通过',
+  'optcp8dDAi': '并入其他方案',
+};
+
+// 飞书字段名 → 前端字段名映射（新表 tbl9WJyxl9bbtYjb · AI 大赛项目管理）
 const FIELD_NAME_MAP: Record<string, string> = {
-  '项目标题': 'title',
-  '提交人': 'submitter',
-  '提报人团队': 'team',
-  '请选择提报赛道': 'track',
-  '提效/增值场景分类': 'sceneCategory',
+  '一句话简述场景': 'title',
+  '提报人': 'submitter',
+  '提报团队': 'team',
+  '场景分类': 'sceneCategory',
   'AI工具': 'aiTools',
-  '提效比例': 'efficiencyRate',
-  '月节省工时': 'monthlySavedHours',
-  '原场景与流程_AI润色': 'beforeProcess',
-  '核心痛点': 'painPoints',
-  '现工作流程': 'afterProcess',
-  '原人均每月投入工时': 'beforeHoursPerPerson',
-  '原月均投入人数': 'beforePeopleCount',
-  '现人均每月投入工时': 'afterHoursPerPerson',
-  '现月均投入人数': 'afterPeopleCount',
-  '月均任务消耗AI费用': 'aiCost',
-  '其他价值：准确率提升 / 质量提升 / 员工体验提升 等': 'extraValue',
-  '工时数据真实性确认人': 'verifier',
-  '评审周期': 'period',
-  '组队团队成员': 'teamMembers',
-  '赛事进展': 'status',
-  '自动编号': 'proposalNo',
-  '补充附件': 'attachments',
-  // 新增字段
-  '实现过程': 'implementation',
-  '新工作次数': 'newOperationCount',
-  '原操作次数': 'oldOperationCount',
-  '提报组队类型': 'teamType',
-  '原每次工时': 'oldHoursPerTask',
-  '新执行时长': 'newDuration',
-  '新执行人数': 'newPeopleCount',
-  '原执行人数': 'oldPeopleCount',
-  '原工作频率': 'oldFrequency',
-  '新工作频率': 'newFrequency',
-  '当前用户': 'reviewers',
-  'Demo链接': 'demoLink',
-  '量化数据来源': 'dataSource',
-  '量化数据来源说明': 'dataSourceNote',
+  '月均提效节省工时': 'monthlySavedHours',
+  '月均Token费用': 'aiCost',
+  '原业务场景及流程': 'beforeProcess',
+  '原核心痛点': 'painPoints',
+  '新业务流程': 'afterProcess',
+  '原执行人数': 'beforePeopleCount',
+  '新执行人数': 'afterPeopleCount',
+  '原执行次数': 'oldOperationCount',
+  '新执行次数': 'newOperationCount',
+  '原单次执行耗时': 'oldHoursPerTask',
+  '新单次执行耗时': 'newDuration',
+  '原执行频率': 'oldFrequency',
+  '新执行频率': 'newFrequency',
   '推广复用价值系数': 'reuseValue',
   '推广复用价值等级': 'reuseValueLevel',
+  '月均降本费用（不含人力成本）': 'monthlySavedCost',
+  '降本费用说明': 'costReductionNote',
+  '实现效果': 'implementationLink',
+  '场景编号': 'proposalNo',
+  '提报组队类型': 'teamType',
+  '组队成员': 'teamMembers',
+  '核心价值': 'extraValue',
+  '实现过程简述': 'implementation',
+  '工时与降本真实性确认人': 'verifier',
+  '评审周期': 'period',
+  'AI大赛状态': 'status',
+  '赛事状态': 'status',  // 备用：与 AI大赛状态 共用同一组 opt
+  // 暂不映射（前端未消费或新表特有）：业务负责人 / AI负责人 / 实现效果 / 场景来源 / 落地进展 / 进展记录&链接 / 计划启动日期 / 试点上线日期 / 推广上线日期 / 全面上线日期 / 价值排名 / 最终价值计分 / 降本费用说明 / 月均降本费用（不含人力成本） / 月均降本节省工时 / 场景归属地区系数 / 场景归属地区系数值 / 原月均执行次数 / 新月均执行次数
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRecord(record: any): Record<string, unknown> {
+  // 优先用"关联参赛项目"指向旧表 tbl12tkH7lOR9rrq 的 record_id 当主 id
+  // — 保证 13 条记录 upsert 到原来的 13 条上（不出现 13+13 双份）
+  const linkedLegacy = (record.fields?.['关联参赛项目'] as Array<{ record_ids?: string[] }> | undefined)?.[0]?.record_ids?.[0];
   const mapped: Record<string, unknown> = {
-    id: record.record_id,
-    recordUrl: `https://ztn.feishu.cn/base/${BASE_APP}?table=${TABLE_ID}&record=${record.record_id}`,
+    id: linkedLegacy || record.record_id,
+    recordUrl: `https://ztn.feishu.cn/wiki/${WIKI_TOKEN}?table=${TABLE_ID}&view=${VIEW_ID}&record=${record.record_id}`,
+    legacy_submission_id: record.record_id,  // 保留新表 record_id 供 cross-ref
   };
   for (const [fieldName, value] of Object.entries(record.fields ?? {})) {
     const key = FIELD_NAME_MAP[fieldName];
     if (!key) continue;
     if (value == null) continue;
 
+    // status 字段特殊处理：飞书 opt ID 数组 → 汉字字符串
+    if (key === 'status' && Array.isArray(value) && value.length > 0) {
+      const optId = String(value[0]);
+      mapped[key] = FEISHU_STATUS_MAP[optId] ?? optId;
+    }
     // attachment field: [{file_token, name, type, url}] → 保留原对象
-    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && ('file_token' in value[0] || ('url' in value[0] && 'type' in value[0]))) {
+    else if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && ('file_token' in value[0] || ('url' in value[0] && 'type' in value[0]))) {
       mapped[key] = value;
     }
     // link field: {link: "url", text: "display"} → 提取 link URL
@@ -102,13 +116,43 @@ function mapRecord(record: any): Record<string, unknown> {
       mapped[key] = value;
     }
   }
+  // status 默认"评审中"（6 月期方案状态字段尚未填写时补默认）
+  if (!mapped.status) {
+    mapped.status = '评审中';
+  }
   return mapped;
 }
 
 // GET: 从 Supabase 读取已同步的数据
 // ?discover=fields → 返回飞书多维表格实际字段名 vs FIELD_NAME_MAP 对比
+// ?peek=records     → 临时：拉新表前 N 条 records 看数据形态（不写 DB）
 export async function GET(request: NextRequest) {
   const period = request.nextUrl.searchParams.get('period') ?? '2605';
+
+  // 临时 peek：拉新表前 N 条 records
+  if (request.nextUrl.searchParams.get('peek') === 'records') {
+    try {
+      const token = await getTenantAccessToken();
+      const limit = parseInt(request.nextUrl.searchParams.get('limit') ?? '3', 10);
+      const url = new URL(`${FEISHU_API}/bitable/v1/apps/${BASE_APP}/tables/${TABLE_ID}/records`);
+      url.searchParams.set('page_size', String(Math.min(limit, 10)));
+      if (period) {
+        url.searchParams.set('filter', `AND(CurrentValue.[评审周期]="${period}")`);
+      }
+      const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (!res.ok || json.code !== 0) {
+        return NextResponse.json({ error: `飞书 API 错误: ${json.msg}` }, { status: 502 });
+      }
+      const items = (json.data?.items ?? []).map((r: { record_id: string; fields?: Record<string, unknown> }) => ({
+        record_id: r.record_id,
+        fields: r.fields ?? {},
+      }));
+      return NextResponse.json({ count: items.length, total: json.data?.total ?? 0, period, items });
+    } catch (e) {
+      return NextResponse.json({ error: errMsg(e) }, { status: 500 });
+    }
+  }
 
   // 字段发现模式
   if (request.nextUrl.searchParams.get('discover') === 'fields') {
@@ -120,13 +164,32 @@ export async function GET(request: NextRequest) {
       if (!res.ok || json.code !== 0) {
         return NextResponse.json({ error: `飞书 API 错误: ${json.msg}` }, { status: 502 });
       }
-      const feishuFields: string[] = (json.data?.items ?? []).map((f: { field_name?: string }) => f.field_name ?? '');
+      // 返回每个字段的完整对象（含 group_id / group_name 等元信息）
+      const fieldsAll = (json.data?.items ?? []) as Array<Record<string, unknown>>;
+      const feishuFields: string[] = fieldsAll.map((f) => (f.field_name as string) ?? '');
       const mappedNames = new Set(Object.keys(FIELD_NAME_MAP));
       const matched = feishuFields.filter((n) => mappedNames.has(n));
       const unmatchedFeishu = feishuFields.filter((n) => !mappedNames.has(n));
       const unmatchedCode = [...mappedNames].filter((n) => !feishuFields.includes(n));
+      // 字段编组聚合：按 group_id/group_name 分组
+      const groupsMap = new Map<string, { groupId: string; groupName: string; fields: Array<{ name: string; type: number; fieldId: string }> }>();
+      for (const f of fieldsAll) {
+        const groupId = (f.group_id as string) ?? '_ungrouped';
+        const groupName = (f.group_name as string) ?? '未分组';
+        const name = (f.field_name as string) ?? '';
+        const type = (f.type as number) ?? 0;
+        const fieldId = (f.field_id as string) ?? '';
+        const key = `${groupId}::${groupName}`;
+        if (!groupsMap.has(key)) {
+          groupsMap.set(key, { groupId, groupName, fields: [] });
+        }
+        groupsMap.get(key)!.fields.push({ name, type, fieldId });
+      }
+      const groups = Array.from(groupsMap.values());
       return NextResponse.json({
         feishuFields,
+        fieldsAll,         // 每个字段的完整对象（含 type/group_id/group_name 等）
+        groups,            // 按编组聚合
         matched,
         unmatchedFeishu,   // 多维表格有，代码没映射
         unmatchedCode,     // 代码有映射，多维表格没找到（可能是改名了）
@@ -376,7 +439,7 @@ export async function POST(request: NextRequest) {
       rows.push({
         id: mapped.id,
         period,
-        proposal_no: mapped.proposalNo ?? null,
+        // proposal_no: 新表"场景编号"是 "AI044" 字符串，DB 列是 integer 不兼容 → 暂不传
         title: mapped.title ?? '',
         submitter: toArray(mapped.submitter),
         team_members: toArray(mapped.teamMembers),
@@ -389,9 +452,7 @@ export async function POST(request: NextRequest) {
         before_process: mapped.beforeProcess ?? null,
         pain_points: toArray(mapped.painPoints),
         after_process: mapped.afterProcess ?? null,
-        before_hours_per_person: mapped.beforeHoursPerPerson ?? null,
         before_people_count: mapped.beforePeopleCount ?? null,
-        after_hours_per_person: mapped.afterHoursPerPerson ?? null,
         after_people_count: mapped.afterPeopleCount ?? null,
         ai_cost: mapped.aiCost ?? null,
         extra_value: mapped.extraValue ?? null,
@@ -407,16 +468,13 @@ export async function POST(request: NextRequest) {
         team_type: mapped.teamType ?? null,
         old_hours_per_task: mapped.oldHoursPerTask ?? null,
         new_duration: mapped.newDuration ?? null,
-        new_people_count: mapped.newPeopleCount ?? null,
-        old_people_count: mapped.oldPeopleCount ?? null,
         old_frequency: mapped.oldFrequency ?? null,
         new_frequency: mapped.newFrequency ?? null,
-        reviewers: toArray(mapped.reviewers),
-        demo_link: mapped.demoLink ?? null,
-        data_source: mapped.dataSource ?? null,
-        data_source_note: mapped.dataSourceNote ?? null,
         reuse_value: mapped.reuseValue ?? null,
         reuse_value_level: mapped.reuseValueLevel ?? null,
+        monthly_saved_cost: mapped.monthlySavedCost ?? null,
+        cost_reduction_note: mapped.costReductionNote ?? null,
+        implementation_link: mapped.implementationLink ?? null,
       });
     }
 
