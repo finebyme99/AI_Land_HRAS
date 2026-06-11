@@ -69,7 +69,9 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '评审周期': 'period',
   'AI大赛状态': 'status',
   '赛事状态': 'status',  // 备用：与 AI大赛状态 共用同一组 opt
-  // 暂不映射（前端未消费或新表特有）：业务负责人 / AI负责人 / 实现效果 / 场景来源 / 落地进展 / 进展记录&链接 / 计划启动日期 / 试点上线日期 / 推广上线日期 / 全面上线日期 / 价值排名 / 最终价值计分 / 降本费用说明 / 月均降本费用（不含人力成本） / 月均降本节省工时 / 场景归属地区系数 / 场景归属地区系数值 / 原月均执行次数 / 新月均执行次数
+  '最终价值计分': 'finalValueScore',
+  '月均提效比例': 'efficiencyRate',
+  // 暂不映射（前端未消费或新表特有）：业务负责人 / AI负责人 / 实现效果 / 场景来源 / 落地进展 / 进展记录&链接 / 计划启动日期 / 试点上线日期 / 推广上线日期 / 全面上线日期 / 价值排名 / 降本费用说明 / 月均降本费用（不含人力成本） / 月均降本节省工时 / 场景归属地区系数 / 场景归属地区系数值 / 原月均执行次数 / 新月均执行次数
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -475,6 +477,7 @@ export async function POST(request: NextRequest) {
         monthly_saved_cost: mapped.monthlySavedCost ?? null,
         cost_reduction_note: mapped.costReductionNote ?? null,
         implementation_link: mapped.implementationLink ?? null,
+        final_value_score: mapped.finalValueScore ?? null,
       });
     }
 

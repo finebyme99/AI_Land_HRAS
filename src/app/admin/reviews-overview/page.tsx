@@ -12,7 +12,6 @@ import {
   ClockCircleOutlined,
   RiseOutlined,
   ThunderboltOutlined,
-  DollarOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import HighlightSweep from '@/components/HighlightSweep';
@@ -63,6 +62,7 @@ interface SubmissionDTO {
   monthlySavedCost: string | null;
   costReductionNote: string | null;
   implementationLink: string | null;
+  finalValueScore: number | null;
   // 量化对比
   beforeHoursPerPerson: number | null;
   beforePeopleCount: number | null;
@@ -144,8 +144,17 @@ export default function ReviewsOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [reuseValueFilter, setReuseValueFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('finalValueScore');
   const [modalSub, setModalSub] = useState<SubmissionDTO | null>(null);
   const [detailSub, setDetailSub] = useState<SubmissionDTO | null>(null);
+
+  const SORT_OPTIONS = [
+    { value: 'finalValueScore', label: '最终价值计分' },
+    { value: 'reuseValue', label: '可复用范围' },
+    { value: 'monthlySavedHours', label: '月省工时' },
+    { value: 'efficiencyRate', label: '提效比例' },
+    { value: 'totalScore', label: '评审得分' },
+  ];
 
   useEffect(() => {
     if (!authLoading && !isAdmin) router.replace('/');
@@ -234,30 +243,47 @@ export default function ReviewsOverviewPage() {
     return Math.round(s.monthlySavedHours * coef * 10) / 10;
   };
 
+  // 排序比较器
+  const sortComparator = useCallback((a: SubmissionDTO, b: SubmissionDTO): number => {
+    if (sortBy === 'reuseValue') {
+      // 可复用范围：按 reuseValueLevel 金>银>铜，再按 reuseValue 文本
+      const levelOrder: Record<string, number> = { '金': 3, '银': 2, '铜': 1 };
+      const la = levelOrder[a.reuseValueLevel ?? ''] ?? 0;
+      const lb = levelOrder[b.reuseValueLevel ?? ''] ?? 0;
+      if (la !== lb) return lb - la;
+      return (b.reuseValue ?? '').localeCompare(a.reuseValue ?? '');
+    }
+    // 数值字段：降序，null 排最后
+    const va = (a as unknown as Record<string, number | null>)[sortBy] ?? null;
+    const vb = (b as unknown as Record<string, number | null>)[sortBy] ?? null;
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    return vb - va;
+  }, [sortBy]);
+
   const visibleSubs = useMemo(() => {
     let list = data?.submissions ?? [];
-    // 需求 #1：评审未开始的方案不展示卡片（totalScore=null 或 reviewCount=0）
+    // 评审未开始的方案不展示卡片（totalScore=null 或 reviewCount=0）
     list = list.filter((s) => s.totalScore != null && s.reviewCount > 0);
     if (teamFilter !== 'all') list = list.filter((s) => s.team === teamFilter);
     if (reuseValueFilter !== 'all') list = list.filter((s) => s.reuseValue === reuseValueFilter);
-    // 按预估月省工时降序（null/0 排最后）
-    const withEst = list.map((s) => ({ ...s, estimatedHours: calcEstimatedHours(s) }));
-    withEst.sort((a, b) => (b.estimatedHours ?? -1) - (a.estimatedHours ?? -1));
-    // 排名（全数据，不受 teamFilter / reuseValueFilter 影响）
-    const allWithEst = (data?.submissions ?? [])
+    // 按用户选择排序
+    const sorted = [...list].sort(sortComparator);
+    // 排名始终按最终价值计分（全数据，不受筛选影响）
+    const allSorted = (data?.submissions ?? [])
       .filter((s) => s.totalScore != null && s.reviewCount > 0)
-      .map((s) => ({ ...s, estimatedHours: calcEstimatedHours(s) }));
-    allWithEst.sort((a, b) => (b.estimatedHours ?? -1) - (a.estimatedHours ?? -1));
+      .sort((a, b) => (b.finalValueScore ?? -1) - (a.finalValueScore ?? -1));
     const rankMap = new Map<string, number>();
-    allWithEst.forEach((s, i) => rankMap.set(s.id, i + 1));
-    return withEst.map((s) => ({ ...s, rank: rankMap.get(s.id) ?? 0 }));
-  }, [data, teamFilter, reuseValueFilter]);
+    allSorted.forEach((s, i) => rankMap.set(s.id, i + 1));
+    return sorted.map((s) => ({ ...s, rank: rankMap.get(s.id) ?? 0 }));
+  }, [data, teamFilter, reuseValueFilter, sortComparator]);
 
-  const topByEstimated = useMemo(() => {
+  // Top 5 最终价值计分
+  const topByValue = useMemo(() => {
     return [...(data?.submissions ?? [])]
-      .map((s) => ({ ...s, estimatedHours: calcEstimatedHours(s) }))
-      .filter((s) => s.estimatedHours != null && s.estimatedHours > 0)
-      .sort((a, b) => (b.estimatedHours ?? 0) - (a.estimatedHours ?? 0))
+      .filter((s) => s.finalValueScore != null && s.finalValueScore > 0)
+      .sort((a, b) => (b.finalValueScore ?? 0) - (a.finalValueScore ?? 0))
       .slice(0, 5);
   }, [data]);
 
@@ -342,14 +368,14 @@ export default function ReviewsOverviewPage() {
             />
           </div>
 
-          {/* 预估月省工时 Top 5（按 x 系数加权后） */}
-          {topByEstimated.length > 0 && (
+          {/* 最终价值计分 Top 5 */}
+          {topByValue.length > 0 && (
             <div>
               <div className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
-                <RiseOutlined /> 预估月省工时 Top 5
+                <TrophyOutlined /> 最终价值计分 Top 5
               </div>
               <div className="space-y-1.5">
-                {topByEstimated.map((s, i) => (
+                {topByValue.map((s, i) => (
                   <div
                     key={s.id}
                     className="flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs"
@@ -361,12 +387,8 @@ export default function ReviewsOverviewPage() {
                     <span className="flex-1 truncate font-medium" style={{ color: 'var(--foreground)' }}>
                       {s.title}
                     </span>
-                    <span className="font-mono" style={{ color: 'var(--text-muted)' }}>
-                      {s.monthlySavedHours?.toFixed(1)}h
-                    </span>
-                    <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>×</span>
-                    <span className="font-mono font-semibold" style={{ color: '#0891b2' }}>
-                      {s.estimatedHours?.toFixed(1)}h
+                    <span className="font-mono font-semibold" style={{ color: '#7c3aed' }}>
+                      {s.finalValueScore?.toFixed(1)}
                     </span>
                   </div>
                 ))}
@@ -374,39 +396,15 @@ export default function ReviewsOverviewPage() {
             </div>
           )}
 
-          {/* 复用价值分布：等级（金/银/铜）+ 描述（跨BU/单部门） */}
-          {(Object.keys(data.summary.reuseValueCounts).length > 0 || Object.keys(data.summary.reuseValueDistribution ?? {}).length > 0) && (
-            <div className="mt-4 pt-3" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-              {/* 第一行：等级分布 */}
-              {Object.keys(data.summary.reuseValueCounts).length > 0 && (
-                <div className="flex items-center gap-2 flex-wrap mb-2">
-                  <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>等级分布:</span>
-                  {Object.entries(data.summary.reuseValueCounts).map(([level, count]) => (
-                    <span key={level} className="inline-flex items-center gap-1">
-                      <ReuseLevelTag level={level} withEmoji={false} />
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>({count})</span>
-                    </span>
-                  ))}
-                </div>
-              )}
-              {/* 第二行：描述分布（跨BU/单部门等具体描述） */}
-              {Object.keys(data.summary.reuseValueDistribution ?? {}).length > 0 && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>可复用范围:</span>
-                  {Object.entries(data.summary.reuseValueDistribution).map(([desc, count]) => (
-                    <span
-                      key={desc}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs"
-                      style={{ background: 'rgba(26,58,138,0.06)', color: 'var(--foreground)' }}
-                    >
-                      <span className="font-medium">{desc}</span>
-                      <span style={{ color: 'var(--text-muted)' }}>({count})</span>
-                    </span>
-                  ))}
-                </div>
-              )}
+          {/* 价值计分公式 */}
+          <div className="mt-3 pt-3 text-[11px] leading-relaxed space-y-1" style={{ borderTop: '1px solid rgba(0,0,0,0.05)', color: 'var(--text-muted)' }}>
+            <div><span className="font-semibold">价值计分公式：</span>(月均提效节省工时 + 月均降本节省工时) x 国内/海外人力成本系数值 x 推广复用价值系数值</div>
+            <div><span className="font-semibold">国内/海外人力成本系数值：</span>Deepseek 基于全球 HR 人力成本水平给出的系数建议：国内 x1，海外 x2，全球 x1.5</div>
+            <div>
+              <span className="font-semibold">推广复用价值系数：</span>
+              个人/单个部门可用 x1 / BU下/条线下跨多个部门可用 x2 / 跨多个BU/多个条线可用 x3 / 全集团全球员工可用 x4
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -429,9 +427,26 @@ export default function ReviewsOverviewPage() {
             {[{ value: 'all', label: '全部', count: data?.submissions.length ?? 0 }, ...reuseValues.map((r) => ({ value: r.value, label: r.value, count: r.count }))].map((opt) => (
               <FilterPill key={opt.value} active={reuseValueFilter === opt.value} label={opt.label} count={opt.count} onClick={() => setReuseValueFilter(opt.value)} />
             ))}
-            <span className="ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>按预估月省工时降序</span>
           </div>
         )}
+      </div>
+
+      {/* 排序条 */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>排序</span>
+        {SORT_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setSortBy(opt.value)}
+            className="px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
+            style={{
+              background: sortBy === opt.value ? 'var(--primary)' : 'rgba(0,0,0,0.04)',
+              color: sortBy === opt.value ? '#fff' : 'var(--text-secondary)',
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {/* 卡片网格 */}
@@ -442,56 +457,58 @@ export default function ReviewsOverviewPage() {
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>该期暂无方案</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" style={{ gridAutoRows: '1fr' }}>
           {visibleSubs.map((sub) => (
-            <div key={sub.id} className="glass rounded-[20px] overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md relative"
+            <div key={sub.id} className="glass rounded-[20px] overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md relative flex flex-col"
               style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
               <RankBadge rank={sub.rank} />
 
-              {/* 头部：标题独立完整（pl-12 避开左上 44×44 排名徽章），团队+提报人放第二排 */}
+              {/* 头部 */}
               <div className="p-5 pb-3">
-                <h3 className="text-base font-semibold mb-2 pl-12 leading-snug" style={{ color: 'var(--foreground)' }}>
+                <h3 className="text-sm font-semibold mb-2 pl-12 leading-snug truncate" style={{ color: 'var(--foreground)' }}>
                   {sub.title}
                 </h3>
-                <p className="text-xs pl-12" style={{ color: 'var(--text-muted)' }}>
-                  {sub.team && <Tag color="blue" style={{ margin: 0, marginRight: 4 }}>{sub.team}</Tag>}
+                <div className="flex flex-wrap items-center gap-1.5 pl-12">
+                  {sub.team && <Tag color="blue" style={{ margin: 0 }}>{sub.team}</Tag>}
+                  {sub.sceneCategory && <Tag color="cyan" style={{ margin: 0, fontSize: 10 }}>{sub.sceneCategory}</Tag>}
+                  {sub.extraValue && <Tag color="green" style={{ margin: 0, fontSize: 10 }}>{sub.extraValue}</Tag>}
+                </div>
+                <p className="text-[11px] pl-12 mt-1" style={{ color: 'var(--text-muted)' }}>
                   {sub.authorName}
                 </p>
               </div>
 
-              {/* 一、未来复用推广价值（Hero 条，渐变背景） */}
-              <ReuseHeroStrip
-                level={sub.reuseValueLevel}
-                fullText={sub.reuseValue}
-                monthlySavedHours={sub.monthlySavedHours}
-              />
-
-              {/* 二、量化数据（指标调大） */}
-              <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                <div className="text-[10px] font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                  二、量化数据{sub.id === SERVICE_DESK_ID ? ' · 机器人拦截率' : ''}
+              {/* 一、量化数据 */}
+              <div className="px-5 py-3 flex-1" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                <div className="text-[10px] font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  一、量化数据{sub.id === SERVICE_DESK_ID ? ' · 机器人拦截率' : ''}
                 </div>
                 {sub.id === SERVICE_DESK_ID ? (
-                  <div className="grid grid-cols-3 gap-3 mb-3">
-                    <MetricMini label="拦截率(接入后)" value={SERVICE_DESK_METRICS.interceptAfter} highlight size="lg" />
-                    <MetricMini label={`拦截率(接入前)·${SERVICE_DESK_METRICS.period}`} value={SERVICE_DESK_METRICS.interceptBefore} size="lg" />
-                    <MetricMini label="环比增长" value={SERVICE_DESK_METRICS.growth} highlight size="lg" />
+                  <div className="space-y-1.5">
+                    <MetricMini label="拦截率(接入后)" value={SERVICE_DESK_METRICS.interceptAfter} highlight size="lg" layout="row" />
+                    <MetricMini label={`拦截率(接入前)·${SERVICE_DESK_METRICS.period}`} value={SERVICE_DESK_METRICS.interceptBefore} size="lg" layout="row" />
+                    <MetricMini label="环比增长" value={SERVICE_DESK_METRICS.growth} highlight size="lg" layout="row" />
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-3 mb-3">
-                    <MetricMini label="月省工时" value={sub.monthlySavedHours != null ? `${sub.monthlySavedHours.toFixed(1)}h` : '—'} highlight size="lg" />
-                    <MetricMini label="提效比例" value={sub.efficiencyRate != null ? `${(sub.efficiencyRate * 100).toFixed(0)}%` : '—'} highlight size="lg" />
-                    <MetricMini label="Token费/月" value={sub.aiCost ? `¥${sub.aiCost}` : '—'} size="lg" />
-                  </div>
+                  <>
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      <MetricMini label="月省工时" value={sub.monthlySavedHours != null ? `${sub.monthlySavedHours.toFixed(1)}h` : '—'} highlight size="lg" />
+                      <MetricMini label="提效比例" value={sub.efficiencyRate != null ? `${(sub.efficiencyRate * 100).toFixed(0)}%` : '—'} highlight size="lg" />
+                      <MetricMini label="Token费/月" value={sub.aiCost ? `¥${sub.aiCost}` : '—'} size="lg" />
+                    </div>
+                    <QuantGrid3x2 sub={sub} />
+                    <BeforeAfterMini sub={sub} />
+                  </>
                 )}
-                {sub.id !== SERVICE_DESK_ID && <QuantGrid3x2 sub={sub} />}
-                {sub.id !== SERVICE_DESK_ID && <BeforeAfterMini sub={sub} />}
               </div>
 
-              {/* 三、评审得分（指标调小） */}
+              {/* 二、复用价值 */}
+              <ReuseHeroStrip level={sub.reuseValueLevel} fullText={sub.reuseValue} />
+
+              {/* 三、评审得分 */}
               <div className="px-5 py-2" style={{ borderTop: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
                 <div className="flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                  <span>评审得分</span>
+                  <span>三、评审得分</span>
                   <span className="font-bold text-sm" style={{ color: 'var(--primary)' }}>
                     {sub.totalScore != null ? sub.totalScore.toFixed(1) : '—'}
                   </span>
@@ -500,8 +517,18 @@ export default function ReviewsOverviewPage() {
                 </div>
               </div>
 
-              {/* 操作按钮（评审明细已删，只保留方案详情） */}
-              <div className="px-5 py-3" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+              {/* 四、最终价值计分 */}
+              <div className="px-5 py-2" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                <div className="flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  <span>四、最终价值计分</span>
+                  <span className="font-bold text-sm font-mono" style={{ color: '#7c3aed' }}>
+                    {sub.finalValueScore != null ? sub.finalValueScore.toFixed(1) : '—'}
+                  </span>
+                </div>
+              </div>
+
+              {/* 方案详情按钮 */}
+              <div className="px-5 py-2.5 mt-auto" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
                 <button
                   onClick={() => setDetailSub(sub)}
                   className="w-full flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
@@ -762,8 +789,18 @@ function StatBox({ icon, label, value, sub, color }: {
   );
 }
 
-function MetricMini({ label, value, highlight, size = 'sm' }: { label: string; value: string; highlight?: boolean; size?: 'sm' | 'lg' }) {
+function MetricMini({ label, value, highlight, size = 'sm', layout = 'col' }: { label: string; value: string; highlight?: boolean; size?: 'sm' | 'lg'; layout?: 'col' | 'row' }) {
   const isLg = size === 'lg';
+  if (layout === 'row') {
+    return (
+      <div className="flex items-center justify-between rounded-md px-3 py-2" style={{ background: 'rgba(0,0,0,0.02)' }}>
+        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{label}</span>
+        <span className={`${isLg ? 'text-lg' : 'text-sm'} font-bold font-mono`} style={{ color: highlight ? '#16a34a' : 'var(--foreground)' }}>
+          {value}
+        </span>
+      </div>
+    );
+  }
   return (
     <div className={`flex flex-col items-center rounded-md ${isLg ? 'px-2 py-2' : 'px-2 py-1.5'}`} style={{ background: 'rgba(255,255,255,0.5)' }}>
       <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{label}</span>
@@ -775,97 +812,56 @@ function MetricMini({ label, value, highlight, size = 'sm' }: { label: string; v
 }
 
 /** 2×2 网格：原/现人均工时 + 原/现月均人数（量化数据区"具体数据"附属） */
-/** 3 行 2 列：左原右新，新值绿色高亮。每行一种低饱和渐变背景（蓝/紫/橙） */
+/** 3 行：人数 / 耗时 / 频次 — 简洁文本行，仅变化值高亮 */
 function QuantGrid3x2({ sub }: { sub: SubmissionDTO }) {
-  // 频次：原/新执行频率（"每月x次"） + 原/新执行次数 → 合并成"每月 N 次"
   const formatFrequency = (freq: string | null, count: number | null): string => {
     if (!freq || count == null) return '—';
     return freq.replace(/x/gi, String(count));
   };
   const beforeFreq = formatFrequency(sub.oldFrequency, sub.oldOperationCount);
   const afterFreq = formatFrequency(sub.newFrequency, sub.newOperationCount);
-  // 3 行 2 列：人数 / 耗时 / 频次
-  const rows: { rowLabel: string; before: string; after: string; bg: string }[] = [
-    {
-      rowLabel: '人数',
-      before: sub.beforePeopleCount != null ? `${sub.beforePeopleCount}人` : '—',
-      after: sub.afterPeopleCount != null ? `${sub.afterPeopleCount}人` : '—',
-      bg: 'linear-gradient(135deg, #f0f4ff 0%, #ffffff 100%)',
-    },
-    {
-      rowLabel: '耗时',
-      before: sub.oldHoursPerTask != null ? `${sub.oldHoursPerTask}h` : '—',
-      after: sub.newDuration != null ? `${sub.newDuration}h` : '—',
-      bg: 'linear-gradient(135deg, #faf5ff 0%, #ffffff 100%)',
-    },
-    {
-      rowLabel: '频次',
-      before: beforeFreq,
-      after: afterFreq,
-      bg: 'linear-gradient(135deg, #fff7ed 0%, #ffffff 100%)',
-    },
+  const rows: { label: string; before: string; after: string }[] = [
+    { label: '人数', before: sub.beforePeopleCount != null ? `${sub.beforePeopleCount}人` : '—', after: sub.afterPeopleCount != null ? `${sub.afterPeopleCount}人` : '—' },
+    { label: '耗时', before: sub.oldHoursPerTask != null ? `${sub.oldHoursPerTask}h` : '—', after: sub.newDuration != null ? `${sub.newDuration}h` : '—' },
+    { label: '频次', before: beforeFreq, after: afterFreq },
   ];
-  // 是否有任何数据
   const hasData = rows.some((r) => r.before !== '—' || r.after !== '—');
   if (!hasData) return null;
   return (
-    <div className="mt-1.5 pt-1.5" style={{ borderTop: '1px dashed rgba(0,0,0,0.06)' }}>
-      {rows.map((r) => (
-        <div key={r.rowLabel} className="grid grid-cols-2 gap-2 mb-1.5 last:mb-0">
-          <div
-            className="rounded-md px-2.5 py-2 flex items-center justify-between gap-2"
-            style={{ background: r.bg, border: '1px solid rgba(0,0,0,0.04)' }}
-          >
-            <span className="text-[10px] leading-tight" style={{ color: 'var(--text-muted)' }}>原{r.rowLabel}</span>
-            <span className="text-base font-bold font-mono shrink-0" style={{ color: 'var(--text-muted)' }}>{r.before}</span>
+    <div className="space-y-1 mt-1.5 pt-1.5" style={{ borderTop: '1px dashed rgba(0,0,0,0.06)' }}>
+      {rows.map((r) => {
+        const changed = r.before !== '—' && r.after !== '—' && r.before !== r.after;
+        return (
+          <div key={r.label} className="flex items-center gap-2 text-[11px]">
+            <span className="w-8 shrink-0" style={{ color: 'var(--text-muted)' }}>{r.label}</span>
+            <span style={{ color: 'var(--text-muted)' }}>{r.before}</span>
+            <span style={{ color: 'var(--text-muted)' }}>→</span>
+            <span
+              className="font-medium"
+              style={{ color: changed ? '#16a34a' : 'var(--text-muted)' }}
+            >
+              {r.after}
+            </span>
+            {changed && <span className="text-[9px] px-1 py-0.5 rounded" style={{ background: 'rgba(22,163,74,0.08)', color: '#16a34a' }}>变化</span>}
           </div>
-          <div
-            className="rounded-md px-2.5 py-2 flex items-center justify-between gap-2"
-            style={{ background: r.bg, border: '1px solid rgba(22,163,74,0.15)' }}
-          >
-            <span className="text-[10px] leading-tight" style={{ color: 'var(--text-muted)' }}>新{r.rowLabel}</span>
-            <span className="text-base font-bold font-mono shrink-0" style={{ color: '#16a34a' }}>{r.after}</span>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 function BeforeAfterMini({ sub }: { sub: SubmissionDTO }) {
-  const items: { label: string; before: string; after: string }[] = [];
-  if (sub.beforeHoursPerPerson != null || sub.afterHoursPerPerson != null) {
-    items.push({
-      label: '人均工时',
-      before: sub.beforeHoursPerPerson != null ? `${sub.beforeHoursPerPerson}h` : '—',
-      after: sub.afterHoursPerPerson != null ? `${sub.afterHoursPerPerson}h` : '—',
-    });
-  }
-  if (sub.beforePeopleCount != null || sub.afterPeopleCount != null) {
-    items.push({
-      label: '涉及人数',
-      before: sub.beforePeopleCount != null ? `${sub.beforePeopleCount}人` : '—',
-      after: sub.afterPeopleCount != null ? `${sub.afterPeopleCount}人` : '—',
-    });
-  }
-  if (sub.oldOperationCount != null || sub.newOperationCount != null) {
-    items.push({
-      label: '操作次数',
-      before: sub.oldOperationCount != null ? `${sub.oldOperationCount}次` : '—',
-      after: sub.newOperationCount != null ? `${sub.newOperationCount}次` : '—',
-    });
-  }
-  if (items.length === 0) return null;
+  if (sub.beforeHoursPerPerson == null && sub.afterHoursPerPerson == null) return null;
+  const changed = sub.beforeHoursPerPerson != null && sub.afterHoursPerPerson != null && sub.beforeHoursPerPerson !== sub.afterHoursPerPerson;
   return (
-    <div className="space-y-0.5 mt-1.5 pt-1.5" style={{ borderTop: '1px dashed rgba(0,0,0,0.06)' }}>
-      {items.map((it) => (
-        <div key={it.label} className="flex items-center gap-2 text-[11px]">
-          <span className="w-12 shrink-0" style={{ color: 'var(--text-muted)' }}>{it.label}</span>
-          <span style={{ color: 'var(--text-muted)' }}>{it.before}</span>
-          <span style={{ color: 'var(--text-muted)' }}>→</span>
-          <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{it.after}</span>
-        </div>
-      ))}
+    <div className="flex items-center gap-2 text-[11px] mt-1.5 pt-1.5" style={{ borderTop: '1px dashed rgba(0,0,0,0.06)' }}>
+      <span className="w-12 shrink-0" style={{ color: 'var(--text-muted)' }}>人均工时</span>
+      <span style={{ color: 'var(--text-muted)' }}>{sub.beforeHoursPerPerson != null ? `${sub.beforeHoursPerPerson}h` : '—'}</span>
+      <span style={{ color: 'var(--text-muted)' }}>→</span>
+      <span className="font-medium" style={{ color: changed ? '#16a34a' : 'var(--foreground)' }}>
+        {sub.afterHoursPerPerson != null ? `${sub.afterHoursPerPerson}h` : '—'}
+      </span>
+      {changed && <span className="text-[9px] px-1 py-0.5 rounded" style={{ background: 'rgba(22,163,74,0.08)', color: '#16a34a' }}>变化</span>}
     </div>
   );
 }
@@ -969,25 +965,24 @@ function QuantCard({ sub }: { sub: SubmissionDTO }) {
 
 /** 硬编码方案量化卡（Modal 用）：Aily 行政服务台 — 机器人拦截率 */
 function ServiceDeskQuant() {
+  const rows = [
+    { label: '接入后拦截率', value: SERVICE_DESK_METRICS.interceptAfter, highlight: true },
+    { label: `接入前拦截率(${SERVICE_DESK_METRICS.period})`, value: SERVICE_DESK_METRICS.interceptBefore, highlight: false },
+    { label: '环比增长', value: `+${SERVICE_DESK_METRICS.growth}`, highlight: true },
+  ];
   return (
     <div className="rounded-2xl p-5 shadow-sm"
       style={{ background: 'linear-gradient(135deg, #1a3a8a 0%, #2d5aa0 100%)', color: '#fff' }}>
       <div className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.8)', letterSpacing: '0.08em' }}>
-        量化数据 · 机器人拦截率（{SERVICE_DESK_METRICS.period}）
+        量化数据 · 机器人拦截率
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <div className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>接入后拦截率</div>
-          <div className="text-2xl font-bold mt-0.5 tracking-tight">{SERVICE_DESK_METRICS.interceptAfter}</div>
-        </div>
-        <div>
-          <div className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>接入前拦截率</div>
-          <div className="text-2xl font-bold mt-0.5 tracking-tight">{SERVICE_DESK_METRICS.interceptBefore}</div>
-        </div>
-        <div>
-          <div className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>环比增长</div>
-          <div className="text-2xl font-bold mt-0.5 tracking-tight" style={{ color: '#86efac' }}>+{SERVICE_DESK_METRICS.growth}</div>
-        </div>
+      <div className="space-y-2">
+        {rows.map((r) => (
+          <div key={r.label} className="flex items-center justify-between">
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{r.label}</span>
+            <span className="text-xl font-bold font-mono tracking-tight" style={{ color: r.highlight ? '#86efac' : '#fff' }}>{r.value}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1031,127 +1026,67 @@ function RankBadge({ rank }: { rank: number }) {
 
 /** 复用价值等级 Tag — 高级渐变 + 多层阴影（withEmoji 参数保留向后兼容） */
 function ReuseLevelTag({ level, withEmoji = true }: { level: string; withEmoji?: boolean }) {
-  const styleMap: Record<string, { bg: string; color: string; border: string; shadow: string }> = {
-    '金': {
-      bg: 'linear-gradient(135deg, #fef9e7 0%, #f9d976 50%, #e8b04b 100%)',
-      color: '#7c5e10',
-      border: '1px solid rgba(183, 134, 11, 0.35)',
-      shadow: 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 3px rgba(183, 134, 11, 0.1)',
-    },
-    '银': {
-      bg: 'linear-gradient(135deg, #f8fafc 0%, #cbd5e1 50%, #94a3b8 100%)',
-      color: '#334155',
-      border: '1px solid rgba(100, 116, 139, 0.3)',
-      shadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(100, 116, 139, 0.08)',
-    },
-    '铜': {
-      bg: 'linear-gradient(135deg, #fde6d3 0%, #f4a26b 50%, #c97843 100%)',
-      color: '#7c2d12',
-      border: '1px solid rgba(180, 83, 9, 0.3)',
-      shadow: 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 3px rgba(180, 83, 9, 0.1)',
-    },
-  };
-  const s = styleMap[level] ?? {
-    bg: 'rgba(124,58,237,0.06)',
-    color: 'var(--foreground)',
-    border: '1px solid rgba(124, 58, 237, 0.18)',
-    shadow: 'inset 0 1px 0 rgba(255,255,255,0.4), 0 1px 2px rgba(124, 58, 237, 0.06)',
-  };
-  // 默认不再加 emoji（按项目"零 emoji"规范），withEmoji 参数保留为未来扩展
   void withEmoji;
+  const styleMap: Record<string, { bg: string; color: string }> = {
+    '金': { bg: '#fef9e7', color: '#92700a' },
+    '银': { bg: '#f1f5f9', color: '#475569' },
+    '铜': { bg: '#fef3e2', color: '#9a4a1a' },
+  };
+  const s = styleMap[level] ?? { bg: 'rgba(124,58,237,0.06)', color: 'var(--foreground)' };
   return (
     <span
-      className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium tracking-wide"
-      style={{ background: s.bg, color: s.color, border: s.border, boxShadow: s.shadow, fontSize: 11, letterSpacing: '0.05em' }}
+      className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold"
+      style={{ background: s.bg, color: s.color }}
     >
       {level}
     </span>
   );
 }
 
-/** 复用价值 Hero 条：高级渐变背景 + 多层阴影 + 横排三元素（等级 tag + 完整描述 + x 系数） + 副行预估月省工时 */
-function ReuseHeroStrip({ level, fullText, monthlySavedHours, showLabel = true }: {
+/** 复用价值条：左侧色条 + 等级 pill + 描述 + 系数 — 简洁现代风 */
+function ReuseHeroStrip({ level, fullText, showLabel = true }: {
   level: string | null;
   fullText: string | null;
-  monthlySavedHours?: number | null;
   showLabel?: boolean;
 }) {
-  const styleMap: Record<string, { bg: string; color: string; subColor: string; borderColor: string }> = {
-    '金': {
-      bg: 'linear-gradient(135deg, #fef9e7 0%, #f9d976 50%, #e8b04b 100%)',
-      color: '#5a3a00',
-      subColor: 'rgba(124, 94, 16, 0.75)',
-      borderColor: 'rgba(183, 134, 11, 0.18)',
-    },
-    '银': {
-      bg: 'linear-gradient(135deg, #f8fafc 0%, #cbd5e1 50%, #94a3b8 100%)',
-      color: '#334155',
-      subColor: 'rgba(71, 85, 105, 0.75)',
-      borderColor: 'rgba(100, 116, 139, 0.15)',
-    },
-    '铜': {
-      bg: 'linear-gradient(135deg, #fde6d3 0%, #f4a26b 50%, #c97843 100%)',
-      color: '#5a2a0c',
-      subColor: 'rgba(124, 45, 18, 0.75)',
-      borderColor: 'rgba(180, 83, 9, 0.15)',
-    },
+  // 左侧色条颜色（按等级）
+  const accentMap: Record<string, string> = {
+    '金': '#d4a017',
+    '银': '#94a3b8',
+    '铜': '#c2703e',
   };
-  const s = styleMap[level ?? ''] ?? {
-    bg: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(124,58,237,0.02) 100%)',
-    color: 'var(--foreground)',
-    subColor: 'var(--text-muted)',
-    borderColor: 'rgba(124, 58, 237, 0.12)',
-  };
-  // 从 fullText 提取 x 系数（形如 "x3"），描述里去掉避免重复
+  const accent = accentMap[level ?? ''] ?? '#a78bfa';
+  // 从 fullText 提取 x 系数
   const coefMatch = fullText?.match(/x(\d+(?:\.\d+)?)/i);
   const coefficient = coefMatch?.[0] ?? null;
-  const coefNum = coefMatch ? parseFloat(coefMatch[1]) : 0;
   let description = fullText;
   if (fullText && coefficient) {
     const escaped = coefficient.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     description = fullText.replace(new RegExp(escaped, 'i'), '').trim().replace(/\s*[，。,\s]+$/, '').trim();
   }
-  // 预估月省工时 = 月省工时 × x 系数
-  const estimatedHours = (monthlySavedHours != null && coefNum > 0)
-    ? Math.round(monthlySavedHours * coefNum * 10) / 10
-    : null;
   if (!level && !fullText) {
     return showLabel ? (
-      <div className="px-5 py-3" style={{ borderTop: `1px solid ${s.borderColor}` }}>
-        <div className="text-[10px] font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-          一、未来复用推广价值
-        </div>
-        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>暂无数据</span>
+      <div className="px-4 py-2.5" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+        <div className="text-[10px] font-medium mb-1" style={{ color: 'var(--text-muted)' }}>二、复用价值</div>
+        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>暂无数据</span>
       </div>
     ) : null;
   }
   return (
     <div
-      className="px-5 py-3"
-      style={{
-        background: s.bg,
-        color: s.color,
-        borderTop: `1px solid ${s.borderColor}`,
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4)',
-      }}
+      className="px-4 py-2.5 flex items-start gap-2.5"
+      style={{ borderLeft: `3px solid ${accent}`, background: 'rgba(0,0,0,0.015)', borderTop: '1px solid rgba(0,0,0,0.05)' }}
     >
       {showLabel && (
-        <div className="text-[10px] font-semibold mb-1.5 uppercase tracking-wider" style={{ color: s.subColor, letterSpacing: '0.08em' }}>
-          一、未来复用推广价值
-        </div>
+        <span className="text-[10px] font-medium shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }}>二、复用价值</span>
       )}
-      <div className="flex items-center gap-2 flex-wrap">
-        {level && <ReuseLevelTag level={level} />}
-        {description && <span className="text-sm font-medium flex-1 min-w-0 tracking-wide">{description}</span>}
-        {coefficient && <span className="text-base font-bold font-mono shrink-0 ml-auto tracking-tight">{coefficient}</span>}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          {level && <ReuseLevelTag level={level} />}
+          {description && <span className="text-xs leading-relaxed flex-1 min-w-0" style={{ color: 'var(--foreground)' }}>{description}</span>}
+          {coefficient && <span className="text-sm font-bold font-mono shrink-0" style={{ color: accent }}>{coefficient}</span>}
+        </div>
       </div>
-      {/* 副行：预估月省工时（= 月省工时 × x 系数） */}
-      {estimatedHours != null && (
-        <div className="mt-2 pt-2 flex items-baseline gap-1.5" style={{ borderTop: '1px dashed rgba(0,0,0,0.1)' }}>
-          <span className="text-[10px] font-medium" style={{ color: s.subColor }}>预估月省工时</span>
-          <span className="text-lg font-bold font-mono ml-auto tracking-tight" style={{ color: s.color }}>{estimatedHours}h</span>
-        </div>
-      )}
     </div>
   );
 }
