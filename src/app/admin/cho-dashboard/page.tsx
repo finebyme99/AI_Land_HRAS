@@ -308,10 +308,10 @@ export default function ChoDashboardPage() {
   const columns: TableColumnsType<typeof tableData[number]> = [
     // ── 基础 ──
     {
-      title: '#',
+      title: '序号',
       dataIndex: 'seq',
       key: 'seq',
-      width: 40,
+      width: 48,
       align: 'center',
       fixed: 'left',
       className: 'cho-frozen-rank',
@@ -351,36 +351,17 @@ export default function ChoDashboardPage() {
       children: [
         ...(beforeExpanded
           ? [
-              {
-                title: '人数', dataIndex: 'beforePeopleCount' as const, key: 'bp', width: 50, align: 'center' as const, className: 'cho-col-before',
-                render: (v: number | null) => <span className="font-mono text-xs">{numOrDash(v, '人')}</span>,
-              },
-              {
-                title: '频次', dataIndex: 'beforeFreq' as const, key: 'bf', width: 64, align: 'center' as const, className: 'cho-col-before',
-                render: (_: number | null, r: any) => <span className="font-mono text-[11px]">{fmtFreq(r.beforeFreq)}</span>,
-              },
-              {
-                title: '单次耗时', dataIndex: 'oldHoursPerTask' as const, key: 'bd', width: 60, align: 'center' as const, className: 'cho-col-before',
-                render: (v: number | null) => <span className="font-mono text-xs">{numOrDash(v, 'h')}</span>,
-              },
+              { title: '人数', dataIndex: 'beforePeopleCount' as const, key: 'bp', width: 50, align: 'center' as const, className: 'cho-col-before', render: (v: number | null) => <span className="font-mono text-xs">{numOrDash(v, '人')}</span> },
+              { title: '频次', dataIndex: 'beforeFreq' as const, key: 'bf', width: 64, align: 'center' as const, className: 'cho-col-before', render: (_: number | null, r: any) => <span className="font-mono text-[11px]">{fmtFreq(r.beforeFreq)}</span> },
+              { title: '单次耗时', dataIndex: 'oldHoursPerTask' as const, key: 'bd', width: 60, align: 'center' as const, className: 'cho-col-before', render: (v: number | null) => <span className="font-mono text-xs">{numOrDash(v, 'h')}</span> },
             ]
           : []),
-        {
-          title: '月总工时', dataIndex: 'beforeHours', key: 'bh', width: 80, align: 'right' as const, className: 'cho-col-before',
-          render: (v: number | null) => <span className="font-mono text-xs font-semibold">{numOrDash(v, 'h')}</span>,
-        },
+        { title: '月总工时', dataIndex: 'beforeHours', key: 'bh', width: 80, align: 'right' as const, className: 'cho-col-before', render: (v: number | null) => <span className="font-mono text-xs font-semibold">{numOrDash(v, 'h')}</span> },
       ],
     },
 
     // ── 分隔箭头 ──
-    {
-      title: '',
-      key: 'arrow-sep',
-      width: 36,
-      align: 'center' as const,
-      className: 'cho-sep-col',
-      render: () => <SwapRightOutlined style={{ color: '#16a34a', fontSize: 14 }} />,
-    },
+    { title: '', key: 'arrow-sep', width: 32, align: 'center' as const, className: 'cho-sep-col', render: () => <SwapRightOutlined style={{ color: '#16a34a', fontSize: 13 }} /> },
 
     // ── 改造后（冷色调）──
     {
@@ -394,24 +375,12 @@ export default function ChoDashboardPage() {
       children: [
         ...(afterExpanded
           ? [
-              {
-                title: '人数', dataIndex: 'afterPeopleCount' as const, key: 'ap', width: 50, align: 'center' as const, className: 'cho-col-after',
-                render: (_: number | null, r: any) => renderChange(r.beforePeopleCount, r.afterPeopleCount, fmtNum, false, '人'),
-              },
-              {
-                title: '频次', dataIndex: 'afterFreq' as const, key: 'af', width: 64, align: 'center' as const, className: 'cho-col-after',
-                render: (_: number | null, r: any) => renderChange(r.beforeFreq, r.afterFreq, fmtFreq, true),
-              },
-              {
-                title: '单次耗时', dataIndex: 'newDuration' as const, key: 'ad', width: 60, align: 'center' as const, className: 'cho-col-after',
-                render: (_: number | null, r: any) => renderChange(r.oldHoursPerTask, r.newDuration, fmtNum, false, 'h'),
-              },
+              { title: '人数', dataIndex: 'afterPeopleCount' as const, key: 'ap', width: 50, align: 'center' as const, className: 'cho-col-after', render: (_: number | null, r: any) => renderChange(r.beforePeopleCount, r.afterPeopleCount, fmtNum, false, '人') },
+              { title: '频次', dataIndex: 'afterFreq' as const, key: 'af', width: 64, align: 'center' as const, className: 'cho-col-after', render: (_: number | null, r: any) => renderChange(r.beforeFreq, r.afterFreq, fmtFreq, true) },
+              { title: '单次耗时', dataIndex: 'newDuration' as const, key: 'ad', width: 60, align: 'center' as const, className: 'cho-col-after', render: (_: number | null, r: any) => renderChange(r.oldHoursPerTask, r.newDuration, fmtNum, false, 'h') },
             ]
           : []),
-        {
-          title: '月总工时', dataIndex: 'afterHours', key: 'ah', width: 80, align: 'right' as const, className: 'cho-col-after',
-          render: (v: number | null) => <span className="font-mono text-xs font-semibold">{numOrDash(v, 'h')}</span>,
-        },
+        { title: '月总工时', dataIndex: 'afterHours', key: 'ah', width: 80, align: 'right' as const, className: 'cho-col-after', render: (v: number | null) => <span className="font-mono text-xs font-semibold">{numOrDash(v, 'h')}</span> },
       ],
     },
 
@@ -422,55 +391,41 @@ export default function ChoDashboardPage() {
       className: 'cho-group-result',
       children: [
         {
-          title: '节省工时',
-          dataIndex: 'savedHours',
-          key: 'sh',
-          width: 80,
-          align: 'right' as const,
-          className: 'cho-col-result',
-          sorter: (a: any, b: any) => (a.savedHours ?? -1) - (b.savedHours ?? -1),
-          defaultSortOrder: 'descend' as const,
+          title: '节省工时', dataIndex: 'savedHours', key: 'sh', width: 80, align: 'right' as const, className: 'cho-col-result',
+          sorter: (a: any, b: any) => (a.savedHours ?? -1) - (b.savedHours ?? -1), defaultSortOrder: 'descend' as const,
           render: (v: number | null, record: any) => {
             const dir = changeDir(record.beforeHours, record.afterHours);
             return (
               <span className="inline-flex items-center gap-1">
-                {dir && (
-                  <span className="text-[10px]" style={{ color: dir === 'down' ? '#16a34a' : '#dc2626' }}>
-                    {dir === 'down' ? '↓' : '↑'}
-                  </span>
-                )}
-                <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>
-                  {numOrDash(v, 'h')}
-                </span>
+                {dir && <span className="text-[10px]" style={{ color: dir === 'down' ? '#16a34a' : '#dc2626' }}>{dir === 'down' ? '↓' : '↑'}</span>}
+                <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>
               </span>
             );
           },
         },
         {
-          title: '提效比例',
-          dataIndex: 'efficiencyRate',
-          key: 'eff',
-          width: 65,
-          align: 'right' as const,
-          className: 'cho-col-result',
+          title: '提效比例', dataIndex: 'efficiencyRate', key: 'eff', width: 65, align: 'right' as const, className: 'cho-col-result',
           sorter: (a: any, b: any) => (a.efficiencyRate ?? -1) - (b.efficiencyRate ?? -1),
-          render: (v: number | null) => (
-            <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>
-              {fmtPct(v)}
-            </span>
-          ),
+          render: (v: number | null) => <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{fmtPct(v)}</span>,
         },
         {
-          title: '复用系数',
-          dataIndex: 'reuseValue',
-          key: 'rm',
-          width: 120,
-          align: 'center' as const,
-          className: 'cho-col-result',
+          title: 'Token 费用', dataIndex: 'aiCost', key: 'tc', width: 62, align: 'right' as const, className: 'cho-col-result',
+          render: (v: string | null) => <span className="font-mono text-xs" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{v || '—'}</span>,
+        },
+      ],
+    },
+
+    // ── 复用价值 ──
+    {
+      title: <span style={{ color: '#7c3aed' }}>复用价值</span>,
+      key: 'reuse-group',
+      className: 'cho-group-reuse',
+      children: [
+        {
+          title: '复用系数', dataIndex: 'reuseValue', key: 'rm', width: 130, align: 'center' as const, className: 'cho-col-reuse',
           render: (v: string | null, record: any) => {
             if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
             const level = record.reuseValueLevel;
-            // 4 级颜色从浅到深：低→中→高→极高
             const levelStyle: Record<string, { bg: string; fg: string; border: string }> = {
               '低价值':   { bg: 'rgba(34,197,94,0.08)',  fg: '#16a34a', border: 'rgba(34,197,94,0.2)' },
               '中价值':   { bg: 'rgba(20,184,166,0.1)',  fg: '#0d9488', border: 'rgba(20,184,166,0.25)' },
@@ -479,41 +434,16 @@ export default function ChoDashboardPage() {
             };
             const s = levelStyle[level ?? ''] ?? { bg: 'rgba(0,0,0,0.04)', fg: 'var(--text-secondary)', border: 'rgba(0,0,0,0.08)' };
             return (
-              <span
-                className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap"
-                style={{ background: s.bg, color: s.fg, border: `1px solid ${s.border}` }}
-              >
+              <span className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap" style={{ background: s.bg, color: s.fg, border: `1px solid ${s.border}` }}>
                 {v}
               </span>
             );
           },
         },
         {
-          title: '推广预估节省工时',
-          dataIndex: 'reuseSavedHours',
-          key: 'rs',
-          width: 88,
-          align: 'right' as const,
-          className: 'cho-col-result',
+          title: '推广预估节省工时', dataIndex: 'reuseSavedHours', key: 'rs', width: 92, align: 'right' as const, className: 'cho-col-reuse',
           sorter: (a: any, b: any) => (a.reuseSavedHours ?? -1) - (b.reuseSavedHours ?? -1),
-          render: (v: number | null) => (
-            <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#d97706' : 'var(--text-muted)' }}>
-              {numOrDash(v, 'h')}
-            </span>
-          ),
-        },
-        {
-          title: 'Token 费用',
-          dataIndex: 'aiCost',
-          key: 'tc',
-          width: 62,
-          align: 'right' as const,
-          className: 'cho-col-result',
-          render: (v: string | null) => (
-            <span className="font-mono text-xs" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>
-              {v || '—'}
-            </span>
-          ),
+          render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#d97706' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>,
         },
       ],
     },
@@ -526,20 +456,22 @@ export default function ChoDashboardPage() {
   return (
     <>
       <style jsx global>{`
-        /* ── 冻结列 ── */
+        /* ── 表格容器：右侧留白 ── */
+        .cho-table-wrap .ant-table {
+          margin-right: 8px;
+        }
+        /* ── 冻结列：背景与表格一致 ── */
         .cho-frozen-rank {
           position: sticky !important;
           left: 0 !important;
           z-index: 3 !important;
-          background: rgba(255, 255, 255, 0.97) !important;
-          backdrop-filter: blur(12px);
         }
         .cho-frozen-rank::after {
           content: '';
           position: absolute;
           top: 0; right: 0; bottom: 0;
-          width: 3px;
-          background: linear-gradient(to right, rgba(0,0,0,0.06), transparent);
+          width: 2px;
+          background: rgba(0, 0, 0, 0.06);
           pointer-events: none;
         }
         /* ── 表头分组 ── */
@@ -563,20 +495,29 @@ export default function ChoDashboardPage() {
           border-top: 3px solid #4f46e5 !important;
           color: #3730a3 !important;
         }
+        .cho-group-reuse > .ant-table-cell {
+          background: #f3e8ff !important;
+          border-left: 3px solid #7c3aed !important;
+          border-top: 3px solid #7c3aed !important;
+          color: #5b21b6 !important;
+        }
         /* ── 分隔列 ── */
         .cho-sep-col > .ant-table-cell {
           background: transparent !important;
           padding: 0 !important;
         }
-        /* ── 数据行分组底色（通过 column className） ── */
+        /* ── 数据行分组底色 ── */
         .cho-col-before {
-          background: rgba(254, 243, 199, 0.35) !important;
+          background: rgba(254, 243, 199, 0.3) !important;
         }
         .cho-col-after {
-          background: rgba(209, 250, 229, 0.35) !important;
+          background: rgba(209, 250, 229, 0.3) !important;
         }
         .cho-col-result {
-          background: rgba(224, 231, 255, 0.3) !important;
+          background: rgba(224, 231, 255, 0.25) !important;
+        }
+        .cho-col-reuse {
+          background: rgba(243, 232, 255, 0.3) !important;
         }
         .cho-table-row:hover .cho-col-before {
           background: rgba(254, 243, 199, 0.55) !important;
@@ -585,15 +526,18 @@ export default function ChoDashboardPage() {
           background: rgba(209, 250, 229, 0.55) !important;
         }
         .cho-table-row:hover .cho-col-result {
-          background: rgba(224, 231, 255, 0.5) !important;
+          background: rgba(224, 231, 255, 0.45) !important;
+        }
+        .cho-table-row:hover .cho-col-reuse {
+          background: rgba(243, 232, 255, 0.5) !important;
         }
         /* ── 行 ── */
         .cho-table-row td {
           border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
-          padding: 10px 6px !important;
+          padding: 10px 8px !important;
         }
         .ant-table-thead > tr > th {
-          padding: 6px 6px !important;
+          padding: 7px 8px !important;
           font-size: 11px !important;
           font-weight: 600 !important;
         }
@@ -680,14 +624,14 @@ export default function ChoDashboardPage() {
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>该期暂无方案</p>
           </div>
         ) : (
-          <div className="glass rounded-2xl overflow-hidden" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          <div className="glass rounded-2xl overflow-hidden cho-table-wrap" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
             <Table
               dataSource={tableData}
               columns={columns}
               rowKey="id"
               pagination={false}
               size="small"
-              scroll={{ x: (beforeExpanded || afterExpanded) ? 1100 : 820 }}
+              scroll={{ x: (beforeExpanded || afterExpanded) ? 1110 : 840 }}
               rowClassName={() => 'cho-table-row'}
             />
           </div>
