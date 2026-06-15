@@ -101,12 +101,14 @@ function calcMonthlyFreq(freq: string | null, count: number | null): number | nu
 
 function fmtFreq(monthly: number | null | undefined): string {
   if (monthly == null) return '—';
-  return monthly % 1 === 0 ? `${monthly}次/月` : `${monthly.toFixed(1)}次/月`;
+  const n = monthly % 1 === 0 ? String(monthly) : Math.round(monthly * 10) / 10 + '';
+  return `${n}次/月`;
 }
 
 function fmtNum(v: number | null | undefined): string {
   if (v == null) return '—';
-  return v % 1 === 0 ? String(v) : v.toFixed(1);
+  // 整数不带小数，非整数保留 1 位
+  return v % 1 === 0 ? String(v) : Math.round(v * 10) / 10 + '';
 }
 
 function fmtPct(v: number | null | undefined): string {
@@ -719,7 +721,8 @@ export default function ChoDashboardPage() {
 
 function numOrDash(v: number | null | undefined, unit: string): string {
   if (v == null) return '—';
-  return v % 1 === 0 ? `${v}${unit}` : `${v.toFixed(1)}${unit}`;
+  const n = v % 1 === 0 ? String(v) : Math.round(v * 10) / 10 + '';
+  return `${n}${unit}`;
 }
 
 // ─── Sub-components ──────────────────────────────────────────────
