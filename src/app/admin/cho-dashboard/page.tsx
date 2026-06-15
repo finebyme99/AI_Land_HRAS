@@ -44,6 +44,7 @@ interface ChoSubmission {
   reuseValueLevel: string | null;
   monthlySavedCost: string | null;
   aiCost: string | null;
+  briefIntro: string | null;
 }
 
 interface OverviewResponse {
@@ -105,12 +106,6 @@ function fmtFreq(monthly: number | null | undefined): string {
   return `${n}次/月`;
 }
 
-function fmtNum(v: number | null | undefined): string {
-  if (v == null) return '—';
-  // 整数不带小数，非整数保留 1 位
-  return v % 1 === 0 ? String(v) : Math.round(v * 10) / 10 + '';
-}
-
 /** 飞书存储为小数 0~1，显示为百分比，保留 1 位小数 */
 function fmtPct(v: number | null | undefined): string {
   if (v == null) return '—';
@@ -159,8 +154,6 @@ export default function ChoDashboardPage() {
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState('savedHours');
   const [detailRecord, setDetailRecord] = useState<typeof enriched[number] | null>(null);
-  const [beforeExpanded, setBeforeExpanded] = useState(false);
-  const [afterExpanded, setAfterExpanded] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) router.replace('/');
@@ -276,38 +269,6 @@ export default function ChoDashboardPage() {
     return sorted.map((s) => ({ ...s, seq: s.fixedSeq }));
   }, [enriched, teamFilter, sortBy]);
 
-  // ── 变化单元格渲染 ──
-  const renderChange = (
-    oldVal: number | null | undefined,
-    newVal: number | null | undefined,
-    fmt: (v: number | null | undefined) => string,
-    /** true = 值上升是好事(节省/提效), false = 值下降是好事(人数/耗时) */
-    positiveUp: boolean,
-    unit?: string,
-  ) => {
-    const dir = changeDir(oldVal, newVal);
-    if (!dir) {
-      return (
-        <span className="font-mono text-xs" style={{ color: 'var(--foreground)' }}>
-          {fmt(newVal)}{unit && newVal != null ? unit : ''}
-        </span>
-      );
-    }
-    const isGood = (dir === 'up' && positiveUp) || (dir === 'down' && !positiveUp);
-    return (
-      <span
-        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium"
-        style={{
-          background: isGood ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.08)',
-          color: isGood ? '#16a34a' : '#dc2626',
-        }}
-      >
-        {fmt(newVal)}{unit && newVal != null ? unit : ''}
-        <span className="text-[10px]">{dir === 'up' ? '↑' : '↓'}</span>
-      </span>
-    );
-  };
-
   // ── Table columns ──
   const columns: TableColumnsType<typeof tableData[number]> = [
     // ── 基础 ──
@@ -343,49 +304,42 @@ export default function ChoDashboardPage() {
       ),
     },
 
-    // ── 改造前（暖色调）──
+    // ── 改造前后对比（上下对比） ──
     {
-      title: (
-        <button onClick={() => setBeforeExpanded((v) => !v)} className="flex items-center gap-1" style={{ color: '#92400e' }}>
-          改造前 <span className="text-[10px]">{beforeExpanded ? '▾' : '▸'}</span>
-        </button>
-      ),
-      key: 'before-group',
-      className: 'cho-group-before',
-      children: [
-        ...(beforeExpanded
-          ? [
-              { title: '人数', dataIndex: 'beforePeopleCount' as const, key: 'bp', width: 50, align: 'center' as const, className: 'cho-col-before', render: (v: number | null) => <span className="font-mono text-xs">{numOrDash(v, '人')}</span> },
-              { title: '频次', dataIndex: 'beforeFreq' as const, key: 'bf', width: 64, align: 'center' as const, className: 'cho-col-before', render: (_: number | null, r: any) => <span className="font-mono text-[11px]">{fmtFreq(r.beforeFreq)}</span> },
-              { title: '单次耗时', dataIndex: 'oldHoursPerTask' as const, key: 'bd', width: 60, align: 'center' as const, className: 'cho-col-before', render: (v: number | null) => <span className="font-mono text-xs">{numOrDash(v, 'h')}</span> },
-            ]
-          : []),
-        { title: '月总工时', dataIndex: 'beforeHours', key: 'bh', width: 80, align: 'right' as const, className: 'cho-col-before', render: (v: number | null) => <span className="font-mono text-xs font-semibold">{numOrDash(v, 'h')}</span> },
-      ],
-    },
-
-    // ── 分隔箭头 ──
-    { title: '', key: 'arrow-sep', width: 32, align: 'center' as const, className: 'cho-sep-col', render: () => <SwapRightOutlined style={{ color: '#16a34a', fontSize: 13 }} /> },
-
-    // ── 改造后（冷色调）──
-    {
-      title: (
-        <button onClick={() => setAfterExpanded((v) => !v)} className="flex items-center gap-1" style={{ color: '#065f46' }}>
-          改造后 <span className="text-[10px]">{afterExpanded ? '▾' : '▸'}</span>
-        </button>
-      ),
-      key: 'after-group',
-      className: 'cho-group-after',
-      children: [
-        ...(afterExpanded
-          ? [
-              { title: '人数', dataIndex: 'afterPeopleCount' as const, key: 'ap', width: 50, align: 'center' as const, className: 'cho-col-after', render: (_: number | null, r: any) => renderChange(r.beforePeopleCount, r.afterPeopleCount, fmtNum, false, '人') },
-              { title: '频次', dataIndex: 'afterFreq' as const, key: 'af', width: 64, align: 'center' as const, className: 'cho-col-after', render: (_: number | null, r: any) => renderChange(r.beforeFreq, r.afterFreq, fmtFreq, true) },
-              { title: '单次耗时', dataIndex: 'newDuration' as const, key: 'ad', width: 60, align: 'center' as const, className: 'cho-col-after', render: (_: number | null, r: any) => renderChange(r.oldHoursPerTask, r.newDuration, fmtNum, false, 'h') },
-            ]
-          : []),
-        { title: '月总工时', dataIndex: 'afterHours', key: 'ah', width: 80, align: 'right' as const, className: 'cho-col-after', render: (v: number | null) => <span className="font-mono text-xs font-semibold">{numOrDash(v, 'h')}</span> },
-      ],
+      title: <span style={{ color: '#6b7280' }}>改造前后对比</span>,
+      key: 'compare',
+      width: 280,
+      render: (_: unknown, r: typeof tableData[number]) => {
+        const metrics = [
+          { label: '人数', before: r.beforePeopleCount, after: r.afterPeopleCount, unit: '人', positiveUp: false },
+          { label: '频次', before: r.beforeFreq, after: r.afterFreq, unit: '', positiveUp: true, isFreq: true },
+          { label: '单次耗时', before: r.oldHoursPerTask, after: r.newDuration, unit: 'h', positiveUp: false },
+          { label: '月总工时', before: r.beforeHours, after: r.afterHours, unit: 'h', positiveUp: false, bold: true },
+        ];
+        return (
+          <div className="space-y-1 py-0.5">
+            {metrics.map((m) => {
+              const bText = m.isFreq ? fmtFreq(m.before as number | null) : numOrDash(m.before as number | null, m.unit);
+              const aText = m.isFreq ? fmtFreq(m.after as number | null) : numOrDash(m.after as number | null, m.unit);
+              const dir = m.isFreq ? changeDir(m.before as number | null, m.after as number | null) : changeDir(m.before as number | null, m.after as number | null);
+              const hasChange = dir !== null;
+              const isGood = hasChange && ((dir === 'up' && m.positiveUp) || (dir === 'down' && !m.positiveUp));
+              return (
+                <div key={m.label} className="flex items-center gap-1.5 text-[11px] leading-tight">
+                  <span className="shrink-0 w-[42px] text-right" style={{ color: 'var(--text-muted)', fontSize: 10 }}>{m.label}</span>
+                  <span className="font-mono" style={{ color: 'var(--text-muted)' }}>{bText}</span>
+                  <span style={{ color: hasChange ? (isGood ? '#16a34a' : '#dc2626') : 'var(--text-muted)', fontSize: 10 }}>
+                    {hasChange ? (dir === 'down' ? '↓' : '↑') : '→'}
+                  </span>
+                  <span className={`font-mono ${m.bold ? 'font-bold' : 'font-medium'}`} style={{ color: hasChange ? (isGood ? '#16a34a' : '#dc2626') : 'var(--foreground)' }}>
+                    {aText}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      },
     },
 
     // ── 成效 ──
@@ -463,6 +417,20 @@ export default function ChoDashboardPage() {
           },
         },
       ],
+    },
+
+    // ── 一句话简介 ──
+    {
+      title: '一句话简介',
+      dataIndex: 'briefIntro',
+      key: 'briefIntro',
+      width: 160,
+      ellipsis: true,
+      render: (v: string | null) => (
+        <span className="text-[11px] leading-snug" style={{ color: v ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+          {v || '—'}
+        </span>
+      ),
     },
   ];
 
@@ -640,7 +608,7 @@ export default function ChoDashboardPage() {
               rowKey="id"
               pagination={false}
               size="small"
-              scroll={{ x: (beforeExpanded || afterExpanded) ? 1110 : 840 }}
+              scroll={{ x: 1100 }}
               rowClassName={() => 'cho-table-row'}
             />
           </div>
