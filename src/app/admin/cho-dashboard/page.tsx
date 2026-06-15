@@ -201,7 +201,7 @@ export default function ChoDashboardPage() {
 
   // ── Enriched data: 月总工时 = 频次 × 单次耗时 × 人数 ──
   const enriched = useMemo(() => {
-    return (data?.submissions ?? []).map((s) => {
+    return (data?.submissions ?? []).map((s, i) => {
       const beforeFreq = calcMonthlyFreq(s.oldFrequency, s.oldOperationCount);
       const afterFreq = calcMonthlyFreq(s.newFrequency, s.newOperationCount);
       const beforeHours = calcMonthlyHours(beforeFreq, s.oldHoursPerTask, s.beforePeopleCount);
@@ -215,7 +215,7 @@ export default function ChoDashboardPage() {
       const reuseSavedHours = reuseMultiplier != null && savedHours != null
         ? Math.round(reuseMultiplier * savedHours * 10) / 10
         : null;
-      return { ...s, beforeFreq, afterFreq, beforeHours, afterHours, savedHours, reuseMultiplier, reuseSavedHours };
+      return { ...s, beforeFreq, afterFreq, beforeHours, afterHours, savedHours, reuseMultiplier, reuseSavedHours, seq: i + 1 };
     });
   }, [data]);
 
@@ -266,7 +266,7 @@ export default function ChoDashboardPage() {
         default: return 0;
       }
     });
-    return sorted.map((s, i) => ({ ...s, rank: i + 1 }));
+    return sorted;
   }, [enriched, teamFilter, sortBy]);
 
   // ── 变化单元格渲染 ──
@@ -306,14 +306,14 @@ export default function ChoDashboardPage() {
     // ── 基础 ──
     {
       title: '#',
-      dataIndex: 'rank',
-      key: 'rank',
+      dataIndex: 'seq',
+      key: 'seq',
       width: 40,
       align: 'center',
       fixed: 'left',
       className: 'cho-frozen-rank',
-      render: (rank: number) => (
-        <span className="text-xs font-bold" style={{ color: rank <= 3 ? '#d97706' : 'var(--text-muted)' }}>{rank}</span>
+      render: (seq: number) => (
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{seq}</span>
       ),
     },
     {
