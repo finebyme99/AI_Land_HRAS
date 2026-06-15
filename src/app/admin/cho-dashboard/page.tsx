@@ -111,9 +111,10 @@ function fmtNum(v: number | null | undefined): string {
   return v % 1 === 0 ? String(v) : Math.round(v * 10) / 10 + '';
 }
 
+/** 飞书存储为小数 0~1，显示为百分比，保留 1 位小数 */
 function fmtPct(v: number | null | undefined): string {
   if (v == null) return '—';
-  return `${v.toFixed(1)}%`;
+  return `${(v * 100).toFixed(1)}%`;
 }
 
 /** 月总工时 = 频次(次/月) × 单次耗时(h) × 人数 */
