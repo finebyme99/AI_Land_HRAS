@@ -121,6 +121,7 @@ export default function Navigation() {
                         children: [
                           ...(isReviewer ? [{ key: '/admin/reviews', label: <Link href="/admin/reviews">评审管理</Link> }] : []),
                           ...(isAdmin ? [{ key: '/admin/reviews-overview', label: <Link href="/admin/reviews-overview">评审一览</Link> }] : []),
+                          ...(isAdmin ? [{ key: '/admin/cho-dashboard', label: <Link href="/admin/cho-dashboard">成效看板</Link> }] : []),
                           ...(isAdmin ? [
                             { key: '/admin/review', label: <Link href="/admin/review">内容审核</Link> },
                             { key: '/admin/users', label: <Link href="/admin/users">用户管理</Link> },
@@ -231,6 +232,7 @@ export default function Navigation() {
                       children: [
                         ...(isReviewer ? [{ key: '/admin/reviews', label: <Link href="/admin/reviews" onClick={() => setDrawerOpen(false)}>评审管理</Link> }] : []),
                         ...(isAdmin ? [{ key: '/admin/reviews-overview', label: <Link href="/admin/reviews-overview" onClick={() => setDrawerOpen(false)}>评审一览</Link> }] : []),
+                        ...(isAdmin ? [{ key: '/admin/cho-dashboard', label: <Link href="/admin/cho-dashboard" onClick={() => setDrawerOpen(false)}>成效看板</Link> }] : []),
                         ...(isAdmin ? [
                           { key: '/admin/review', label: <Link href="/admin/review" onClick={() => setDrawerOpen(false)}>内容审核</Link> },
                           { key: '/admin/users', label: <Link href="/admin/users" onClick={() => setDrawerOpen(false)}>用户管理</Link> },
