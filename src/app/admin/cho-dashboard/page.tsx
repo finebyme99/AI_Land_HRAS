@@ -73,7 +73,7 @@ const PERIOD_OPTIONS = [
 
 const SORT_OPTIONS = [
   { value: 'savedHours', label: '节省工时' },
-  { value: 'reuseSaved', label: '推广预估' },
+  { value: 'reuseSaved', label: '推广预估节省工时' },
   { value: 'efficiency', label: '提效比例' },
   { value: 'beforeHours', label: '原工时' },
   { value: 'people', label: '人数' },
@@ -366,7 +366,7 @@ export default function ChoDashboardPage() {
             ]
           : []),
         {
-          title: '月总工时', dataIndex: 'beforeHours', key: 'bh', width: beforeExpanded ? 72 : 150, align: 'right' as const, className: 'cho-col-before',
+          title: '月总工时', dataIndex: 'beforeHours', key: 'bh', width: 80, align: 'right' as const, className: 'cho-col-before',
           render: (v: number | null) => <span className="font-mono text-xs font-semibold">{numOrDash(v, 'h')}</span>,
         },
       ],
@@ -409,7 +409,7 @@ export default function ChoDashboardPage() {
             ]
           : []),
         {
-          title: '月总工时', dataIndex: 'afterHours', key: 'ah', width: afterExpanded ? 72 : 150, align: 'right' as const, className: 'cho-col-after',
+          title: '月总工时', dataIndex: 'afterHours', key: 'ah', width: 80, align: 'right' as const, className: 'cho-col-after',
           render: (v: number | null) => <span className="font-mono text-xs font-semibold">{numOrDash(v, 'h')}</span>,
         },
       ],
@@ -470,10 +470,19 @@ export default function ChoDashboardPage() {
           render: (v: string | null, record: any) => {
             if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
             const level = record.reuseValueLevel;
-            const bg = level === '高价值' ? 'rgba(22,163,74,0.1)' : level === '中价值' ? 'rgba(217,119,6,0.08)' : 'rgba(0,0,0,0.04)';
-            const fg = level === '高价值' ? '#16a34a' : level === '中价值' ? '#d97706' : 'var(--text-secondary)';
+            // 4 级颜色从浅到深：低→中→高→极高
+            const levelStyle: Record<string, { bg: string; fg: string; border: string }> = {
+              '低价值':   { bg: 'rgba(34,197,94,0.08)',  fg: '#16a34a', border: 'rgba(34,197,94,0.2)' },
+              '中价值':   { bg: 'rgba(20,184,166,0.1)',  fg: '#0d9488', border: 'rgba(20,184,166,0.25)' },
+              '高价值':   { bg: 'rgba(245,158,11,0.12)', fg: '#d97706', border: 'rgba(245,158,11,0.3)' },
+              '极高价值': { bg: 'rgba(234,88,12,0.15)',  fg: '#c2410c', border: 'rgba(234,88,12,0.35)' },
+            };
+            const s = levelStyle[level ?? ''] ?? { bg: 'rgba(0,0,0,0.04)', fg: 'var(--text-secondary)', border: 'rgba(0,0,0,0.08)' };
             return (
-              <span className="inline-block rounded-md px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap" style={{ background: bg, color: fg }}>
+              <span
+                className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap"
+                style={{ background: s.bg, color: s.fg, border: `1px solid ${s.border}` }}
+              >
                 {v}
               </span>
             );
@@ -488,7 +497,7 @@ export default function ChoDashboardPage() {
           className: 'cho-col-result',
           sorter: (a: any, b: any) => (a.reuseSavedHours ?? -1) - (b.reuseSavedHours ?? -1),
           render: (v: number | null) => (
-            <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#7c3aed' : 'var(--text-muted)' }}>
+            <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#d97706' : 'var(--text-muted)' }}>
               {numOrDash(v, 'h')}
             </span>
           ),
@@ -678,7 +687,7 @@ export default function ChoDashboardPage() {
               rowKey="id"
               pagination={false}
               size="small"
-              scroll={{ x: 960 }}
+              scroll={{ x: (beforeExpanded || afterExpanded) ? 1100 : 820 }}
               rowClassName={() => 'cho-table-row'}
             />
           </div>
@@ -690,7 +699,7 @@ export default function ChoDashboardPage() {
           <span className="font-semibold"> 绿色</span> = 改善 ·
           <span className="font-semibold"> 红色</span> = 需关注 ·
           <span className="font-semibold"> 频次</span>统一折算为次/月 ·
-          <span className="font-semibold"> 推广预估</span> = 节省工时 × 复用价值系数 ·
+          <span className="font-semibold"> 推广预估节省工时</span> = 节省工时 × 复用价值系数 ·
           <span className="font-semibold"> 场景归属地区系数</span>待补充
         </div>
 
@@ -778,8 +787,8 @@ function SubmissionDetailModal({ record, onClose }: { record: any | null; onClos
             <div className="text-lg font-bold font-mono" style={{ color: 'var(--primary)' }}>{fmtPct(r.efficiencyRate)}</div>
           </div>
           <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.12)' }}>
-            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>推广预估</div>
-            <div className="text-lg font-bold font-mono" style={{ color: '#7c3aed' }}>{numOrDash(r.reuseSavedHours, 'h')}</div>
+            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>推广预估节省工时</div>
+            <div className="text-lg font-bold font-mono" style={{ color: '#d97706' }}>{numOrDash(r.reuseSavedHours, 'h')}</div>
           </div>
         </div>
 
