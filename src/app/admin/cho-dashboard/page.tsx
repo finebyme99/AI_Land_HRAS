@@ -366,7 +366,7 @@ export default function ChoDashboardPage() {
             ]
           : []),
         {
-          title: '月总工时', dataIndex: 'beforeHours', key: 'bh', width: beforeExpanded ? 72 : 120, align: 'right' as const, className: 'cho-col-before',
+          title: '月总工时', dataIndex: 'beforeHours', key: 'bh', width: beforeExpanded ? 72 : 150, align: 'right' as const, className: 'cho-col-before',
           render: (v: number | null) => <span className="font-mono text-xs font-semibold">{numOrDash(v, 'h')}</span>,
         },
       ],
@@ -409,8 +409,8 @@ export default function ChoDashboardPage() {
             ]
           : []),
         {
-          title: '月总工时', dataIndex: 'afterHours', key: 'ah', width: afterExpanded ? 72 : 120, align: 'right' as const, className: 'cho-col-after',
-          render: (_: number | null, r: any) => renderChange(r.beforeHours, r.afterHours, fmtNum, false, 'h'),
+          title: '月总工时', dataIndex: 'afterHours', key: 'ah', width: afterExpanded ? 72 : 150, align: 'right' as const, className: 'cho-col-after',
+          render: (v: number | null) => <span className="font-mono text-xs font-semibold">{numOrDash(v, 'h')}</span>,
         },
       ],
     },
@@ -425,16 +425,26 @@ export default function ChoDashboardPage() {
           title: '节省工时',
           dataIndex: 'savedHours',
           key: 'sh',
-          width: 62,
+          width: 80,
           align: 'right' as const,
           className: 'cho-col-result',
           sorter: (a: any, b: any) => (a.savedHours ?? -1) - (b.savedHours ?? -1),
           defaultSortOrder: 'descend' as const,
-          render: (v: number | null) => (
-            <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>
-              {numOrDash(v, 'h')}
-            </span>
-          ),
+          render: (v: number | null, record: any) => {
+            const dir = changeDir(record.beforeHours, record.afterHours);
+            return (
+              <span className="inline-flex items-center gap-1">
+                {dir && (
+                  <span className="text-[10px]" style={{ color: dir === 'down' ? '#16a34a' : '#dc2626' }}>
+                    {dir === 'down' ? '↓' : '↑'}
+                  </span>
+                )}
+                <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                  {numOrDash(v, 'h')}
+                </span>
+              </span>
+            );
+          },
         },
         {
           title: '提效比例',
@@ -470,10 +480,10 @@ export default function ChoDashboardPage() {
           },
         },
         {
-          title: '推广预估',
+          title: '推广预估节省工时',
           dataIndex: 'reuseSavedHours',
           key: 'rs',
-          width: 65,
+          width: 88,
           align: 'right' as const,
           className: 'cho-col-result',
           sorter: (a: any, b: any) => (a.reuseSavedHours ?? -1) - (b.reuseSavedHours ?? -1),
@@ -668,7 +678,7 @@ export default function ChoDashboardPage() {
               rowKey="id"
               pagination={false}
               size="small"
-              scroll={{ x: 1060 }}
+              scroll={{ x: 960 }}
               rowClassName={() => 'cho-table-row'}
             />
           </div>
