@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Spin, App, Select, Table, type TableColumnsType } from 'antd';
+import { Spin, App, Select, Table, Modal, Tag, type TableColumnsType } from 'antd';
 import {
   BarChartOutlined,
   TeamOutlined,
@@ -158,6 +158,7 @@ export default function ChoDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState('savedHours');
+  const [detailRecord, setDetailRecord] = useState<typeof enriched[number] | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) router.replace('/');
@@ -324,13 +325,13 @@ export default function ChoDashboardPage() {
       ellipsis: true,
       render: (title: string, record) => (
         <div>
-          <a
-            href={`/competitions/${record.id}`}
-            className="text-xs font-medium truncate hover:underline block"
+          <button
+            onClick={() => setDetailRecord(record)}
+            className="text-xs font-medium truncate text-left hover:underline w-full"
             style={{ color: 'var(--primary)' }}
           >
             {title}
-          </a>
+          </button>
           <div className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{record.team || '—'}</div>
         </div>
       ),
@@ -678,6 +679,12 @@ export default function ChoDashboardPage() {
           <span className="font-semibold"> 推广预估</span> = 节省工时 × 复用价值系数 ·
           <span className="font-semibold"> 场景归属地区系数</span>待补充
         </div>
+
+        {/* 方案详情弹窗 */}
+        <SubmissionDetailModal
+          record={detailRecord}
+          onClose={() => setDetailRecord(null)}
+        />
       </div>
     </>
   );
@@ -709,5 +716,141 @@ function StatCard({ icon, label, value, sub, color, highlight }: {
       <span className="text-xl font-bold font-mono mt-0.5" style={{ color }}>{value}</span>
       {sub && <span className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub}</span>}
     </div>
+  );
+}
+
+// ─── 方案详情弹窗 ────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function SubmissionDetailModal({ record, onClose }: { record: any | null; onClose: () => void }) {
+  if (!record) return null;
+
+  const r = record;
+  const beforeFreqDisplay = fmtFreq(r.beforeFreq);
+  const afterFreqDisplay = fmtFreq(r.afterFreq);
+
+  // 变化标记
+  const diff = (oldVal: number | null | undefined, newVal: number | null | undefined, positiveUp: boolean) => {
+    const dir = changeDir(oldVal, newVal);
+    if (!dir) return null;
+    const isGood = (dir === 'up' && positiveUp) || (dir === 'down' && !positiveUp);
+    return { color: isGood ? '#16a34a' : '#dc2626', arrow: dir === 'up' ? '↑' : '↓' };
+  };
+
+  return (
+    <Modal
+      open={!!r}
+      onCancel={onClose}
+      footer={null}
+      width={680}
+      title={
+        <div className="pr-8">
+          <div className="text-base font-bold" style={{ color: 'var(--foreground)' }}>{r.title}</div>
+          <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+            {r.team || '—'}{r.sceneCategory ? ` · ${r.sceneCategory}` : ''}
+          </div>
+        </div>
+      }
+    >
+      <div className="space-y-5 pt-2">
+        {/* 核心指标 */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.15)' }}>
+            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>节省工时</div>
+            <div className="text-lg font-bold font-mono" style={{ color: '#16a34a' }}>{numOrDash(r.savedHours, 'h')}</div>
+          </div>
+          <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.1)' }}>
+            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>提效比例</div>
+            <div className="text-lg font-bold font-mono" style={{ color: 'var(--primary)' }}>{fmtPct(r.efficiencyRate)}</div>
+          </div>
+          <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.12)' }}>
+            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>推广预估</div>
+            <div className="text-lg font-bold font-mono" style={{ color: '#7c3aed' }}>{numOrDash(r.reuseSavedHours, 'h')}</div>
+          </div>
+        </div>
+
+        {/* 改造前后对比表 */}
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ background: 'rgba(0,0,0,0.02)' }}>
+                <th className="text-left px-4 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}></th>
+                <th className="text-center px-4 py-2 font-semibold" style={{ color: '#b45309' }}>改造前</th>
+                <th className="text-center px-4 py-2" style={{ width: 36 }}></th>
+                <th className="text-center px-4 py-2 font-semibold" style={{ color: '#047857' }}>改造后</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { label: '执行人数', old: r.beforePeopleCount, new: r.afterPeopleCount, unit: '人', positiveUp: false },
+                { label: '执行频次', oldText: beforeFreqDisplay, newText: afterFreqDisplay },
+                { label: '单次耗时', old: r.oldHoursPerTask, new: r.newDuration, unit: 'h', positiveUp: false },
+                { label: '月总工时', old: r.beforeHours, new: r.afterHours, unit: 'h', positiveUp: false },
+              ].map((row, i) => {
+                const d = 'old' in row ? diff(row.old, row.new, row.positiveUp ?? false) : null;
+                return (
+                  <tr key={i} style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+                    <td className="px-4 py-2 font-medium" style={{ color: 'var(--foreground)' }}>{row.label}</td>
+                    <td className="px-4 py-2 text-center font-mono" style={{ color: 'var(--foreground)' }}>
+                      {'oldText' in row ? row.oldText : numOrDash(row.old, row.unit!)}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      {d ? <span style={{ color: d.color, fontSize: 12 }}>{d.arrow}</span> : <SwapRightOutlined style={{ color: '#16a34a', fontSize: 12 }} />}
+                    </td>
+                    <td className="px-4 py-2 text-center font-mono font-medium" style={{ color: d ? d.color : 'var(--foreground)' }}>
+                      {'newText' in row ? row.newText : numOrDash(row.new, row.unit!)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 复用 & 费用 */}
+        <div className="flex flex-wrap gap-2">
+          {r.reuseValue && (
+            <Tag color="purple" style={{ margin: 0 }}>
+              复用系数 {r.reuseMultiplier ? `×${r.reuseMultiplier}` : r.reuseValue}
+            </Tag>
+          )}
+          {r.reuseValueLevel && (
+            <Tag color={r.reuseValueLevel === '高价值' ? 'green' : r.reuseValueLevel === '中价值' ? 'orange' : 'default'} style={{ margin: 0 }}>
+              {r.reuseValueLevel}
+            </Tag>
+          )}
+          {r.aiCost && <Tag style={{ margin: 0 }}>Token 费用 {r.aiCost}</Tag>}
+          {r.monthlySavedCost && <Tag color="green" style={{ margin: 0 }}>降本 {r.monthlySavedCost}</Tag>}
+        </div>
+
+        {/* AI 工具 */}
+        {r.aiTools?.length > 0 && (
+          <div>
+            <div className="text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>AI 工具</div>
+            <div className="flex flex-wrap gap-1.5">
+              {r.aiTools.map((t: string) => <Tag key={t} color="geekblue" style={{ margin: 0, fontSize: 11 }}>{t}</Tag>)}
+            </div>
+          </div>
+        )}
+
+        {/* 流程对比 */}
+        {(r.beforeProcess || r.afterProcess) && (
+          <div className="grid grid-cols-2 gap-3">
+            {r.beforeProcess && (
+              <div className="rounded-lg p-3 text-xs leading-relaxed" style={{ background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.1)' }}>
+                <div className="font-semibold mb-1" style={{ color: '#b45309' }}>原流程</div>
+                <div style={{ color: 'var(--text-secondary)' }}>{r.beforeProcess}</div>
+              </div>
+            )}
+            {r.afterProcess && (
+              <div className="rounded-lg p-3 text-xs leading-relaxed" style={{ background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.1)' }}>
+                <div className="font-semibold mb-1" style={{ color: '#047857' }}>AI 后</div>
+                <div style={{ color: 'var(--text-secondary)' }}>{r.afterProcess}</div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }
