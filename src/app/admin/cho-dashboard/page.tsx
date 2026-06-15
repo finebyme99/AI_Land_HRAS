@@ -11,6 +11,7 @@ import {
   ThunderboltOutlined,
   SyncOutlined,
   SwapRightOutlined,
+  LinkOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 
@@ -197,7 +198,7 @@ export default function ChoDashboardPage() {
 
   // ── Enriched data: 月总工时 = 频次 × 单次耗时 × 人数 ──
   const enriched = useMemo(() => {
-    return (data?.submissions ?? []).map((s) => {
+    return (data?.submissions ?? []).map((s, idx) => {
       const beforeFreq = calcMonthlyFreq(s.oldFrequency, s.oldOperationCount);
       const afterFreq = calcMonthlyFreq(s.newFrequency, s.newOperationCount);
       const beforeHours = calcMonthlyHours(beforeFreq, s.oldHoursPerTask, s.beforePeopleCount);
@@ -211,7 +212,7 @@ export default function ChoDashboardPage() {
       const reuseSavedHours = reuseMultiplier != null && savedHours != null
         ? Math.round(reuseMultiplier * savedHours * 10) / 10
         : null;
-      return { ...s, beforeFreq, afterFreq, beforeHours, afterHours, savedHours, reuseMultiplier, reuseSavedHours, fixedSeq: s.proposalNo ?? 0 };
+      return { ...s, beforeFreq, afterFreq, beforeHours, afterHours, savedHours, reuseMultiplier, reuseSavedHours, fixedSeq: idx + 1 };
     });
   }, [data]);
 
@@ -297,6 +298,7 @@ export default function ChoDashboardPage() {
             className="text-xs font-medium truncate text-left hover:underline w-full"
             style={{ color: 'var(--primary)' }}
           >
+            <LinkOutlined className="mr-1" style={{ fontSize: 10, opacity: 0.5 }} />
             {title}
           </button>
           <div className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{record.team || '—'}</div>
@@ -555,6 +557,25 @@ export default function ChoDashboardPage() {
             <StatCard icon={<ThunderboltOutlined />} label="AI 后工时" value={summary.totalAfter > 0 ? `${summary.totalAfter}h` : '—'} sub="月均合计" color="#7c3aed" />
             <StatCard icon={<RiseOutlined />} label="节省工时" value={summary.totalSaved > 0 ? `${summary.totalSaved}h` : '—'} sub={summary.avgEfficiency != null ? `平均提效 ${summary.avgEfficiency.toFixed(1)}%` : '月均合计'} color="#16a34a" highlight />
           </div>
+        </div>
+
+        {/* 核心公式说明 */}
+        <div
+          className="glass rounded-xl px-5 py-3 mb-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-1"
+          style={{ borderColor: 'rgba(220, 38, 38, 0.2)', background: 'rgba(254, 242, 242, 0.7)' }}
+        >
+          <span className="text-xs font-semibold" style={{ color: '#dc2626' }}>核心公式</span>
+          <span className="text-xs font-mono font-bold" style={{ color: '#991b1b' }}>
+            月总工时 <span style={{ color: '#dc2626' }}>=</span> 月均操作次数 <span style={{ color: '#dc2626' }}>×</span> 单次操作耗时 <span style={{ color: '#dc2626' }}>×</span> 操作人数
+          </span>
+          <span className="text-[10px]" style={{ color: '#9ca3af' }}>·</span>
+          <span className="text-xs font-mono" style={{ color: '#b91c1c' }}>
+            节省工时 <span style={{ color: '#dc2626' }}>=</span> 改造前月总工时 <span style={{ color: '#dc2626' }}>−</span> 改造后月总工时
+          </span>
+          <span className="text-[10px]" style={{ color: '#9ca3af' }}>·</span>
+          <span className="text-xs font-mono" style={{ color: '#c2410c' }}>
+            推广预估 <span style={{ color: '#ea580c' }}>=</span> 节省工时 <span style={{ color: '#ea580c' }}>×</span> 复用系数
+          </span>
         </div>
 
         {/* 筛选 + 排序 */}
