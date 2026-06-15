@@ -218,7 +218,7 @@ export default function ChoDashboardPage() {
       const reuseSavedHours = reuseMultiplier != null && savedHours != null
         ? Math.round(reuseMultiplier * savedHours * 10) / 10
         : null;
-      return { ...s, beforeFreq, afterFreq, beforeHours, afterHours, savedHours, reuseMultiplier, reuseSavedHours };
+      return { ...s, beforeFreq, afterFreq, beforeHours, afterHours, savedHours, reuseMultiplier, reuseSavedHours, fixedSeq: s.proposalNo ?? 0 };
     });
   }, [data]);
 
@@ -255,6 +255,10 @@ export default function ChoDashboardPage() {
     return counts;
   }, [enriched]);
 
+  // ── Max values for inline bars ──
+  const maxSavedHours = useMemo(() => Math.max(0, ...enriched.map((s) => s.savedHours ?? 0)), [enriched]);
+  const maxReuseSaved = useMemo(() => Math.max(0, ...enriched.map((s) => s.reuseSavedHours ?? 0)), [enriched]);
+
   // ── Filtered & sorted ──
   const tableData = useMemo(() => {
     let list = enriched;
@@ -269,7 +273,7 @@ export default function ChoDashboardPage() {
         default: return 0;
       }
     });
-    return sorted.map((s, i) => ({ ...s, seq: i + 1 }));
+    return sorted.map((s) => ({ ...s, seq: s.fixedSeq }));
   }, [enriched, teamFilter, sortBy]);
 
   // ── 变化单元格渲染 ──
@@ -391,21 +395,25 @@ export default function ChoDashboardPage() {
       className: 'cho-group-result',
       children: [
         {
-          title: '节省工时', dataIndex: 'savedHours', key: 'sh', width: 80, align: 'right' as const, className: 'cho-col-result',
-          sorter: (a: any, b: any) => (a.savedHours ?? -1) - (b.savedHours ?? -1), defaultSortOrder: 'descend' as const,
+          title: '节省工时', dataIndex: 'savedHours', key: 'sh', width: 95, align: 'right' as const, className: 'cho-col-result',
           render: (v: number | null, record: any) => {
             const dir = changeDir(record.beforeHours, record.afterHours);
+            const pct = v != null && maxSavedHours > 0 ? Math.min(Math.max(v / maxSavedHours, 0) * 100, 100) : 0;
             return (
-              <span className="inline-flex items-center gap-1">
-                {dir && <span className="text-[10px]" style={{ color: dir === 'down' ? '#16a34a' : '#dc2626' }}>{dir === 'down' ? '↓' : '↑'}</span>}
-                <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>
-              </span>
+              <div className="flex items-center justify-end gap-1" style={{ position: 'relative' }}>
+                {pct > 0 && (
+                  <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', height: 16, width: `${pct}%`, maxWidth: '100%', background: 'rgba(22,163,74,0.12)', borderRadius: 2, zIndex: 0 }} />
+                )}
+                <span className="inline-flex items-center gap-1" style={{ position: 'relative', zIndex: 1 }}>
+                  {dir && <span className="text-[10px]" style={{ color: dir === 'down' ? '#16a34a' : '#dc2626' }}>{dir === 'down' ? '↓' : '↑'}</span>}
+                  <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>
+                </span>
+              </div>
             );
           },
         },
         {
-          title: '提效比例', dataIndex: 'efficiencyRate', key: 'eff', width: 65, align: 'right' as const, className: 'cho-col-result',
-          sorter: (a: any, b: any) => (a.efficiencyRate ?? -1) - (b.efficiencyRate ?? -1),
+          title: '提效比例', dataIndex: 'efficiencyRate', key: 'eff', width: 72, align: 'right' as const, className: 'cho-col-result',
           render: (v: number | null) => <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{fmtPct(v)}</span>,
         },
         {
@@ -417,12 +425,26 @@ export default function ChoDashboardPage() {
 
     // ── 复用价值 ──
     {
-      title: <span style={{ color: '#7c3aed' }}>复用价值</span>,
+      title: <span style={{ color: '#c2410c' }}>复用价值</span>,
       key: 'reuse-group',
       className: 'cho-group-reuse',
       children: [
         {
-          title: '复用系数', dataIndex: 'reuseValue', key: 'rm', width: 130, align: 'center' as const, className: 'cho-col-reuse',
+          title: '推广预估节省工时', dataIndex: 'reuseSavedHours', key: 'rs', width: 100, align: 'right' as const, className: 'cho-col-reuse',
+          render: (v: number | null) => {
+            const pct = v != null && maxReuseSaved > 0 ? Math.min(Math.max(v / maxReuseSaved, 0) * 100, 100) : 0;
+            return (
+              <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                {pct > 0 && (
+                  <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', height: 16, width: `${pct}%`, maxWidth: '100%', background: 'rgba(234,88,12,0.12)', borderRadius: 2, zIndex: 0 }} />
+                )}
+                <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#c2410c' : 'var(--text-muted)', position: 'relative', zIndex: 1 }}>{numOrDash(v, 'h')}</span>
+              </div>
+            );
+          },
+        },
+        {
+          title: '复用系数', dataIndex: 'reuseValue', key: 'rm', width: 140, align: 'center' as const, className: 'cho-col-reuse',
           render: (v: string | null, record: any) => {
             if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
             const level = record.reuseValueLevel;
@@ -440,11 +462,6 @@ export default function ChoDashboardPage() {
             );
           },
         },
-        {
-          title: '推广预估节省工时', dataIndex: 'reuseSavedHours', key: 'rs', width: 92, align: 'right' as const, className: 'cho-col-reuse',
-          sorter: (a: any, b: any) => (a.reuseSavedHours ?? -1) - (b.reuseSavedHours ?? -1),
-          render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#d97706' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>,
-        },
       ],
     },
   ];
@@ -460,19 +477,11 @@ export default function ChoDashboardPage() {
         .cho-table-wrap .ant-table {
           margin-right: 8px;
         }
-        /* ── 冻结列：背景与表格一致 ── */
+        /* ── 冻结列 ── */
         .cho-frozen-rank {
           position: sticky !important;
           left: 0 !important;
           z-index: 3 !important;
-        }
-        .cho-frozen-rank::after {
-          content: '';
-          position: absolute;
-          top: 0; right: 0; bottom: 0;
-          width: 2px;
-          background: rgba(0, 0, 0, 0.06);
-          pointer-events: none;
         }
         /* ── 表头分组 ── */
         .cho-group-before > .ant-table-cell {
@@ -496,10 +505,10 @@ export default function ChoDashboardPage() {
           color: #3730a3 !important;
         }
         .cho-group-reuse > .ant-table-cell {
-          background: #f3e8ff !important;
-          border-left: 3px solid #7c3aed !important;
-          border-top: 3px solid #7c3aed !important;
-          color: #5b21b6 !important;
+          background: #fff7ed !important;
+          border-left: 3px solid #ea580c !important;
+          border-top: 3px solid #ea580c !important;
+          color: #c2410c !important;
         }
         /* ── 分隔列 ── */
         .cho-sep-col > .ant-table-cell {
@@ -517,7 +526,7 @@ export default function ChoDashboardPage() {
           background: rgba(224, 231, 255, 0.25) !important;
         }
         .cho-col-reuse {
-          background: rgba(243, 232, 255, 0.3) !important;
+          background: rgba(255, 237, 213, 0.3) !important;
         }
         .cho-table-row:hover .cho-col-before {
           background: rgba(254, 243, 199, 0.55) !important;
@@ -529,7 +538,7 @@ export default function ChoDashboardPage() {
           background: rgba(224, 231, 255, 0.45) !important;
         }
         .cho-table-row:hover .cho-col-reuse {
-          background: rgba(243, 232, 255, 0.5) !important;
+          background: rgba(255, 237, 213, 0.55) !important;
         }
         /* ── 行 ── */
         .cho-table-row td {
