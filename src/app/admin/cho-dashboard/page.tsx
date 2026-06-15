@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Spin, App, Select, Tag, Table, type TableColumnsType } from 'antd';
+import { Spin, App, Select, Table, type TableColumnsType } from 'antd';
 import {
   BarChartOutlined,
   TeamOutlined,
@@ -10,8 +10,9 @@ import {
   RiseOutlined,
   ThunderboltOutlined,
   SyncOutlined,
+  SwapRightOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useAuth } from '@/lib/auth-context';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -78,16 +79,14 @@ const SORT_OPTIONS = [
   { value: 'people', label: '人数' },
 ];
 
-const BAR_COLORS = ['#1a3a8a', '#2d5aa0', '#4a7fd4', '#7ba7e8', '#a8c8f0', '#c5daf5'];
-
 // ─── Helpers ─────────────────────────────────────────────────────
 
-/** 将频率文本 + 执行次数 → X次/月 */
+/** 频率文本 + 执行次数 → 每月次数 */
 function calcMonthlyFreq(freq: string | null, count: number | null): number | null {
   if (count != null && count > 0) {
     if (!freq) return count;
-    if (freq.includes('每日') || freq.includes('daily')) return count * 22;
-    if (freq.includes('每周') || freq.includes('weekly')) return count * 4;
+    if (freq.includes('每日') || freq.includes('daily')) return Math.round(count * 22 * 10) / 10;
+    if (freq.includes('每周') || freq.includes('weekly')) return Math.round(count * 4 * 10) / 10;
     if (freq.includes('每月') || freq.includes('monthly')) return count;
     if (freq.includes('每季') || freq.includes('quarterly')) return Math.round(count / 3 * 10) / 10;
     if (freq.includes('每年') || freq.includes('yearly')) return Math.round(count / 12 * 10) / 10;
@@ -100,30 +99,49 @@ function calcMonthlyFreq(freq: string | null, count: number | null): number | nu
   return null;
 }
 
-function freqDisplay(freq: string | null, count: number | null): string {
-  const monthly = calcMonthlyFreq(freq, count);
+function fmtFreq(monthly: number | null | undefined): string {
   if (monthly == null) return '—';
-  return `${monthly}次/月`;
+  return monthly % 1 === 0 ? `${monthly}次/月` : `${monthly.toFixed(1)}次/月`;
 }
 
-function num(v: number | null | undefined): string {
+function fmtNum(v: number | null | undefined): string {
   if (v == null) return '—';
   return v % 1 === 0 ? String(v) : v.toFixed(1);
 }
 
+function fmtPct(v: number | null | undefined): string {
+  if (v == null) return '—';
+  return `${v.toFixed(1)}%`;
+}
+
+/** 月总工时 = 频次(次/月) × 单次耗时(h) × 人数 */
+function calcMonthlyHours(
+  freq: number | null,
+  duration: number | null,
+  people: number | null,
+): number | null {
+  if (freq == null || duration == null || people == null) return null;
+  const result = freq * duration * people;
+  return Math.round(result * 10) / 10;
+}
+
+/** 从复用价值文本提取乘数 (如 "跨多个BU x3" → 3) */
+function extractMultiplier(text: string | null): number | null {
+  if (!text) return null;
+  const match = text.match(/[×xX]\s*(\d+(?:\.\d+)?)/);
+  return match ? parseFloat(match[1]) : null;
+}
+
 /**
- * 计算变化类型：null=无变化, 'up'=上升, 'down'=下降
- * isPositiveWhenUp: true → 上升为正面(节省工时), false → 上升为负面(人数/耗时)
+ * 变化方向：null=无变化, 'up'=上升, 'down'=下降
  */
-function changeType(
+function changeDir(
   oldVal: number | null | undefined,
   newVal: number | null | undefined,
-  isPositiveWhenUp: boolean,
 ): 'up' | 'down' | null {
   if (oldVal == null || newVal == null || oldVal === 0) return null;
   if (Math.abs(newVal - oldVal) / Math.abs(oldVal) < 0.001) return null;
-  const direction = newVal > oldVal ? 'up' : 'down';
-  return direction;
+  return newVal > oldVal ? 'up' : 'down';
 }
 
 // ─── Component ───────────────────────────────────────────────────
@@ -131,7 +149,7 @@ function changeType(
 export default function ChoDashboardPage() {
   const router = useRouter();
   const { message } = App.useApp();
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const [period, setPeriod] = useState('2605');
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,8 +165,7 @@ export default function ChoDashboardPage() {
     try {
       const res = await fetch(`/api/admin/competitions/overview?period=${period}`);
       if (!res.ok) throw new Error((await res.json()).error || '加载失败');
-      const json: OverviewResponse = await res.json();
-      setData(json);
+      setData(await res.json());
     } catch (e) {
       message.error(e instanceof Error ? e.message : '加载失败');
     } finally {
@@ -165,44 +182,37 @@ export default function ChoDashboardPage() {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 5 * 60 * 1000);
-      const res = await fetch(`/api/competitions/sync?period=${period}`, {
-        method: 'POST',
-        signal: controller.signal,
-      });
+      const res = await fetch(`/api/competitions/sync?period=${period}`, { method: 'POST', signal: controller.signal });
       clearTimeout(timer);
       const result = await res.json();
       if (result.error) throw new Error(result.error);
       message.success({ content: `已同步 ${result.synced} 条方案`, key: 'sync' });
       await fetchData();
     } catch (err) {
-      const msg = err instanceof DOMException && err.name === 'AbortError'
-        ? '同步超时，请稍后重续'
-        : err instanceof Error ? err.message : '同步失败';
+      const msg = err instanceof DOMException && err.name === 'AbortError' ? '同步超时' : err instanceof Error ? err.message : '同步失败';
       message.error({ content: msg, key: 'sync' });
     } finally {
       setSyncing(false);
     }
   };
 
-  // ── Enriched data ──
+  // ── Enriched data: 月总工时 = 频次 × 单次耗时 × 人数 ──
   const enriched = useMemo(() => {
     return (data?.submissions ?? []).map((s) => {
-      const beforeMonthlyFreq = calcMonthlyFreq(s.oldFrequency, s.oldOperationCount);
-      const afterMonthlyFreq = calcMonthlyFreq(s.newFrequency, s.newOperationCount);
-      const beforeHours =
-        s.beforeHoursPerPerson != null && s.beforePeopleCount != null
-          ? Math.round(s.beforeHoursPerPerson * s.beforePeopleCount * 10) / 10
-          : null;
-      const afterHours =
-        s.afterHoursPerPerson != null && s.afterPeopleCount != null
-          ? Math.round(s.afterHoursPerPerson * s.afterPeopleCount * 10) / 10
-          : null;
-      const savedHours =
-        s.monthlySavedHours ??
-        (beforeHours != null && afterHours != null
+      const beforeFreq = calcMonthlyFreq(s.oldFrequency, s.oldOperationCount);
+      const afterFreq = calcMonthlyFreq(s.newFrequency, s.newOperationCount);
+      const beforeHours = calcMonthlyHours(beforeFreq, s.oldHoursPerTask, s.beforePeopleCount);
+      const afterHours = calcMonthlyHours(afterFreq, s.newDuration, s.afterPeopleCount);
+      const savedHours = s.monthlySavedHours ?? (
+        beforeHours != null && afterHours != null
           ? Math.round((beforeHours - afterHours) * 10) / 10
-          : null);
-      return { ...s, beforeMonthlyFreq, afterMonthlyFreq, beforeHours, afterHours, savedHours };
+          : null
+      );
+      const reuseMultiplier = extractMultiplier(s.reuseValue);
+      const reuseSavedHours = reuseMultiplier != null && savedHours != null
+        ? Math.round(reuseMultiplier * savedHours * 10) / 10
+        : null;
+      return { ...s, beforeFreq, afterFreq, beforeHours, afterHours, savedHours, reuseMultiplier, reuseSavedHours };
     });
   }, [data]);
 
@@ -213,43 +223,20 @@ export default function ChoDashboardPage() {
     const totalAfter = enriched.reduce((sum, s) => sum + (s.afterHours ?? 0), 0);
     const totalSaved = enriched.reduce((sum, s) => sum + (s.savedHours ?? 0), 0);
     const withEff = enriched.filter((s) => s.efficiencyRate != null);
-    const avgEff =
-      withEff.length > 0
-        ? withEff.reduce((sum, s) => sum + (s.efficiencyRate ?? 0), 0) / withEff.length
-        : null;
+    const avgEff = withEff.length > 0
+      ? withEff.reduce((sum, s) => sum + (s.efficiencyRate ?? 0), 0) / withEff.length
+      : null;
     return {
       count: enriched.length,
       totalPeople,
       totalBefore: Math.round(totalBefore * 10) / 10,
       totalAfter: Math.round(totalAfter * 10) / 10,
       totalSaved: Math.round(totalSaved * 10) / 10,
-      avgEfficiency: avgEff != null ? Math.round(avgEff * 1000) / 10 : null,
+      avgEfficiency: avgEff != null ? Math.round(avgEff * 100) / 100 : null,
     };
   }, [enriched]);
 
-  // ── Chart data ──
-  const chartData = useMemo(() => {
-    const byTeam: Record<string, { saved: number; before: number; after: number; count: number }> = {};
-    for (const s of enriched) {
-      const team = s.team || '未分类';
-      if (!byTeam[team]) byTeam[team] = { saved: 0, before: 0, after: 0, count: 0 };
-      byTeam[team].saved += s.savedHours ?? 0;
-      byTeam[team].before += s.beforeHours ?? 0;
-      byTeam[team].after += s.afterHours ?? 0;
-      byTeam[team].count += 1;
-    }
-    return Object.entries(byTeam)
-      .map(([team, v]) => ({
-        team,
-        saved: Math.round(v.saved * 10) / 10,
-        before: Math.round(v.before * 10) / 10,
-        after: Math.round(v.after * 10) / 10,
-        efficiency: v.before > 0 ? Math.round(((v.before - v.after) / v.before) * 1000) / 10 : 0,
-        count: v.count,
-      }))
-      .sort((a, b) => b.saved - a.saved);
-  }, [enriched]);
-
+  // ── Teams ──
   const teams = useMemo(() => {
     const set = new Set<string>();
     enriched.forEach((s) => s.team && set.add(s.team));
@@ -260,6 +247,13 @@ export default function ChoDashboardPage() {
     const counts: Record<string, number> = {};
     enriched.forEach((s) => { if (s.team) counts[s.team] = (counts[s.team] ?? 0) + 1; });
     return counts;
+  }, [enriched]);
+
+  // ── Reuse summary (for 推广复用模块) ──
+  const reuseData = useMemo(() => {
+    return enriched
+      .filter((s) => s.reuseMultiplier != null || s.reuseSavedHours != null)
+      .sort((a, b) => (b.reuseSavedHours ?? 0) - (a.reuseSavedHours ?? 0));
   }, [enriched]);
 
   // ── Filtered & sorted ──
@@ -278,23 +272,24 @@ export default function ChoDashboardPage() {
     return sorted.map((s, i) => ({ ...s, rank: i + 1 }));
   }, [enriched, teamFilter, sortBy]);
 
-  // ── Cell renderer: value + optional change indicator ──
-  const renderChangeCell = (
+  // ── 变化单元格渲染 ──
+  const renderChange = (
     oldVal: number | null | undefined,
     newVal: number | null | undefined,
     fmt: (v: number | null | undefined) => string,
-    isPositiveWhenUp: boolean,
+    /** true = 值上升是好事(节省/提效), false = 值下降是好事(人数/耗时) */
+    positiveUp: boolean,
     unit?: string,
   ) => {
-    const ct = changeType(oldVal, newVal, isPositiveWhenUp);
-    if (!ct) {
+    const dir = changeDir(oldVal, newVal);
+    if (!dir) {
       return (
         <span className="font-mono text-xs" style={{ color: 'var(--foreground)' }}>
           {fmt(newVal)}{unit && newVal != null ? unit : ''}
         </span>
       );
     }
-    const isGood = (ct === 'up' && isPositiveWhenUp) || (ct === 'down' && !isPositiveWhenUp);
+    const isGood = (dir === 'up' && positiveUp) || (dir === 'down' && !positiveUp);
     return (
       <span
         className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium"
@@ -304,14 +299,14 @@ export default function ChoDashboardPage() {
         }}
       >
         {fmt(newVal)}{unit && newVal != null ? unit : ''}
-        <span className="text-[10px]">{ct === 'up' ? '↑' : '↓'}</span>
+        <span className="text-[10px]">{dir === 'up' ? '↑' : '↓'}</span>
       </span>
     );
   };
 
   // ── Table columns ──
   const columns: TableColumnsType<typeof tableData[number]> = [
-    // ── 基础信息 ──
+    // ── 基础 ──
     {
       title: '#',
       dataIndex: 'rank',
@@ -321,16 +316,14 @@ export default function ChoDashboardPage() {
       fixed: 'left',
       className: 'cho-frozen-rank',
       render: (rank: number) => (
-        <span className="text-xs font-bold" style={{ color: rank <= 3 ? '#d97706' : 'var(--text-muted)' }}>
-          {rank}
-        </span>
+        <span className="text-xs font-bold" style={{ color: rank <= 3 ? '#d97706' : 'var(--text-muted)' }}>{rank}</span>
       ),
     },
     {
       title: '标题',
       dataIndex: 'title',
       key: 'title',
-      width: 180,
+      width: 170,
       ellipsis: true,
       render: (title: string, record) => (
         <div>
@@ -340,113 +333,109 @@ export default function ChoDashboardPage() {
       ),
     },
 
-    // ── 改造前 ──
+    // ── 改造前（暖色调）──
     {
-      title: '改造前',
+      title: <span style={{ color: '#b45309' }}>改造前</span>,
       key: 'before-group',
       className: 'cho-group-before',
       children: [
         {
-          title: '执行人数',
+          title: '人数',
           dataIndex: 'beforePeopleCount',
-          key: 'beforePeople',
-          width: 65,
+          key: 'bp',
+          width: 50,
           align: 'center',
-          render: (v: number | null) => (
-            <span className="font-mono text-xs" style={{ color: 'var(--foreground)' }}>{num(v)}{v != null ? '人' : ''}</span>
-          ),
+          render: (v: number | null) => <span className="font-mono text-xs">{numOrDash(v, '人')}</span>,
         },
         {
-          title: '执行频次',
-          dataIndex: 'beforeMonthlyFreq',
-          key: 'beforeFreq',
-          width: 72,
+          title: '频次',
+          dataIndex: 'beforeFreq',
+          key: 'bf',
+          width: 64,
           align: 'center',
-          render: (_: number | null, record) => (
-            <span className="font-mono text-xs" style={{ color: 'var(--foreground)' }}>
-              {freqDisplay(record.oldFrequency, record.oldOperationCount)}
-            </span>
-          ),
+          render: (_: number | null, r) => <span className="font-mono text-[11px]">{fmtFreq(r.beforeFreq)}</span>,
         },
         {
           title: '单次耗时',
           dataIndex: 'oldHoursPerTask',
-          key: 'beforeDur',
-          width: 65,
+          key: 'bd',
+          width: 60,
           align: 'center',
-          render: (v: number | null) => (
-            <span className="font-mono text-xs" style={{ color: 'var(--foreground)' }}>{num(v)}{v != null ? 'h' : ''}</span>
-          ),
+          render: (v: number | null) => <span className="font-mono text-xs">{numOrDash(v, 'h')}</span>,
         },
         {
           title: '月总工时',
           dataIndex: 'beforeHours',
-          key: 'beforeHours',
-          width: 70,
+          key: 'bh',
+          width: 68,
           align: 'right',
-          render: (v: number | null) => (
-            <span className="font-mono text-xs font-medium" style={{ color: 'var(--foreground)' }}>{num(v)}{v != null ? 'h' : ''}</span>
-          ),
+          render: (v: number | null) => <span className="font-mono text-xs font-semibold">{numOrDash(v, 'h')}</span>,
         },
       ],
     },
 
-    // ── 改造后 ──
+    // ── 分隔箭头 ──
     {
-      title: '改造后',
+      title: '',
+      key: 'arrow-sep',
+      width: 36,
+      align: 'center',
+      className: 'cho-sep-col',
+      render: () => <SwapRightOutlined style={{ color: '#16a34a', fontSize: 14 }} />,
+    },
+
+    // ── 改造后（冷色调）──
+    {
+      title: <span style={{ color: '#047857' }}>改造后</span>,
       key: 'after-group',
       className: 'cho-group-after',
       children: [
         {
-          title: '执行人数',
+          title: '人数',
           dataIndex: 'afterPeopleCount',
-          key: 'afterPeople',
-          width: 65,
+          key: 'ap',
+          width: 50,
           align: 'center',
-          render: (_: number | null, record) =>
-            renderChangeCell(record.beforePeopleCount, record.afterPeopleCount, num, false, '人'),
+          render: (_: number | null, r) => renderChange(r.beforePeopleCount, r.afterPeopleCount, fmtNum, false, '人'),
         },
         {
-          title: '执行频次',
-          dataIndex: 'afterMonthlyFreq',
-          key: 'afterFreq',
-          width: 72,
+          title: '频次',
+          dataIndex: 'afterFreq',
+          key: 'af',
+          width: 64,
           align: 'center',
-          render: (_: number | null, record) =>
-            renderChangeCell(record.beforeMonthlyFreq, record.afterMonthlyFreq, (v) => freqDisplay(null, v ?? null), true),
+          render: (_: number | null, r) => renderChange(r.beforeFreq, r.afterFreq, fmtFreq, true),
         },
         {
           title: '单次耗时',
           dataIndex: 'newDuration',
-          key: 'afterDur',
-          width: 65,
+          key: 'ad',
+          width: 60,
           align: 'center',
-          render: (_: number | null, record) =>
-            renderChangeCell(record.oldHoursPerTask, record.newDuration, num, false, 'h'),
+          render: (_: number | null, r) => renderChange(r.oldHoursPerTask, r.newDuration, fmtNum, false, 'h'),
         },
         {
           title: '月总工时',
           dataIndex: 'afterHours',
-          key: 'afterHours',
-          width: 70,
+          key: 'ah',
+          width: 68,
           align: 'right',
-          render: (_: number | null, record) =>
-            renderChangeCell(record.beforeHours, record.afterHours, num, false, 'h'),
+          render: (_: number | null, r) => renderChange(r.beforeHours, r.afterHours, fmtNum, false, 'h'),
         },
       ],
     },
 
     // ── 成效 ──
     {
-      title: '成效',
+      title: <span style={{ color: '#1a3a8a' }}>成效</span>,
       key: 'result-group',
       className: 'cho-group-result',
       children: [
         {
           title: '月均降本',
           dataIndex: 'monthlySavedCost',
-          key: 'costSaved',
-          width: 80,
+          key: 'cs',
+          width: 72,
           align: 'right',
           render: (v: string | null) => (
             <span className="font-mono text-xs font-medium" style={{ color: v ? '#16a34a' : 'var(--text-muted)' }}>
@@ -457,59 +446,35 @@ export default function ChoDashboardPage() {
         {
           title: '节省工时',
           dataIndex: 'savedHours',
-          key: 'savedHours',
-          width: 68,
+          key: 'sh',
+          width: 62,
           align: 'right',
           sorter: (a, b) => (a.savedHours ?? -1) - (b.savedHours ?? -1),
           defaultSortOrder: 'descend',
           render: (v: number | null) => (
             <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>
-              {num(v)}{v != null ? 'h' : ''}
+              {numOrDash(v, 'h')}
             </span>
           ),
         },
         {
           title: '提效比例',
           dataIndex: 'efficiencyRate',
-          key: 'efficiency',
-          width: 68,
+          key: 'eff',
+          width: 65,
           align: 'right',
           sorter: (a, b) => (a.efficiencyRate ?? -1) - (b.efficiencyRate ?? -1),
           render: (v: number | null) => (
             <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>
-              {v != null ? `${v}%` : '—'}
+              {fmtPct(v)}
             </span>
           ),
         },
         {
-          title: '复用工时',
-          dataIndex: 'reuseValue',
-          key: 'reuse',
-          width: 75,
-          align: 'center',
-          render: (v: string | null, record) => {
-            if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
-            const match = v.match(/[×xX]\s*(\d+(?:\.\d+)?)/);
-            const multiplier = match ? parseFloat(match[1]) : null;
-            const level = record.reuseValueLevel;
-            const bg = level === '高价值' ? 'rgba(22,163,74,0.1)' : level === '中价值' ? 'rgba(217,119,6,0.08)' : 'rgba(0,0,0,0.04)';
-            const fg = level === '高价值' ? '#16a34a' : level === '中价值' ? '#d97706' : 'var(--text-secondary)';
-            return (
-              <span
-                className="inline-block rounded-md px-1.5 py-0.5 text-[11px] font-medium"
-                style={{ background: bg, color: fg }}
-                title={v}
-              >
-                {multiplier ? `×${multiplier}` : v.length > 6 ? v.slice(0, 6) + '…' : v}
-              </span>
-            );
-          },
-        },
-        {
           title: 'Token 费用',
           dataIndex: 'aiCost',
-          key: 'tokenCost',
-          width: 70,
+          key: 'tc',
+          width: 65,
           align: 'right',
           render: (v: string | null) => (
             <span className="font-mono text-xs" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>
@@ -522,50 +487,67 @@ export default function ChoDashboardPage() {
   ];
 
   // ── Guard ──
-  if (authLoading) {
-    return <div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>;
-  }
+  if (authLoading) return <div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>;
   if (!isAdmin) return null;
 
   return (
     <>
       <style jsx global>{`
+        /* ── 冻结列 ── */
         .cho-frozen-rank {
           position: sticky !important;
           left: 0 !important;
           z-index: 3 !important;
-          background: rgba(255, 255, 255, 0.92) !important;
+          background: rgba(255, 255, 255, 0.95) !important;
           backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
         }
         .cho-frozen-rank::after {
           content: '';
           position: absolute;
-          top: 0;
-          right: 0;
-          bottom: 0;
+          top: 0; right: 0; bottom: 0;
           width: 3px;
           background: linear-gradient(to right, rgba(0,0,0,0.06), transparent);
           pointer-events: none;
         }
+        /* ── 改造前 分组 ── */
         .cho-group-before > .ant-table-cell {
-          background: rgba(251, 191, 36, 0.04) !important;
+          background: linear-gradient(90deg, rgba(251,191,36,0.08), rgba(251,191,36,0.03)) !important;
+          border-left: 3px solid #f59e0b !important;
         }
+        .cho-group-before > .ant-table-cell[colspan] {
+          border-left: 3px solid #f59e0b !important;
+        }
+        /* ── 分隔列 ── */
+        .cho-sep-col > .ant-table-cell {
+          background: transparent !important;
+          padding: 0 !important;
+        }
+        /* ── 改造后 分组 ── */
         .cho-group-after > .ant-table-cell {
-          background: rgba(22, 163, 74, 0.04) !important;
+          background: linear-gradient(90deg, rgba(16,185,129,0.04), rgba(16,185,129,0.08)) !important;
+          border-left: 3px solid #10b981 !important;
         }
+        .cho-group-after > .ant-table-cell[colspan] {
+          border-left: 3px solid #10b981 !important;
+        }
+        /* ── 成效 分组 ── */
         .cho-group-result > .ant-table-cell {
-          background: rgba(26, 58, 138, 0.03) !important;
+          background: linear-gradient(90deg, rgba(26,58,138,0.03), rgba(26,58,138,0.06)) !important;
+          border-left: 3px solid #1a3a8a !important;
         }
+        .cho-group-result > .ant-table-cell[colspan] {
+          border-left: 3px solid #1a3a8a !important;
+        }
+        /* ── 行 ── */
         .cho-table-row td {
           border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
-          padding: 6px 8px !important;
+          padding: 5px 6px !important;
         }
         .cho-table-row:hover td {
           background: rgba(26, 58, 138, 0.03) !important;
         }
         .ant-table-thead > tr > th {
-          padding: 6px 8px !important;
+          padding: 5px 6px !important;
           font-size: 11px !important;
           font-weight: 600 !important;
         }
@@ -581,7 +563,7 @@ export default function ChoDashboardPage() {
             </span>
             <div>
               <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>AI 落地成效总览</h1>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>改造前后对比 · 一目了然</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>改造前后对比 · 当前价值 + 未来预期</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -604,60 +586,14 @@ export default function ChoDashboardPage() {
             <StatCard icon={<TeamOutlined />} label="覆盖人数" value={summary.totalPeople > 0 ? `${summary.totalPeople}` : '—'} sub="执行人数合计" color="#0891b2" />
             <StatCard icon={<ClockCircleOutlined />} label="原总工时" value={summary.totalBefore > 0 ? `${summary.totalBefore}h` : '—'} sub="月均合计" color="#d97706" />
             <StatCard icon={<ThunderboltOutlined />} label="AI 后工时" value={summary.totalAfter > 0 ? `${summary.totalAfter}h` : '—'} sub="月均合计" color="#7c3aed" />
-            <StatCard icon={<RiseOutlined />} label="节省工时" value={summary.totalSaved > 0 ? `${summary.totalSaved}h` : '—'} sub={summary.avgEfficiency != null ? `平均提效 ${summary.avgEfficiency}%` : '月均合计'} color="#16a34a" highlight />
+            <StatCard icon={<RiseOutlined />} label="节省工时" value={summary.totalSaved > 0 ? `${summary.totalSaved}h` : '—'} sub={summary.avgEfficiency != null ? `平均提效 ${summary.avgEfficiency.toFixed(1)}%` : '月均合计'} color="#16a34a" highlight />
           </div>
         </div>
-
-        {/* 图表区域 */}
-        {chartData.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
-            <div className="glass rounded-2xl p-5" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-              <div className="text-xs font-semibold mb-3 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
-                <RiseOutlined /> 节省工时 · 按部门
-              </div>
-              <ResponsiveContainer width="100%" height={Math.max(200, chartData.length * 36 + 40)}>
-                <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: '#666' }} />
-                  <YAxis dataKey="team" type="category" tick={{ fontSize: 11, fill: '#333' }} width={80} />
-                  <Tooltip
-                    formatter={(value) => [`${value}h`, '节省工时']}
-                    contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
-                  />
-                  <Bar dataKey="saved" radius={[0, 6, 6, 0]} maxBarSize={28}>
-                    {chartData.map((_, i) => <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="glass rounded-2xl p-5" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-              <div className="text-xs font-semibold mb-3 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
-                <ThunderboltOutlined /> 提效比例 · 按部门
-              </div>
-              <ResponsiveContainer width="100%" height={Math.max(200, chartData.length * 36 + 40)}>
-                <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => `${v}%`} />
-                  <YAxis dataKey="team" type="category" tick={{ fontSize: 11, fill: '#333' }} width={80} />
-                  <Tooltip
-                    formatter={(value) => [`${value}%`, '提效比例']}
-                    contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
-                  />
-                  <Bar dataKey="efficiency" radius={[0, 6, 6, 0]} maxBarSize={28}>
-                    {chartData.map((_, i) => <Cell key={i} fill={BAR_COLORS[(i + 2) % BAR_COLORS.length]} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
 
         {/* 筛选 + 排序 */}
         <div className="glass rounded-xl px-4 py-3 mb-4" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-              <TeamOutlined /> 部门
-            </span>
+            <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--text-muted)' }}><TeamOutlined /> 部门</span>
             {[{ value: 'all', label: '全部', count: enriched.length }, ...teams.map((t) => ({ value: t, label: t, count: teamCounts[t] ?? 0 }))].map((opt) => (
               <button
                 key={opt.value}
@@ -705,35 +641,91 @@ export default function ChoDashboardPage() {
               rowKey="id"
               pagination={false}
               size="small"
-              scroll={{ x: 1100 }}
+              scroll={{ x: 1060 }}
               rowClassName={() => 'cho-table-row'}
             />
           </div>
         )}
 
+        {/* 推广复用模块 */}
+        {reuseData.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <RocketOutlined style={{ color: '#7c3aed' }} />
+              <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>推广复用价值</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}> — 推广到更多场景可带来的预期节省</span>
+            </div>
+            <div className="glass rounded-2xl overflow-hidden" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr style={{ background: 'rgba(124, 58, 237, 0.04)' }}>
+                    <th className="text-left px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>方案</th>
+                    <th className="text-left px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>场景归属</th>
+                    <th className="text-center px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>复用价值系数</th>
+                    <th className="text-center px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>场景归属地区系数</th>
+                    <th className="text-right px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>原节省工时</th>
+                    <th className="text-right px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>推广预估节省</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reuseData.map((s, i) => {
+                    const level = s.reuseValueLevel;
+                    const chipBg = level === '高价值' ? 'rgba(22,163,74,0.1)' : level === '中价值' ? 'rgba(217,119,6,0.08)' : 'rgba(0,0,0,0.04)';
+                    const chipFg = level === '高价值' ? '#16a34a' : level === '中价值' ? '#d97706' : 'var(--text-secondary)';
+                    return (
+                      <tr key={s.id} style={{ borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : undefined }}>
+                        <td className="px-3 py-2">
+                          <div className="font-medium truncate max-w-[200px]" style={{ color: 'var(--foreground)' }}>{s.title}</div>
+                          <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{s.team}</div>
+                        </td>
+                        <td className="px-3 py-2" style={{ color: 'var(--text-secondary)' }}>{s.sceneCategory || '—'}</td>
+                        <td className="px-3 py-2 text-center">
+                          {s.reuseValue ? (
+                            <span className="inline-block rounded-md px-2 py-0.5 font-medium" style={{ background: chipBg, color: chipFg }}>
+                              {s.reuseMultiplier ? `×${s.reuseMultiplier}` : s.reuseValue}
+                            </span>
+                          ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-center" style={{ color: 'var(--text-muted)' }}>—</td>
+                        <td className="px-3 py-2 text-right font-mono" style={{ color: 'var(--foreground)' }}>
+                          {s.savedHours != null ? `${s.savedHours}h` : '—'}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono font-bold" style={{ color: s.reuseSavedHours ? '#7c3aed' : 'var(--text-muted)' }}>
+                          {s.reuseSavedHours != null ? `${s.reuseSavedHours}h` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* 底部说明 */}
         <div className="mt-4 text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          <span className="font-semibold">绿色高亮</span> = 改造后数值改善 ·
-          <span className="font-semibold"> 红色高亮</span> = 数值增加需关注 ·
+          <span className="font-semibold">月总工时</span> = 频次(次/月) × 单次耗时 × 人数 ·
+          <span className="font-semibold"> 绿色</span> = 改善 ·
+          <span className="font-semibold"> 红色</span> = 需关注 ·
           <span className="font-semibold"> 频次</span>统一折算为次/月 ·
-          <span className="font-semibold"> ↑↓</span>箭头表示变化方向
+          <span className="font-semibold"> 推广预估</span> = 原节省工时 × 复用价值系数
         </div>
       </div>
     </>
   );
 }
 
+// ─── Helpers (render) ────────────────────────────────────────────
+
+function numOrDash(v: number | null | undefined, unit: string): string {
+  if (v == null) return '—';
+  return v % 1 === 0 ? `${v}${unit}` : `${v.toFixed(1)}${unit}`;
+}
+
 // ─── Sub-components ──────────────────────────────────────────────
 
-function StatCard({
-  icon, label, value, sub, color, highlight,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-  color: string;
-  highlight?: boolean;
+function StatCard({ icon, label, value, sub, color, highlight }: {
+  icon: React.ReactNode; label: string; value: string; sub?: string; color: string; highlight?: boolean;
 }) {
   return (
     <div
