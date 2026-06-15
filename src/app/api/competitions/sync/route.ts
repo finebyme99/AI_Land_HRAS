@@ -72,6 +72,10 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '最终价值计分': 'finalValueScore',
   '月均提效比例': 'efficiencyRate',
   '一句话简介': 'briefIntro',
+  // ── 飞书公式字段（直接同步，不再客户端计算） ──
+  '原操作频次': 'beforeFreq',
+  '新操作频次': 'afterFreq',
+  '原月均耗时': 'beforeMonthlyHours',
   // 暂不映射（前端未消费或新表特有）：业务负责人 / AI负责人 / 实现效果 / 场景来源 / 落地进展 / 进展记录&链接 / 计划启动日期 / 试点上线日期 / 推广上线日期 / 全面上线日期 / 价值排名 / 降本费用说明 / 月均降本费用（不含人力成本） / 月均降本节省工时 / 场景归属地区系数 / 场景归属地区系数值 / 原月均执行次数 / 新月均执行次数
 };
 
@@ -480,6 +484,10 @@ export async function POST(request: NextRequest) {
         implementation_link: mapped.implementationLink ?? null,
         final_value_score: mapped.finalValueScore ?? null,
         brief_intro: mapped.briefIntro ?? null,
+        // 飞书公式字段（直接同步）
+        before_freq: mapped.beforeFreq != null ? Number(mapped.beforeFreq) || null : null,
+        after_freq: mapped.afterFreq != null ? Number(mapped.afterFreq) || null : null,
+        before_monthly_hours: mapped.beforeMonthlyHours != null ? Number(mapped.beforeMonthlyHours) || null : null,
       });
     }
 

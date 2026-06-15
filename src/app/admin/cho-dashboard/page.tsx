@@ -46,6 +46,9 @@ interface ChoSubmission {
   monthlySavedCost: string | null;
   aiCost: string | null;
   briefIntro: string | null;
+  beforeFreq: number | null;
+  afterFreq: number | null;
+  beforeMonthlyHours: number | null;
 }
 
 interface OverviewResponse {
@@ -196,12 +199,12 @@ export default function ChoDashboardPage() {
     }
   };
 
-  // ── Enriched data: 月总工时 = 频次 × 单次耗时 × 人数 ──
+  // ── Enriched data: 优先使用飞书公式字段，回退客户端计算 ──
   const enriched = useMemo(() => {
     return (data?.submissions ?? []).map((s, idx) => {
-      const beforeFreq = calcMonthlyFreq(s.oldFrequency, s.oldOperationCount);
-      const afterFreq = calcMonthlyFreq(s.newFrequency, s.newOperationCount);
-      const beforeHours = calcMonthlyHours(beforeFreq, s.oldHoursPerTask, s.beforePeopleCount);
+      const beforeFreq = s.beforeFreq ?? calcMonthlyFreq(s.oldFrequency, s.oldOperationCount);
+      const afterFreq = s.afterFreq ?? calcMonthlyFreq(s.newFrequency, s.newOperationCount);
+      const beforeHours = s.beforeMonthlyHours ?? calcMonthlyHours(beforeFreq, s.oldHoursPerTask, s.beforePeopleCount);
       const afterHours = calcMonthlyHours(afterFreq, s.newDuration, s.afterPeopleCount);
       const savedHours = s.monthlySavedHours ?? (
         beforeHours != null && afterHours != null
