@@ -324,7 +324,13 @@ export default function ChoDashboardPage() {
       ellipsis: true,
       render: (title: string, record) => (
         <div>
-          <div className="text-xs font-medium truncate" style={{ color: 'var(--foreground)' }}>{title}</div>
+          <a
+            href={`/competitions/${record.id}`}
+            className="text-xs font-medium truncate hover:underline block"
+            style={{ color: 'var(--primary)' }}
+          >
+            {title}
+          </a>
           <div className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{record.team || '—'}</div>
         </div>
       ),
