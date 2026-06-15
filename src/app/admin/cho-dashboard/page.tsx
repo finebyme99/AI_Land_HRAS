@@ -11,7 +11,6 @@ import {
   ThunderboltOutlined,
   SyncOutlined,
   SwapRightOutlined,
-  RocketOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 
@@ -74,6 +73,7 @@ const PERIOD_OPTIONS = [
 
 const SORT_OPTIONS = [
   { value: 'savedHours', label: '节省工时' },
+  { value: 'reuseSaved', label: '推广预估' },
   { value: 'efficiency', label: '提效比例' },
   { value: 'beforeHours', label: '原工时' },
   { value: 'people', label: '人数' },
@@ -251,13 +251,6 @@ export default function ChoDashboardPage() {
     return counts;
   }, [enriched]);
 
-  // ── Reuse summary (for 推广复用模块) ──
-  const reuseData = useMemo(() => {
-    return enriched
-      .filter((s) => s.reuseMultiplier != null || s.reuseSavedHours != null)
-      .sort((a, b) => (b.reuseSavedHours ?? 0) - (a.reuseSavedHours ?? 0));
-  }, [enriched]);
-
   // ── Filtered & sorted ──
   const tableData = useMemo(() => {
     let list = enriched;
@@ -265,6 +258,7 @@ export default function ChoDashboardPage() {
     const sorted = [...list].sort((a, b) => {
       switch (sortBy) {
         case 'savedHours': return (b.savedHours ?? -1) - (a.savedHours ?? -1);
+        case 'reuseSaved': return (b.reuseSavedHours ?? -1) - (a.reuseSavedHours ?? -1);
         case 'efficiency': return (b.efficiencyRate ?? -1) - (a.efficiencyRate ?? -1);
         case 'beforeHours': return (b.beforeHours ?? -1) - (a.beforeHours ?? -1);
         case 'people': return (b.beforePeopleCount ?? -1) - (a.beforePeopleCount ?? -1);
@@ -434,18 +428,6 @@ export default function ChoDashboardPage() {
       className: 'cho-group-result',
       children: [
         {
-          title: '月均降本',
-          dataIndex: 'monthlySavedCost',
-          key: 'cs',
-          width: 72,
-          align: 'right',
-          render: (v: string | null) => (
-            <span className="font-mono text-xs font-medium" style={{ color: v ? '#16a34a' : 'var(--text-muted)' }}>
-              {v || '—'}
-            </span>
-          ),
-        },
-        {
           title: '节省工时',
           dataIndex: 'savedHours',
           key: 'sh',
@@ -473,10 +455,41 @@ export default function ChoDashboardPage() {
           ),
         },
         {
+          title: '复用系数',
+          dataIndex: 'reuseMultiplier',
+          key: 'rm',
+          width: 62,
+          align: 'center',
+          render: (v: number | null, record) => {
+            if (!record.reuseValue) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
+            const level = record.reuseValueLevel;
+            const bg = level === '高价值' ? 'rgba(22,163,74,0.1)' : level === '中价值' ? 'rgba(217,119,6,0.08)' : 'rgba(0,0,0,0.04)';
+            const fg = level === '高价值' ? '#16a34a' : level === '中价值' ? '#d97706' : 'var(--text-secondary)';
+            return (
+              <span className="inline-block rounded-md px-1.5 py-0.5 text-[11px] font-medium" style={{ background: bg, color: fg }} title={record.reuseValue}>
+                {v ? `×${v}` : record.reuseValue.length > 5 ? record.reuseValue.slice(0, 5) + '…' : record.reuseValue}
+              </span>
+            );
+          },
+        },
+        {
+          title: '推广预估',
+          dataIndex: 'reuseSavedHours',
+          key: 'rs',
+          width: 65,
+          align: 'right',
+          sorter: (a, b) => (a.reuseSavedHours ?? -1) - (b.reuseSavedHours ?? -1),
+          render: (v: number | null) => (
+            <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#7c3aed' : 'var(--text-muted)' }}>
+              {numOrDash(v, 'h')}
+            </span>
+          ),
+        },
+        {
           title: 'Token 费用',
           dataIndex: 'aiCost',
           key: 'tc',
-          width: 65,
+          width: 62,
           align: 'right',
           render: (v: string | null) => (
             <span className="font-mono text-xs" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>
@@ -543,7 +556,7 @@ export default function ChoDashboardPage() {
         /* ── 行 ── */
         .cho-table-row td {
           border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
-          padding: 5px 6px !important;
+          padding: 10px 6px !important;
         }
         .cho-table-row:hover td {
           background: rgba(26, 58, 138, 0.03) !important;
@@ -649,68 +662,14 @@ export default function ChoDashboardPage() {
           </div>
         )}
 
-        {/* 推广复用模块 */}
-        {reuseData.length > 0 && (
-          <div className="mt-6">
-            <div className="flex items-center gap-2 mb-3">
-              <RocketOutlined style={{ color: '#7c3aed' }} />
-              <span className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>推广复用价值</span>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}> — 推广到更多场景可带来的预期节省</span>
-            </div>
-            <div className="glass rounded-2xl overflow-hidden" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr style={{ background: 'rgba(124, 58, 237, 0.04)' }}>
-                    <th className="text-left px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>方案</th>
-                    <th className="text-left px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>场景归属</th>
-                    <th className="text-center px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>复用价值系数</th>
-                    <th className="text-center px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>场景归属地区系数</th>
-                    <th className="text-right px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>原节省工时</th>
-                    <th className="text-right px-3 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}>推广预估节省</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reuseData.map((s, i) => {
-                    const level = s.reuseValueLevel;
-                    const chipBg = level === '高价值' ? 'rgba(22,163,74,0.1)' : level === '中价值' ? 'rgba(217,119,6,0.08)' : 'rgba(0,0,0,0.04)';
-                    const chipFg = level === '高价值' ? '#16a34a' : level === '中价值' ? '#d97706' : 'var(--text-secondary)';
-                    return (
-                      <tr key={s.id} style={{ borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : undefined }}>
-                        <td className="px-3 py-2">
-                          <div className="font-medium truncate max-w-[200px]" style={{ color: 'var(--foreground)' }}>{s.title}</div>
-                          <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{s.team}</div>
-                        </td>
-                        <td className="px-3 py-2" style={{ color: 'var(--text-secondary)' }}>{s.sceneCategory || '—'}</td>
-                        <td className="px-3 py-2 text-center">
-                          {s.reuseValue ? (
-                            <span className="inline-block rounded-md px-2 py-0.5 font-medium" style={{ background: chipBg, color: chipFg }}>
-                              {s.reuseMultiplier ? `×${s.reuseMultiplier}` : s.reuseValue}
-                            </span>
-                          ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                        </td>
-                        <td className="px-3 py-2 text-center" style={{ color: 'var(--text-muted)' }}>—</td>
-                        <td className="px-3 py-2 text-right font-mono" style={{ color: 'var(--foreground)' }}>
-                          {s.savedHours != null ? `${s.savedHours}h` : '—'}
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono font-bold" style={{ color: s.reuseSavedHours ? '#7c3aed' : 'var(--text-muted)' }}>
-                          {s.reuseSavedHours != null ? `${s.reuseSavedHours}h` : '—'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
         {/* 底部说明 */}
         <div className="mt-4 text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
           <span className="font-semibold">月总工时</span> = 频次(次/月) × 单次耗时 × 人数 ·
           <span className="font-semibold"> 绿色</span> = 改善 ·
           <span className="font-semibold"> 红色</span> = 需关注 ·
           <span className="font-semibold"> 频次</span>统一折算为次/月 ·
-          <span className="font-semibold"> 推广预估</span> = 原节省工时 × 复用价值系数
+          <span className="font-semibold"> 推广预估</span> = 节省工时 × 复用价值系数 ·
+          <span className="font-semibold"> 场景归属地区系数</span>待补充
         </div>
       </div>
     </>
