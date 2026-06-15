@@ -521,7 +521,7 @@ export default function ChoDashboardPage() {
           position: sticky !important;
           left: 0 !important;
           z-index: 3 !important;
-          background: rgba(255, 255, 255, 0.95) !important;
+          background: rgba(255, 255, 255, 0.97) !important;
           backdrop-filter: blur(12px);
         }
         .cho-frozen-rank::after {
@@ -532,45 +532,78 @@ export default function ChoDashboardPage() {
           background: linear-gradient(to right, rgba(0,0,0,0.06), transparent);
           pointer-events: none;
         }
-        /* ── 改造前 分组 ── */
+        /* ── 表头分组 ── */
         .cho-group-before > .ant-table-cell {
-          background: linear-gradient(90deg, rgba(251,191,36,0.08), rgba(251,191,36,0.03)) !important;
+          background: #fef3c7 !important;
           border-left: 3px solid #f59e0b !important;
+          border-top: 3px solid #f59e0b !important;
+          color: #92400e !important;
         }
-        .cho-group-before > .ant-table-cell[colspan] {
-          border-left: 3px solid #f59e0b !important;
+        .cho-group-after > .ant-table-cell {
+          background: #d1fae5 !important;
+          border-left: 3px solid #10b981 !important;
+          border-top: 3px solid #10b981 !important;
+          color: #065f46 !important;
+        }
+        .cho-group-result > .ant-table-cell {
+          background: #e0e7ff !important;
+          border-left: 3px solid #4f46e5 !important;
+          border-top: 3px solid #4f46e5 !important;
+          color: #3730a3 !important;
         }
         /* ── 分隔列 ── */
         .cho-sep-col > .ant-table-cell {
           background: transparent !important;
           padding: 0 !important;
         }
-        /* ── 改造后 分组 ── */
-        .cho-group-after > .ant-table-cell {
-          background: linear-gradient(90deg, rgba(16,185,129,0.04), rgba(16,185,129,0.08)) !important;
-          border-left: 3px solid #10b981 !important;
+        /* ── 数据行分组底色 ── */
+        /* #col1=rank, #col2=title, #col3~6=改造前, #col7=箭头, #col8~11=改造后, #col12~16=成效 */
+        .cho-table-row td:nth-child(3),
+        .cho-table-row td:nth-child(4),
+        .cho-table-row td:nth-child(5),
+        .cho-table-row td:nth-child(6) {
+          background: rgba(254, 243, 199, 0.35) !important;
         }
-        .cho-group-after > .ant-table-cell[colspan] {
-          border-left: 3px solid #10b981 !important;
+        .cho-table-row td:nth-child(8),
+        .cho-table-row td:nth-child(9),
+        .cho-table-row td:nth-child(10),
+        .cho-table-row td:nth-child(11) {
+          background: rgba(209, 250, 229, 0.35) !important;
         }
-        /* ── 成效 分组 ── */
-        .cho-group-result > .ant-table-cell {
-          background: linear-gradient(90deg, rgba(26,58,138,0.03), rgba(26,58,138,0.06)) !important;
-          border-left: 3px solid #1a3a8a !important;
+        .cho-table-row td:nth-child(12),
+        .cho-table-row td:nth-child(13),
+        .cho-table-row td:nth-child(14),
+        .cho-table-row td:nth-child(15),
+        .cho-table-row td:nth-child(16) {
+          background: rgba(224, 231, 255, 0.3) !important;
         }
-        .cho-group-result > .ant-table-cell[colspan] {
-          border-left: 3px solid #1a3a8a !important;
+        /* hover 时保留分区色调 */
+        .cho-table-row:hover td:nth-child(3),
+        .cho-table-row:hover td:nth-child(4),
+        .cho-table-row:hover td:nth-child(5),
+        .cho-table-row:hover td:nth-child(6) {
+          background: rgba(254, 243, 199, 0.55) !important;
+        }
+        .cho-table-row:hover td:nth-child(8),
+        .cho-table-row:hover td:nth-child(9),
+        .cho-table-row:hover td:nth-child(10),
+        .cho-table-row:hover td:nth-child(11) {
+          background: rgba(209, 250, 229, 0.55) !important;
+        }
+        .cho-table-row:hover td:nth-child(12),
+        .cho-table-row:hover td:nth-child(13),
+        .cho-table-row:hover td:nth-child(14),
+        .cho-table-row:hover td:nth-child(15),
+        .cho-table-row:hover td:nth-child(16) {
+          background: rgba(224, 231, 255, 0.5) !important;
         }
         /* ── 行 ── */
         .cho-table-row td {
           border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
           padding: 10px 6px !important;
         }
-        .cho-table-row:hover td {
-          background: rgba(26, 58, 138, 0.03) !important;
-        }
         .ant-table-thead > tr > th {
-          padding: 5px 6px !important;
+          padding: 6px 6px !important;
           font-size: 11px !important;
           font-weight: 600 !important;
         }
