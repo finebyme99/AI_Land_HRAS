@@ -235,7 +235,7 @@ export default function ChoDashboardPage() {
       totalBefore: Math.round(totalBefore * 10) / 10,
       totalAfter: Math.round(totalAfter * 10) / 10,
       totalSaved: Math.round(totalSaved * 10) / 10,
-      avgEfficiency: avgEff != null ? Math.round(avgEff * 100) / 100 : null,
+      avgEfficiency: avgEff != null ? Math.round(avgEff * 1000) / 10 : null,
     };
   }, [enriched]);
 
