@@ -199,13 +199,19 @@ export default function ChoDashboardPage() {
     }
   };
 
-  // ── Enriched data: 优先使用飞书公式字段，回退客户端计算 ──
+  // ── Enriched data: 尽量全用飞书公式字段 ──
+  // 口径说明（2026-06 优化）：
+  //   - beforeFreq/afterFreq   ：飞书公式字段（原/新操作频次），缺失才客户端算
+  //   - beforeHours            ：飞书 beforeMonthlyHours（原月均耗时）优先
+  //   - afterHours             ：无对应飞书公式字段，用 afterFreq(飞书公式) × newDuration × afterPeopleCount
+  //   - savedHours             ：统一用飞书 monthlySavedHours（月均提效节省工时）；仅当飞书字段缺失时回退客户端算
   const enriched = useMemo(() => {
     return (data?.submissions ?? []).map((s, idx) => {
       const beforeFreq = s.beforeFreq ?? calcMonthlyFreq(s.oldFrequency, s.oldOperationCount);
       const afterFreq = s.afterFreq ?? calcMonthlyFreq(s.newFrequency, s.newOperationCount);
       const beforeHours = s.beforeMonthlyHours ?? calcMonthlyHours(beforeFreq, s.oldHoursPerTask, s.beforePeopleCount);
       const afterHours = calcMonthlyHours(afterFreq, s.newDuration, s.afterPeopleCount);
+      // savedHours: 统一用飞书 monthlySavedHours；飞书缺失时才客户端兜底（避免显示「—」）
       const savedHours = s.monthlySavedHours ?? (
         beforeHours != null && afterHours != null
           ? Math.round((beforeHours - afterHours) * 10) / 10
@@ -255,6 +261,27 @@ export default function ChoDashboardPage() {
   // ── Max values for inline bars ──
   const maxSavedHours = useMemo(() => Math.max(0, ...enriched.map((s) => s.savedHours ?? 0)), [enriched]);
   const maxReuseSaved = useMemo(() => Math.max(0, ...enriched.map((s) => s.reuseSavedHours ?? 0)), [enriched]);
+
+  // ── 4 指标改造前后对比的全表 max（用于进度条归一化，全表统一刻度横向比较）──
+  const compareMax = useMemo(() => {
+    const people = Math.max(
+      0,
+      ...enriched.map((s) => Math.max(s.beforePeopleCount ?? 0, s.afterPeopleCount ?? 0)),
+    );
+    const freq = Math.max(
+      0,
+      ...enriched.map((s) => Math.max(s.beforeFreq ?? 0, s.afterFreq ?? 0)),
+    );
+    const duration = Math.max(
+      0,
+      ...enriched.map((s) => Math.max(s.oldHoursPerTask ?? 0, s.newDuration ?? 0)),
+    );
+    const monthlyHours = Math.max(
+      0,
+      ...enriched.map((s) => Math.max(s.beforeHours ?? 0, s.afterHours ?? 0)),
+    );
+    return { people, freq, duration, monthlyHours };
+  }, [enriched]);
 
   // ── Filtered & sorted ──
   const tableData = useMemo(() => {
@@ -309,36 +336,79 @@ export default function ChoDashboardPage() {
       ),
     },
 
-    // ── 改造前后对比（上下对比） ──
+    // ── 改造前后对比（上下堆叠 + 进度条可视化） ──
     {
       title: <span style={{ color: '#6b7280' }}>改造前后对比</span>,
       key: 'compare',
-      width: 280,
+      width: 340,
       render: (_: unknown, r: typeof tableData[number]) => {
+        // 每个指标：max 来自 compareMax（全表统一刻度），用于归一化条长
         const metrics = [
-          { label: '人数', before: r.beforePeopleCount, after: r.afterPeopleCount, unit: '人', positiveUp: false },
-          { label: '频次', before: r.beforeFreq, after: r.afterFreq, unit: '', positiveUp: true, isFreq: true },
-          { label: '单次耗时', before: r.oldHoursPerTask, after: r.newDuration, unit: 'h', positiveUp: false },
-          { label: '月总工时', before: r.beforeHours, after: r.afterHours, unit: 'h', positiveUp: false, bold: true },
+          { label: '人数', before: r.beforePeopleCount, after: r.afterPeopleCount, unit: '人', positiveUp: false, max: compareMax.people },
+          { label: '频次', before: r.beforeFreq, after: r.afterFreq, unit: '', positiveUp: true, isFreq: true, max: compareMax.freq },
+          { label: '单次耗时', before: r.oldHoursPerTask, after: r.newDuration, unit: 'h', positiveUp: false, max: compareMax.duration },
+          { label: '月总工时', before: r.beforeHours, after: r.afterHours, unit: 'h', positiveUp: false, bold: true, max: compareMax.monthlyHours },
         ];
         return (
-          <div className="space-y-1 py-0.5">
+          <div className="space-y-2 py-1">
             {metrics.map((m) => {
-              const bText = m.isFreq ? fmtFreq(m.before as number | null) : numOrDash(m.before as number | null, m.unit);
-              const aText = m.isFreq ? fmtFreq(m.after as number | null) : numOrDash(m.after as number | null, m.unit);
-              const dir = m.isFreq ? changeDir(m.before as number | null, m.after as number | null) : changeDir(m.before as number | null, m.after as number | null);
+              const bNum = m.before as number | null;
+              const aNum = m.after as number | null;
+              const bText = m.isFreq ? fmtFreq(bNum) : numOrDash(bNum, m.unit);
+              const aText = m.isFreq ? fmtFreq(aNum) : numOrDash(aNum, m.unit);
+              const dir = changeDir(bNum, aNum);
               const hasChange = dir !== null;
               const isGood = hasChange && ((dir === 'up' && m.positiveUp) || (dir === 'down' && !m.positiveUp));
+              // 条长归一化：value / max × 100%，max=0 或 value=null 时不画
+              const bPct = bNum != null && m.max > 0 ? Math.min(Math.max((bNum / m.max) * 100, 0), 100) : 0;
+              const aPct = aNum != null && m.max > 0 ? Math.min(Math.max((aNum / m.max) * 100, 0), 100) : 0;
+              // 缩减百分比（仅在变化时显示）
+              const deltaPct = hasChange && bNum !== 0 && bNum != null
+                ? Math.round(Math.abs(((aNum ?? 0) - bNum) / bNum) * 100)
+                : null;
               return (
-                <div key={m.label} className="flex items-center gap-1.5 text-[11px] leading-tight">
-                  <span className="shrink-0 w-[42px] text-right" style={{ color: 'var(--text-muted)', fontSize: 10 }}>{m.label}</span>
-                  <span className="font-mono" style={{ color: 'var(--text-muted)' }}>{bText}</span>
-                  <span style={{ color: hasChange ? (isGood ? '#16a34a' : '#dc2626') : 'var(--text-muted)', fontSize: 10 }}>
-                    {hasChange ? (dir === 'down' ? '↓' : '↑') : '→'}
-                  </span>
-                  <span className={`font-mono ${m.bold ? 'font-bold' : 'font-medium'}`} style={{ color: hasChange ? (isGood ? '#16a34a' : '#dc2626') : 'var(--foreground)' }}>
-                    {aText}
-                  </span>
+                <div key={m.label} className="leading-tight">
+                  {/* 指标名 */}
+                  <div className={`text-[10px] mb-0.5 ${m.bold ? 'font-bold' : 'font-medium'}`} style={{ color: m.bold ? 'var(--foreground)' : 'var(--text-muted)' }}>
+                    {m.label}
+                  </div>
+                  {/* 改造前 */}
+                  <div className="flex items-center gap-1 mb-px">
+                    <span className="shrink-0 text-[9px] w-[28px]" style={{ color: 'var(--text-muted)' }}>前</span>
+                    <div className="flex-1 h-[7px] rounded-sm overflow-hidden" style={{ background: 'rgba(0,0,0,0.04)' }}>
+                      {bPct > 0 && (
+                        <div style={{ width: `${bPct}%`, height: '100%', background: 'rgba(100,116,139,0.5)', borderRadius: 2 }} />
+                      )}
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] w-[42px] text-right" style={{ color: 'var(--text-muted)' }}>{bText}</span>
+                  </div>
+                  {/* 改造后 */}
+                  <div className="flex items-center gap-1">
+                    <span className="shrink-0 text-[9px] w-[28px]" style={{ color: hasChange ? (isGood ? '#16a34a' : '#dc2626') : 'var(--text-muted)' }}>
+                      {hasChange ? (dir === 'down' ? '↓' : '↑') : '后'}
+                    </span>
+                    <div className="flex-1 h-[7px] rounded-sm overflow-hidden" style={{ background: 'rgba(0,0,0,0.04)' }}>
+                      {aPct > 0 && (
+                        <div
+                          style={{
+                            width: `${aPct}%`,
+                            height: '100%',
+                            background: hasChange ? (isGood ? 'rgba(22,163,74,0.65)' : 'rgba(220,38,38,0.65)') : 'rgba(100,116,139,0.5)',
+                            borderRadius: 2,
+                          }}
+                        />
+                      )}
+                    </div>
+                    <span className={`shrink-0 font-mono text-[10px] w-[42px] text-right ${m.bold ? 'font-bold' : 'font-medium'}`} style={{ color: hasChange ? (isGood ? '#16a34a' : '#dc2626') : 'var(--foreground)' }}>
+                      {aText}
+                    </span>
+                  </div>
+                  {/* 缩减百分比标签 */}
+                  {deltaPct != null && (
+                    <div className="text-right text-[9px] mt-px" style={{ color: isGood ? '#16a34a' : '#dc2626' }}>
+                      {isGood ? '-' : '+'}{deltaPct}%
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -457,20 +527,6 @@ export default function ChoDashboardPage() {
           z-index: 3 !important;
         }
         /* ── 表头分组 ── */
-        .cho-group-before > .ant-table-cell {
-          background: #fef3c7 !important;
-          border-left: 3px solid #f59e0b !important;
-          border-top: 3px solid #f59e0b !important;
-          color: #92400e !important;
-          cursor: pointer;
-        }
-        .cho-group-after > .ant-table-cell {
-          background: #d1fae5 !important;
-          border-left: 3px solid #10b981 !important;
-          border-top: 3px solid #10b981 !important;
-          color: #065f46 !important;
-          cursor: pointer;
-        }
         .cho-group-result > .ant-table-cell {
           background: #e0e7ff !important;
           border-left: 3px solid #4f46e5 !important;
@@ -483,29 +539,12 @@ export default function ChoDashboardPage() {
           border-top: 3px solid #ea580c !important;
           color: #c2410c !important;
         }
-        /* ── 分隔列 ── */
-        .cho-sep-col > .ant-table-cell {
-          background: transparent !important;
-          padding: 0 !important;
-        }
         /* ── 数据行分组底色 ── */
-        .cho-col-before {
-          background: rgba(254, 243, 199, 0.3) !important;
-        }
-        .cho-col-after {
-          background: rgba(209, 250, 229, 0.3) !important;
-        }
         .cho-col-result {
           background: rgba(224, 231, 255, 0.25) !important;
         }
         .cho-col-reuse {
           background: rgba(255, 237, 213, 0.3) !important;
-        }
-        .cho-table-row:hover .cho-col-before {
-          background: rgba(254, 243, 199, 0.55) !important;
-        }
-        .cho-table-row:hover .cho-col-after {
-          background: rgba(209, 250, 229, 0.55) !important;
         }
         .cho-table-row:hover .cho-col-result {
           background: rgba(224, 231, 255, 0.45) !important;
@@ -644,8 +683,9 @@ export default function ChoDashboardPage() {
           <span className="font-semibold"> 绿色</span> = 改善 ·
           <span className="font-semibold"> 红色</span> = 需关注 ·
           <span className="font-semibold"> 频次</span>统一折算为次/月 ·
-          <span className="font-semibold"> 推广预估节省工时</span> = 节省工时 × 复用价值系数 ·
-          <span className="font-semibold"> 场景归属地区系数</span>待补充
+          <span className="font-semibold"> 节省工时/频次/月总工时</span>取飞书公式字段 ·
+          <span className="font-semibold"> 对比条</span>按各指标全表最大值归一化 ·
+          <span className="font-semibold"> 推广预估节省工时</span> = 节省工时 × 复用价值系数
         </div>
 
         {/* 方案详情弹窗 */}
@@ -737,36 +777,83 @@ function SubmissionDetailModal({ record, onClose }: { record: any | null; onClos
           </div>
         </div>
 
-        {/* 改造前后对比表 */}
+        {/* 改造前后对比表（含 mini bar） */}
         <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.02)' }}>
-                <th className="text-left px-4 py-2 font-semibold" style={{ color: 'var(--text-muted)' }}></th>
-                <th className="text-center px-4 py-2 font-semibold" style={{ color: '#b45309' }}>改造前</th>
-                <th className="text-center px-4 py-2" style={{ width: 36 }}></th>
-                <th className="text-center px-4 py-2 font-semibold" style={{ color: '#047857' }}>改造后</th>
+                <th className="text-left px-4 py-2 font-semibold" style={{ color: 'var(--text-muted)', width: 90 }}>指标</th>
+                <th className="text-center px-2 py-2 font-semibold" style={{ color: '#b45309', width: '37%' }}>改造前</th>
+                <th className="text-center px-2 py-2" style={{ width: 32 }}></th>
+                <th className="text-center px-2 py-2 font-semibold" style={{ color: '#047857', width: '37%' }}>改造后</th>
+                <th className="text-center px-2 py-2 font-semibold" style={{ color: 'var(--text-muted)', width: 50 }}>变化</th>
               </tr>
             </thead>
             <tbody>
               {[
                 { label: '执行人数', old: r.beforePeopleCount, new: r.afterPeopleCount, unit: '人', positiveUp: false },
-                { label: '执行频次', oldText: beforeFreqDisplay, newText: afterFreqDisplay },
+                { label: '执行频次', oldText: beforeFreqDisplay, newText: afterFreqDisplay, oldNum: r.beforeFreq, newNum: r.afterFreq },
                 { label: '单次耗时', old: r.oldHoursPerTask, new: r.newDuration, unit: 'h', positiveUp: false },
-                { label: '月总工时', old: r.beforeHours, new: r.afterHours, unit: 'h', positiveUp: false },
+                { label: '月总工时', old: r.beforeHours, new: r.afterHours, unit: 'h', positiveUp: false, bold: true },
               ].map((row, i) => {
-                const d = 'old' in row ? diff(row.old, row.new, row.positiveUp ?? false) : null;
+                const hasNums = 'old' in row || 'oldNum' in row;
+                const oldN = 'old' in row ? row.old : (row as { oldNum?: number | null }).oldNum;
+                const newN = 'new' in row ? row.new : (row as { newNum?: number | null }).newNum;
+                const d = hasNums ? diff(oldN as number | null, newN as number | null, row.positiveUp ?? false) : null;
+                // mini bar：before 为满刻度（100%），after 按 new/old 比例缩短
+                const ratio = oldN != null && newN != null && oldN !== 0
+                  ? Math.min(Math.max((newN / oldN) * 100, 0), 100)
+                  : null;
+                const deltaPct = d && oldN != null && oldN !== 0
+                  ? Math.round(Math.abs(((newN ?? 0) - oldN) / oldN) * 100)
+                  : null;
+                const isBold = 'bold' in row && row.bold;
                 return (
                   <tr key={i} style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
-                    <td className="px-4 py-2 font-medium" style={{ color: 'var(--foreground)' }}>{row.label}</td>
-                    <td className="px-4 py-2 text-center font-mono" style={{ color: 'var(--foreground)' }}>
-                      {'oldText' in row ? row.oldText : numOrDash(row.old, row.unit!)}
+                    <td className={`px-4 py-2 font-medium ${isBold ? 'font-bold' : ''}`} style={{ color: 'var(--foreground)' }}>{row.label}</td>
+                    {/* 改造前：满刻度灰条 + 数值 */}
+                    <td className="px-2 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-[8px] rounded-sm overflow-hidden" style={{ background: 'rgba(0,0,0,0.04)' }}>
+                          {oldN != null && (
+                            <div style={{ width: '100%', height: '100%', background: 'rgba(180,83,9,0.5)', borderRadius: 2 }} />
+                          )}
+                        </div>
+                        <span className="font-mono text-xs whitespace-nowrap" style={{ color: '#b45309' }}>
+                          {'oldText' in row ? row.oldText : numOrDash(row.old, row.unit!)}
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-4 py-2 text-center">
-                      {d ? <span style={{ color: d.color, fontSize: 12 }}>{d.arrow}</span> : <SwapRightOutlined style={{ color: '#16a34a', fontSize: 12 }} />}
+                    <td className="px-2 py-2 text-center">
+                      {d ? <span style={{ color: d.color, fontSize: 12 }}>{d.arrow}</span> : <SwapRightOutlined style={{ color: '#9ca3af', fontSize: 12 }} />}
                     </td>
-                    <td className="px-4 py-2 text-center font-mono font-medium" style={{ color: d ? d.color : 'var(--foreground)' }}>
-                      {'newText' in row ? row.newText : numOrDash(row.new, row.unit!)}
+                    {/* 改造后：按比例缩短的彩条 + 数值 */}
+                    <td className="px-2 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-[8px] rounded-sm overflow-hidden" style={{ background: 'rgba(0,0,0,0.04)' }}>
+                          {ratio != null && (
+                            <div
+                              style={{
+                                width: `${ratio}%`,
+                                height: '100%',
+                                background: d ? d.color : 'rgba(100,116,139,0.5)',
+                                borderRadius: 2,
+                              }}
+                            />
+                          )}
+                        </div>
+                        <span className={`font-mono text-xs whitespace-nowrap ${isBold ? 'font-bold' : 'font-medium'}`} style={{ color: d ? d.color : 'var(--foreground)' }}>
+                          {'newText' in row ? row.newText : numOrDash(row.new, row.unit!)}
+                        </span>
+                      </div>
+                    </td>
+                    {/* 变化百分比 */}
+                    <td className="px-2 py-2 text-center">
+                      {deltaPct != null ? (
+                        <span className="font-mono text-xs" style={{ color: d?.color }}>
+                          {d?.arrow}{deltaPct}%
+                        </span>
+                      ) : '—'}
                     </td>
                   </tr>
                 );

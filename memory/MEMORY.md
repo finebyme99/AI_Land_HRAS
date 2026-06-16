@@ -1,4 +1,5 @@
 - [AI Land 项目进度](project_ai_land_status.md) — 完整进度：22 页面、10 API、管理员后台、数据看板，Glassmorphism 全站风格
 - [主动调用 skill](feedback_proactive_skills.md) — 长线项目，复杂功能需主动调用 planning-with-files 等 skill
 - [功能优先级风格](feedback_priority_style.md) — 先核心后辅助，审核轻量做，多语言/通知后置
+- [协作探讨规范](feedback_collaboration_style.md) — 所有项目通用：不确定业务规则、潜在风险、思考建议都主动和用户探讨
 - [PRD 飞书文档](reference_prd_feishu.md) — PRD 云文档 token: CGIrd9GuAovjBWxSP6qcu8XJnSc，用户通过评论标注变动
