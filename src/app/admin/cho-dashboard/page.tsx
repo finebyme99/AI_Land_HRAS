@@ -116,10 +116,10 @@ function fmtFreq(monthly: number | null | undefined): string {
   return `${n}次/月`;
 }
 
-/** 飞书存储为小数 0~1，显示为百分比，保留 1 位小数 */
+/** 飞书存储为小数 0~1，显示为百分比，四舍五入取整 */
 function fmtPct(v: number | null | undefined): string {
   if (v == null) return '—';
-  return `${(v * 100).toFixed(1)}%`;
+  return `${Math.round(v * 100)}%`;
 }
 
 /** 月总工时 = 频次(次/月) × 单次耗时(h) × 人数 */
@@ -351,35 +351,36 @@ export default function ChoDashboardPage() {
       ),
     },
 
-    // ── 改造前后对比（4 指标竖排：每行一个指标，前/后并列） ──
+    // ── 改造前后对比（前/后为行，4 指标为列） ──
     {
-      title: <FmtHeader label="改造前后对比" tip="月工时=频次×耗时×人数，每个指标显示改造前后对比" />,
+      title: <FmtHeader label="改造前后对比" tip="月工时=频次×耗时×人数，每行显示改造前/后的全部指标" />,
       key: 'compare-group',
       className: 'cho-group-compare',
-      width: 200,
+      width: 260,
       render: (_: unknown, r: typeof tableData[number]) => {
-        const rows = [
+        const cols = [
           { label: '月工时', before: numOrDash(r.beforeHours, 'h'), after: numOrDash(r.afterHours, 'h'), dir: changeDir(r.beforeHours, r.afterHours) },
-          { label: '操作频次', before: fmtFreq(r.beforeFreq), after: fmtFreq(r.afterFreq), dir: changeDir(r.beforeFreq, r.afterFreq) },
-          { label: '单次耗时', before: numOrDash(r.oldHoursPerTask, 'h'), after: numOrDash(r.newDuration, 'h'), dir: changeDir(r.oldHoursPerTask, r.newDuration) },
-          { label: '操作人数', before: numOrDash(r.beforePeopleCount, '人'), after: numOrDash(r.afterPeopleCount, '人'), dir: changeDir(r.beforePeopleCount, r.afterPeopleCount) },
+          { label: '频次', before: fmtFreq(r.beforeFreq), after: fmtFreq(r.afterFreq), dir: changeDir(r.beforeFreq, r.afterFreq) },
+          { label: '耗时', before: numOrDash(r.oldHoursPerTask, 'h', 1), after: numOrDash(r.newDuration, 'h', 1), dir: changeDir(r.oldHoursPerTask, r.newDuration) },
+          { label: '人数', before: numOrDash(r.beforePeopleCount, '人'), after: numOrDash(r.afterPeopleCount, '人'), dir: changeDir(r.beforePeopleCount, r.afterPeopleCount) },
         ];
         return (
-          <div className="flex flex-col gap-[3px]">
-            <div className="flex text-[9px] font-semibold mb-0.5" style={{ color: 'var(--text-muted)' }}>
-              <span className="w-[60px]"></span>
-              <span className="w-[52px] text-center cho-col-before rounded-sm px-1">前</span>
-              <span className="w-[8px]"></span>
-              <span className="w-[52px] text-center cho-col-after rounded-sm px-1">后</span>
+          <div className="flex flex-col gap-[2px]">
+            {/* 表头：指标名 */}
+            <div className="flex text-[9px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+              <span className="w-[28px]"></span>
+              {cols.map((c) => <span key={c.label} className="flex-1 text-center">{c.label}</span>)}
             </div>
-            {rows.map((row) => (
-              <div key={row.label} className="flex items-center">
-                <span className="w-[60px] text-[10px] font-medium truncate" style={{ color: 'var(--text-muted)' }}>{row.label}</span>
-                <span className="w-[52px] text-right font-mono text-[11px] px-1" style={{ color: '#9ca3af' }}>{row.before}</span>
-                <span className="w-[8px] text-center text-[9px]" style={{ color: '#d1d5db' }}>→</span>
-                <span className="w-[52px] text-right font-mono text-[11px] font-medium px-1" style={{ color: row.dir === 'down' ? '#16a34a' : row.dir === 'up' ? '#dc2626' : 'var(--foreground)' }}>{row.after}</span>
-              </div>
-            ))}
+            {/* 前 */}
+            <div className="flex items-center">
+              <span className="w-[28px] text-[9px] font-semibold text-center cho-col-before rounded-sm" style={{ color: '#b45309' }}>前</span>
+              {cols.map((c) => <span key={c.label} className="flex-1 text-right font-mono text-[11px] px-0.5" style={{ color: '#9ca3af' }}>{c.before}</span>)}
+            </div>
+            {/* 后 */}
+            <div className="flex items-center">
+              <span className="w-[28px] text-[9px] font-semibold text-center cho-col-after rounded-sm" style={{ color: '#047857' }}>后</span>
+              {cols.map((c) => <span key={c.label} className="flex-1 text-right font-mono text-[11px] font-medium px-0.5" style={{ color: c.dir === 'down' ? '#16a34a' : c.dir === 'up' ? '#dc2626' : 'var(--foreground)' }}>{c.after}</span>)}
+            </div>
           </div>
         );
       },
@@ -476,7 +477,7 @@ export default function ChoDashboardPage() {
       align: 'center' as const,
       render: (v: number | null) => (
         <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#7c3aed' : 'var(--text-muted)' }}>
-          {v != null ? v : '—'}
+          {v != null ? Math.round(v) : '—'}
         </span>
       ),
     },
@@ -696,9 +697,9 @@ export default function ChoDashboardPage() {
 
 // ─── Helpers (render) ────────────────────────────────────────────
 
-function numOrDash(v: number | null | undefined, unit: string): string {
+function numOrDash(v: number | null | undefined, unit: string, decimals = 0): string {
   if (v == null) return '—';
-  const n = v % 1 === 0 ? String(v) : Math.round(v * 10) / 10 + '';
+  const n = decimals === 0 ? String(Math.round(v)) : v.toFixed(decimals);
   return `${n}${unit}`;
 }
 
@@ -773,7 +774,7 @@ function SubmissionDetailModal({ record, onClose }: { record: any | null; onClos
           </div>
           <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.12)' }}>
             <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>④ 最终价值计分</div>
-            <div className="text-lg font-bold font-mono" style={{ color: '#7c3aed' }}>{r.finalValueScore != null ? r.finalValueScore : '—'}</div>
+            <div className="text-lg font-bold font-mono" style={{ color: '#7c3aed' }}>{r.finalValueScore != null ? Math.round(r.finalValueScore) : '—'}</div>
           </div>
         </div>
 
@@ -793,7 +794,7 @@ function SubmissionDetailModal({ record, onClose }: { record: any | null; onClos
               {[
                 { label: '执行人数', old: r.beforePeopleCount, new: r.afterPeopleCount, unit: '人', positiveUp: false },
                 { label: '执行频次', oldText: beforeFreqDisplay, newText: afterFreqDisplay, oldNum: r.beforeFreq, newNum: r.afterFreq },
-                { label: '单次耗时', old: r.oldHoursPerTask, new: r.newDuration, unit: 'h', positiveUp: false },
+                { label: '单次耗时', old: r.oldHoursPerTask, new: r.newDuration, unit: 'h', positiveUp: false, decimals: 1 },
                 { label: '月总工时', old: r.beforeHours, new: r.afterHours, unit: 'h', positiveUp: false, bold: true },
               ].map((row, i) => {
                 const hasNums = 'old' in row || 'oldNum' in row;
@@ -820,7 +821,7 @@ function SubmissionDetailModal({ record, onClose }: { record: any | null; onClos
                           )}
                         </div>
                         <span className="font-mono text-xs whitespace-nowrap" style={{ color: '#b45309' }}>
-                          {'oldText' in row ? row.oldText : numOrDash(row.old, row.unit!)}
+                          {'oldText' in row ? row.oldText : numOrDash(row.old, row.unit!, (row as { decimals?: number }).decimals)}
                         </span>
                       </div>
                     </td>
@@ -843,7 +844,7 @@ function SubmissionDetailModal({ record, onClose }: { record: any | null; onClos
                           )}
                         </div>
                         <span className={`font-mono text-xs whitespace-nowrap ${isBold ? 'font-bold' : 'font-medium'}`} style={{ color: d ? d.color : 'var(--foreground)' }}>
-                          {'newText' in row ? row.newText : numOrDash(row.new, row.unit!)}
+                          {'newText' in row ? row.newText : numOrDash(row.new, row.unit!, (row as { decimals?: number }).decimals)}
                         </span>
                       </div>
                     </td>
