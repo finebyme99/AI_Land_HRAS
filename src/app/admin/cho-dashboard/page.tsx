@@ -280,10 +280,6 @@ export default function ChoDashboardPage() {
     return counts;
   }, [enriched]);
 
-  // ── Max values for inline bars ──
-  const maxSavedHours = useMemo(() => Math.max(0, ...enriched.map((s) => s.savedHours ?? 0)), [enriched]);
-  const maxReuseSaved = useMemo(() => Math.max(0, ...enriched.map((s) => s.reuseSavedHours ?? 0)), [enriched]);
-
   // ── Filtered & sorted ──
   const tableData = useMemo(() => {
     let list = enriched;
@@ -343,6 +339,7 @@ export default function ChoDashboardPage() {
       dataIndex: 'briefIntro',
       key: 'briefIntro',
       width: 160,
+      align: 'center' as const,
       ellipsis: true,
       render: (v: string | null) => (
         <span className="text-[11px] leading-snug" style={{ color: v ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
@@ -357,8 +354,8 @@ export default function ChoDashboardPage() {
       key: 'compare-group',
       className: 'cho-group-compare',
       width: 280,
+      align: 'center' as const,
       render: (_: unknown, r: typeof tableData[number]) => {
-        // 列宽按内容自适应：频次最长(22次/月→~48px)，月工时次之(44h→~32px)，耗时/人数较短
         const cols = [
           { label: '频次', before: fmtFreq(r.beforeFreq), after: fmtFreq(r.afterFreq), dir: changeDir(r.beforeFreq, r.afterFreq), flex: 4 },
           { label: '耗时', before: numOrDash(r.oldHoursPerTask, 'h', 1), after: numOrDash(r.newDuration, 'h', 1), dir: changeDir(r.oldHoursPerTask, r.newDuration), flex: 3 },
@@ -377,13 +374,13 @@ export default function ChoDashboardPage() {
             {/* 前 */}
             <div className="flex items-center">
               <span className="text-[9px] font-semibold text-center cho-col-before rounded-sm" style={{ width: 28, color: '#b45309' }}>前</span>
-              {cols.map((c) => <span key={c.label} style={{ flex: c.flex, color: '#9ca3af' }} className="text-right font-mono text-[11px] px-0.5 whitespace-nowrap">{c.before}</span>)}
+              {cols.map((c) => <span key={c.label} style={{ flex: c.flex, color: '#9ca3af' }} className="text-center font-mono text-[11px] px-0.5 whitespace-nowrap">{c.before}</span>)}
             </div>
             {/* 后：无变化=默认色，有变化=彩色+箭头 */}
             <div className="flex items-center">
               <span className="text-[9px] font-semibold text-center cho-col-after rounded-sm" style={{ width: 28, color: '#047857' }}>后</span>
               {cols.map((c) => (
-                <span key={c.label} style={{ flex: c.flex, color: valColor(c.dir) }} className="text-right font-mono text-[11px] font-medium px-0.5 whitespace-nowrap">
+                <span key={c.label} style={{ flex: c.flex, color: valColor(c.dir) }} className="text-center font-mono text-[11px] font-medium px-0.5 whitespace-nowrap">
                   {c.after}{c.dir && <span className="text-[9px] ml-0.5" style={{ color: arrowColor(c.dir) }}>{c.dir === 'down' ? '↓' : '↑'}</span>}
                 </span>
               ))}
@@ -401,31 +398,25 @@ export default function ChoDashboardPage() {
       children: [
         {
           title: <FmtHeader label="月节省工时" tip="= 改造前月工时 − 改造后月工时" />,
-          dataIndex: 'savedHours', key: 'sh', width: 95, align: 'right' as const, className: 'cho-col-result',
+          dataIndex: 'savedHours', key: 'sh', width: 95, align: 'center' as const, className: 'cho-col-result',
           render: (v: number | null, record: any) => {
             const dir = changeDir(record.beforeHours, record.afterHours);
-            const pct = v != null && maxSavedHours > 0 ? Math.min(Math.max(v / maxSavedHours, 0) * 100, 100) : 0;
             return (
-              <div className="flex items-center justify-end gap-1" style={{ position: 'relative' }}>
-                {pct > 0 && (
-                  <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', height: 16, width: `${pct}%`, maxWidth: '100%', background: 'rgba(22,163,74,0.12)', borderRadius: 2, zIndex: 0 }} />
-                )}
-                <span className="inline-flex items-center gap-1" style={{ position: 'relative', zIndex: 1 }}>
-                  {dir && <span className="text-[10px]" style={{ color: dir === 'down' ? '#16a34a' : '#dc2626' }}>{dir === 'down' ? '↓' : '↑'}</span>}
-                  <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>
-                </span>
-              </div>
+              <span className="inline-flex items-center gap-1">
+                <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>
+                {dir && <span className="text-[9px]" style={{ color: dir === 'down' ? '#16a34a' : '#dc2626' }}>{dir === 'down' ? '↓' : '↑'}</span>}
+              </span>
             );
           },
         },
         {
           title: <FmtHeader label="提效比例" tip="月均提效比例（飞书公式字段）" />,
-          dataIndex: 'efficiencyRate', key: 'eff', width: 80, align: 'right' as const, className: 'cho-col-result',
+          dataIndex: 'efficiencyRate', key: 'eff', width: 80, align: 'center' as const, className: 'cho-col-result',
           render: (v: number | null) => <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{fmtPct(v)}</span>,
         },
         {
           title: <FmtHeader label="月均降本费用" tip="月均降本费用（不含人力成本）" />,
-          dataIndex: 'monthlySavedCost', key: 'msc', width: 90, align: 'right' as const, className: 'cho-col-result',
+          dataIndex: 'monthlySavedCost', key: 'msc', width: 90, align: 'center' as const, className: 'cho-col-result',
           render: (v: string | null) => <span className="font-mono text-xs" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{v || '—'}</span>,
         },
       ],
@@ -433,27 +424,12 @@ export default function ChoDashboardPage() {
 
     // ── 复用价值 ──
     {
-      title: <FmtHeader label="复用价值" tip="方案可复用的范围及推广预估" />,
+      title: <FmtHeader label="复用价值" tip="方案可复用的范围" />,
       key: 'reuse-group',
       className: 'cho-group-reuse',
       children: [
         {
-          title: <FmtHeader label="推广预估" tip="= 月节省工时 × 复用系数" />,
-          dataIndex: 'reuseSavedHours', key: 'rs', width: 90, align: 'right' as const, className: 'cho-col-reuse',
-          render: (v: number | null) => {
-            const pct = v != null && maxReuseSaved > 0 ? Math.min(Math.max(v / maxReuseSaved, 0) * 100, 100) : 0;
-            return (
-              <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                {pct > 0 && (
-                  <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', height: 16, width: `${pct}%`, maxWidth: '100%', background: 'rgba(234,88,12,0.12)', borderRadius: 2, zIndex: 0 }} />
-                )}
-                <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#c2410c' : 'var(--text-muted)', position: 'relative', zIndex: 1 }}>{numOrDash(v, 'h')}</span>
-              </div>
-            );
-          },
-        },
-        {
-          title: <FmtHeader label="复用系数" tip="跨团队/BU 复用范围" />,
+          title: <FmtHeader label="复用价值系数" tip="跨团队/BU 复用范围" />,
           dataIndex: 'reuseValue', key: 'rm', width: 130, align: 'center' as const, className: 'cho-col-reuse',
           render: (v: string | null, record: any) => {
             if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
@@ -471,6 +447,11 @@ export default function ChoDashboardPage() {
               </span>
             );
           },
+        },
+        {
+          title: <FmtHeader label="地区系数" tip="场景归属地区系数值" />,
+          dataIndex: 'sceneRegionCoefficientValue', key: 'rc', width: 70, align: 'center' as const, className: 'cho-col-reuse',
+          render: (v: number | null) => <span className="font-mono text-xs" style={{ color: v != null ? 'var(--foreground)' : 'var(--text-muted)' }}>{v != null ? v : '—'}</span>,
         },
       ],
     },
