@@ -54,6 +54,7 @@ type: project
 | `/api/competitions/sync` | 飞书 Base 赛事方案同步（服务端过滤 + 附件去重） |
 | `/api/competitions/reviews` | 评审评分（GET 查询 / POST 提交，8维加权） |
 | `/api/competitions/reviews/export` | 评审数据 CSV 导出（管理员） |
+| `/api/admin/competitions/overview` | 成效看板数据（CHO 复审，含飞书公式字段直同步） |
 | `/api/cron/feishu-apps-health` | 飞书多租户应用连通性（每天 3 AM UTC） |
 
 ## 已完成功能
@@ -70,6 +71,7 @@ type: project
 - 话题/回答创建 API
 - AI大赛评审系统（8维加权评分，三类评委角色，Popconfirm 提交）
 - AI大赛评审一览页（CHO 复审）
+- 成效看板（/admin/cho-dashboard）— 飞书公式字段直同步 + CompareCell 上下堆叠对比 + 公式提示横幅 + 表头 Tooltip + 排序/筛选
 - 飞书同步优化（服务端过滤 + 附件去重 + 并行下载）
 - 飞书 cron（课程同步 / 智能提醒 / 多租户应用连通性）
 - 硬编码白名单清理（HARDCODED_REVIEWER_NAMES 已删，改 sync 回填）

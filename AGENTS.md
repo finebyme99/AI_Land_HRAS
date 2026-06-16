@@ -8,7 +8,7 @@
 
 ## 分支策略
 
-当前阶段（2026-06）直接在 **main** 分支开发和提交。Vercel 部署源是 main，push 即自动部署。
+当前阶段（2026-06）直接在 **main** 分支开发和提交。Vercel GitHub webhook **未连接**，push 后需手动 `npx vercel deploy --prod` 部署。
 
 ## 详细规范
 

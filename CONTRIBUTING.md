@@ -6,7 +6,7 @@ HRAS AI Land 是 HR AI 社区平台，基于 Next.js 16 + Supabase + 飞书 OAut
 
 ## 分支策略
 
-当前阶段（2026-06）直接在 **main** 分支开发和提交。Vercel 部署源是 main，push 即自动部署。
+当前阶段（2026-06）直接在 **main** 分支开发和提交。
 
 ### 开发工作流
 
@@ -14,7 +14,8 @@ HRAS AI Land 是 HR AI 社区平台，基于 Next.js 16 + Supabase + 飞书 OAut
 cd /Users/apple/Q/AI/26AI落地/AILand
 # 直接在 main 上开发
 git add -A && git commit -m "xxx" && git push origin main
-# Vercel 自动部署
+# Vercel GitHub webhook 未连接，需手动部署：
+npx vercel deploy --prod --yes
 ```
 
 ## 技术架构约束
@@ -128,7 +129,7 @@ NEXT_PUBLIC_APP_URL=https://hras-ai-land.vercel.app
 
 ## 部署
 
-- **Vercel**：自动从 main 分支部署
+- **Vercel**：从 main 分支部署（GitHub webhook **未连接**，push 后需手动 `npx vercel deploy --prod --yes`）
 - **生产地址**：https://hras-ai-land.vercel.app
 - **飞书回调 URL**：`https://hras-ai-land.vercel.app/api/auth/feishu/callback`
 
