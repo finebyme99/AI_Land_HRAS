@@ -52,6 +52,9 @@ interface ChoSubmission {
   beforeMonthlyHours: number | null;
   finalValueScore: number | null;
   sceneRegionCoefficientValue: number | null;
+  monthlyCostSavingHours: number | null;
+  totalMonthlySavedHours: number | null;
+  reuseValueCoefficient: number | null;
 }
 
 interface OverviewResponse {
@@ -232,20 +235,14 @@ export default function ChoDashboardPage() {
           ? Math.round((beforeHours - afterHours) * 10) / 10
           : null
       );
-      const reuseMultiplier = extractMultiplier(s.reuseValue);
+      // 复用系数：优先用飞书数值字段 reuseValueCoefficient，回退文本提取
+      const reuseMultiplier = s.reuseValueCoefficient ?? extractMultiplier(s.reuseValue);
       const reuseSavedHours = reuseMultiplier != null && savedHours != null
         ? Math.round(reuseMultiplier * savedHours * 10) / 10
         : null;
-      // 月均降本折算工时 = 月均降本费用 / (50 × 场景归属地区系数值)
-      const monthlyCostNum = s.monthlySavedCost ? parseFloat(String(s.monthlySavedCost).replace(/[^0-9.\-]/g, '')) : null;
-      const regionCoeff = s.sceneRegionCoefficientValue;
-      const monthlyCostSavingHours = monthlyCostNum != null && regionCoeff != null && regionCoeff > 0
-        ? Math.round((monthlyCostNum / (50 * regionCoeff)) * 10) / 10
-        : null;
-      // 月节省总工时 = 月均提效节省工时 + 月均降本折算工时
-      const totalMonthlySavedHours = savedHours != null || monthlyCostSavingHours != null
-        ? Math.round(((savedHours ?? 0) + (monthlyCostSavingHours ?? 0)) * 10) / 10
-        : null;
+      // 直接引用飞书公式字段，不客户端重算
+      const monthlyCostSavingHours = s.monthlyCostSavingHours ?? null;
+      const totalMonthlySavedHours = s.totalMonthlySavedHours ?? null;
       return { ...s, beforeFreq, afterFreq, beforeHours, afterHours, savedHours, reuseMultiplier, reuseSavedHours, monthlyCostSavingHours, totalMonthlySavedHours, fixedSeq: idx + 1 };
     });
   }, [data]);

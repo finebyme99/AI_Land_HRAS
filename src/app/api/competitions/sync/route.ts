@@ -77,7 +77,10 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '新操作频次': 'afterFreq',
   '原月均耗时': 'beforeMonthlyHours',
   '场景归属地区系数值': 'sceneRegionCoefficientValue',
-  // 暂不映射（前端未消费或新表特有）：业务负责人 / AI负责人 / 实现效果 / 场景来源 / 落地进展 / 进展记录&链接 / 计划启动日期 / 试点上线日期 / 推广上线日期 / 全面上线日期 / 价值排名 / 降本费用说明 / 月均降本费用（不含人力成本） / 月均降本节省工时 / 场景归属地区系数 / 原月均执行次数 / 新月均执行次数
+  '月均降本折算工时': 'monthlyCostSavingHours',
+  '月均节省总工时': 'totalMonthlySavedHours',
+  '推广复用价值系数值': 'reuseValueCoefficient',
+  // 暂不映射：业务负责人 / AI负责人 / 实现效果 / 场景来源 / 落地进展 / 进展记录&链接 / 计划启动日期 / 试点上线日期 / 推广上线日期 / 全面上线日期 / 价值排名 / 降本费用说明 / 场景归属地区系数 / 原月均执行次数 / 新月均执行次数 / 新月均耗时 / 总降本提效比例 / 【参考】原人均月耗时
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -490,6 +493,9 @@ export async function POST(request: NextRequest) {
         after_freq: mapped.afterFreq != null ? Number(mapped.afterFreq) || null : null,
         before_monthly_hours: mapped.beforeMonthlyHours != null ? Number(mapped.beforeMonthlyHours) || null : null,
         scene_region_coefficient_value: mapped.sceneRegionCoefficientValue != null ? Number(mapped.sceneRegionCoefficientValue) || null : null,
+        monthly_cost_saving_hours: mapped.monthlyCostSavingHours != null ? Number(mapped.monthlyCostSavingHours) || null : null,
+        total_monthly_saved_hours: mapped.totalMonthlySavedHours != null ? Number(mapped.totalMonthlySavedHours) || null : null,
+        reuse_value_coefficient: mapped.reuseValueCoefficient != null ? Number(mapped.reuseValueCoefficient) || null : null,
       });
     }
 
