@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Spin, App, Select, Table, Modal, Tag, type TableColumnsType } from 'antd';
+import { Spin, App, Select, Table, Modal, Tag, Tooltip, type TableColumnsType } from 'antd';
 import {
   BarChartOutlined,
   TeamOutlined,
@@ -12,6 +12,7 @@ import {
   SyncOutlined,
   SwapRightOutlined,
   LinkOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 
@@ -49,6 +50,7 @@ interface ChoSubmission {
   beforeFreq: number | null;
   afterFreq: number | null;
   beforeMonthlyHours: number | null;
+  finalValueScore: number | null;
 }
 
 interface OverviewResponse {
@@ -144,6 +146,18 @@ function changeDir(
   if (oldVal == null || newVal == null || oldVal === 0) return null;
   if (Math.abs(newVal - oldVal) / Math.abs(oldVal) < 0.001) return null;
   return newVal > oldVal ? 'up' : 'down';
+}
+
+/** 带 ⓘ tooltip 的表头 */
+function FmtHeader({ label, tip }: { label: string; tip: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      {label}
+      <Tooltip title={tip} placement="top">
+        <QuestionCircleOutlined style={{ fontSize: 10, color: '#9ca3af', cursor: 'help' }} />
+      </Tooltip>
+    </span>
+  );
 }
 
 // ─── Component ───────────────────────────────────────────────────
@@ -336,95 +350,122 @@ export default function ChoDashboardPage() {
       ),
     },
 
-    // ── 改造前后对比（上下堆叠 + 进度条可视化） ──
+    // ── 一句话简介（第3列） ──
     {
-      title: <span style={{ color: '#6b7280' }}>改造前后对比</span>,
-      key: 'compare',
-      width: 340,
-      render: (_: unknown, r: typeof tableData[number]) => {
-        // 每个指标：max 来自 compareMax（全表统一刻度），用于归一化条长
-        const metrics = [
-          { label: '人数', before: r.beforePeopleCount, after: r.afterPeopleCount, unit: '人', positiveUp: false, max: compareMax.people },
-          { label: '频次', before: r.beforeFreq, after: r.afterFreq, unit: '', positiveUp: true, isFreq: true, max: compareMax.freq },
-          { label: '单次耗时', before: r.oldHoursPerTask, after: r.newDuration, unit: 'h', positiveUp: false, max: compareMax.duration },
-          { label: '月总工时', before: r.beforeHours, after: r.afterHours, unit: 'h', positiveUp: false, bold: true, max: compareMax.monthlyHours },
-        ];
-        return (
-          <div className="space-y-2 py-1">
-            {metrics.map((m) => {
-              const bNum = m.before as number | null;
-              const aNum = m.after as number | null;
-              const bText = m.isFreq ? fmtFreq(bNum) : numOrDash(bNum, m.unit);
-              const aText = m.isFreq ? fmtFreq(aNum) : numOrDash(aNum, m.unit);
-              const dir = changeDir(bNum, aNum);
-              const hasChange = dir !== null;
-              const isGood = hasChange && ((dir === 'up' && m.positiveUp) || (dir === 'down' && !m.positiveUp));
-              // 条长归一化：value / max × 100%，max=0 或 value=null 时不画
-              const bPct = bNum != null && m.max > 0 ? Math.min(Math.max((bNum / m.max) * 100, 0), 100) : 0;
-              const aPct = aNum != null && m.max > 0 ? Math.min(Math.max((aNum / m.max) * 100, 0), 100) : 0;
-              // 缩减百分比（仅在变化时显示）
-              const deltaPct = hasChange && bNum !== 0 && bNum != null
-                ? Math.round(Math.abs(((aNum ?? 0) - bNum) / bNum) * 100)
-                : null;
-              return (
-                <div key={m.label} className="leading-tight">
-                  {/* 指标名 */}
-                  <div className={`text-[10px] mb-0.5 ${m.bold ? 'font-bold' : 'font-medium'}`} style={{ color: m.bold ? 'var(--foreground)' : 'var(--text-muted)' }}>
-                    {m.label}
-                  </div>
-                  {/* 改造前 */}
-                  <div className="flex items-center gap-1 mb-px">
-                    <span className="shrink-0 text-[9px] w-[28px]" style={{ color: 'var(--text-muted)' }}>前</span>
-                    <div className="flex-1 h-[7px] rounded-sm overflow-hidden" style={{ background: 'rgba(0,0,0,0.04)' }}>
-                      {bPct > 0 && (
-                        <div style={{ width: `${bPct}%`, height: '100%', background: 'rgba(100,116,139,0.5)', borderRadius: 2 }} />
-                      )}
-                    </div>
-                    <span className="shrink-0 font-mono text-[10px] w-[42px] text-right" style={{ color: 'var(--text-muted)' }}>{bText}</span>
-                  </div>
-                  {/* 改造后 */}
-                  <div className="flex items-center gap-1">
-                    <span className="shrink-0 text-[9px] w-[28px]" style={{ color: hasChange ? (isGood ? '#16a34a' : '#dc2626') : 'var(--text-muted)' }}>
-                      {hasChange ? (dir === 'down' ? '↓' : '↑') : '后'}
-                    </span>
-                    <div className="flex-1 h-[7px] rounded-sm overflow-hidden" style={{ background: 'rgba(0,0,0,0.04)' }}>
-                      {aPct > 0 && (
-                        <div
-                          style={{
-                            width: `${aPct}%`,
-                            height: '100%',
-                            background: hasChange ? (isGood ? 'rgba(22,163,74,0.65)' : 'rgba(220,38,38,0.65)') : 'rgba(100,116,139,0.5)',
-                            borderRadius: 2,
-                          }}
-                        />
-                      )}
-                    </div>
-                    <span className={`shrink-0 font-mono text-[10px] w-[42px] text-right ${m.bold ? 'font-bold' : 'font-medium'}`} style={{ color: hasChange ? (isGood ? '#16a34a' : '#dc2626') : 'var(--foreground)' }}>
-                      {aText}
-                    </span>
-                  </div>
-                  {/* 缩减百分比标签 */}
-                  {deltaPct != null && (
-                    <div className="text-right text-[9px] mt-px" style={{ color: isGood ? '#16a34a' : '#dc2626' }}>
-                      {isGood ? '-' : '+'}{deltaPct}%
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
-      },
+      title: '一句话简介',
+      dataIndex: 'briefIntro',
+      key: 'briefIntro',
+      width: 160,
+      ellipsis: true,
+      render: (v: string | null) => (
+        <span className="text-[11px] leading-snug" style={{ color: v ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+          {v || '—'}
+        </span>
+      ),
     },
 
-    // ── 成效 ──
+    // ── 改造前后对比（4 指标 × 前后） ──
     {
-      title: <span style={{ color: '#1a3a8a' }}>成效</span>,
+      title: <FmtHeader label="改造前后对比" tip="月工时=频次×耗时×人数，每个指标显示改造前后对比" />,
+      key: 'compare-group',
+      className: 'cho-group-compare',
+      children: [
+        // 月工时
+        {
+          title: <FmtHeader label="月工时" tip="= 操作频次 × 单次耗时 × 操作人数" />,
+          key: 'monthly-hours',
+          children: [
+            {
+              title: '前', key: 'mh-before', width: 65, align: 'right' as const, className: 'cho-col-before',
+              render: (_: unknown, r: typeof tableData[number]) => (
+                <span className="font-mono text-[11px]" style={{ color: '#9ca3af' }}>{numOrDash(r.beforeHours, 'h')}</span>
+              ),
+            },
+            {
+              title: '后', key: 'mh-after', width: 65, align: 'right' as const, className: 'cho-col-after',
+              render: (_: unknown, r: typeof tableData[number]) => {
+                const dir = changeDir(r.beforeHours, r.afterHours);
+                const color = dir === 'down' ? '#16a34a' : dir === 'up' ? '#dc2626' : 'var(--foreground)';
+                return <span className="font-mono text-[11px] font-medium" style={{ color }}>{numOrDash(r.afterHours, 'h')}</span>;
+              },
+            },
+          ],
+        },
+        // 操作频次
+        {
+          title: <FmtHeader label="操作频次" tip="每月操作次数，飞书公式字段优先" />,
+          key: 'freq',
+          children: [
+            {
+              title: '前', key: 'freq-before', width: 65, align: 'right' as const, className: 'cho-col-before',
+              render: (_: unknown, r: typeof tableData[number]) => (
+                <span className="font-mono text-[11px]" style={{ color: '#9ca3af' }}>{fmtFreq(r.beforeFreq)}</span>
+              ),
+            },
+            {
+              title: '后', key: 'freq-after', width: 65, align: 'right' as const, className: 'cho-col-after',
+              render: (_: unknown, r: typeof tableData[number]) => {
+                const dir = changeDir(r.beforeFreq, r.afterFreq);
+                const color = dir === 'down' ? '#16a34a' : dir === 'up' ? '#dc2626' : 'var(--foreground)';
+                return <span className="font-mono text-[11px] font-medium" style={{ color }}>{fmtFreq(r.afterFreq)}</span>;
+              },
+            },
+          ],
+        },
+        // 单次耗时
+        {
+          title: <FmtHeader label="单次耗时" tip="每次操作耗时（小时）" />,
+          key: 'duration',
+          children: [
+            {
+              title: '前', key: 'dur-before', width: 65, align: 'right' as const, className: 'cho-col-before',
+              render: (_: unknown, r: typeof tableData[number]) => (
+                <span className="font-mono text-[11px]" style={{ color: '#9ca3af' }}>{numOrDash(r.oldHoursPerTask, 'h')}</span>
+              ),
+            },
+            {
+              title: '后', key: 'dur-after', width: 65, align: 'right' as const, className: 'cho-col-after',
+              render: (_: unknown, r: typeof tableData[number]) => {
+                const dir = changeDir(r.oldHoursPerTask, r.newDuration);
+                const color = dir === 'down' ? '#16a34a' : dir === 'up' ? '#dc2626' : 'var(--foreground)';
+                return <span className="font-mono text-[11px] font-medium" style={{ color }}>{numOrDash(r.newDuration, 'h')}</span>;
+              },
+            },
+          ],
+        },
+        // 操作人数
+        {
+          title: <FmtHeader label="操作人数" tip="执行该操作的人数" />,
+          key: 'people',
+          children: [
+            {
+              title: '前', key: 'ppl-before', width: 65, align: 'right' as const, className: 'cho-col-before',
+              render: (_: unknown, r: typeof tableData[number]) => (
+                <span className="font-mono text-[11px]" style={{ color: '#9ca3af' }}>{numOrDash(r.beforePeopleCount, '人')}</span>
+              ),
+            },
+            {
+              title: '后', key: 'ppl-after', width: 65, align: 'right' as const, className: 'cho-col-after',
+              render: (_: unknown, r: typeof tableData[number]) => {
+                const dir = changeDir(r.beforePeopleCount, r.afterPeopleCount);
+                const color = dir === 'down' ? '#16a34a' : dir === 'up' ? '#dc2626' : 'var(--foreground)';
+                return <span className="font-mono text-[11px] font-medium" style={{ color }}>{numOrDash(r.afterPeopleCount, '人')}</span>;
+              },
+            },
+          ],
+        },
+      ],
+    },
+
+    // ── 改造成效 ──
+    {
+      title: <FmtHeader label="改造成效" tip="量化改造效果" />,
       key: 'result-group',
       className: 'cho-group-result',
       children: [
         {
-          title: '节省工时', dataIndex: 'savedHours', key: 'sh', width: 95, align: 'right' as const, className: 'cho-col-result',
+          title: <FmtHeader label="月节省工时" tip="= 改造前月工时 − 改造后月工时" />,
+          dataIndex: 'savedHours', key: 'sh', width: 95, align: 'right' as const, className: 'cho-col-result',
           render: (v: number | null, record: any) => {
             const dir = changeDir(record.beforeHours, record.afterHours);
             const pct = v != null && maxSavedHours > 0 ? Math.min(Math.max(v / maxSavedHours, 0) * 100, 100) : 0;
@@ -442,11 +483,13 @@ export default function ChoDashboardPage() {
           },
         },
         {
-          title: '提效比例', dataIndex: 'efficiencyRate', key: 'eff', width: 72, align: 'right' as const, className: 'cho-col-result',
+          title: <FmtHeader label="提效比例" tip="月均提效比例（飞书公式字段）" />,
+          dataIndex: 'efficiencyRate', key: 'eff', width: 80, align: 'right' as const, className: 'cho-col-result',
           render: (v: number | null) => <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{fmtPct(v)}</span>,
         },
         {
-          title: 'Token 费用', dataIndex: 'aiCost', key: 'tc', width: 62, align: 'right' as const, className: 'cho-col-result',
+          title: <FmtHeader label="月均降本费用" tip="月均降本费用（不含人力成本）" />,
+          dataIndex: 'monthlySavedCost', key: 'msc', width: 90, align: 'right' as const, className: 'cho-col-result',
           render: (v: string | null) => <span className="font-mono text-xs" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{v || '—'}</span>,
         },
       ],
@@ -454,12 +497,13 @@ export default function ChoDashboardPage() {
 
     // ── 复用价值 ──
     {
-      title: <span style={{ color: '#c2410c' }}>复用价值</span>,
+      title: <FmtHeader label="复用价值" tip="方案可复用的范围及推广预估" />,
       key: 'reuse-group',
       className: 'cho-group-reuse',
       children: [
         {
-          title: '推广预估节省工时', dataIndex: 'reuseSavedHours', key: 'rs', width: 100, align: 'right' as const, className: 'cho-col-reuse',
+          title: <FmtHeader label="推广预估" tip="= 月节省工时 × 复用系数" />,
+          dataIndex: 'reuseSavedHours', key: 'rs', width: 90, align: 'right' as const, className: 'cho-col-reuse',
           render: (v: number | null) => {
             const pct = v != null && maxReuseSaved > 0 ? Math.min(Math.max(v / maxReuseSaved, 0) * 100, 100) : 0;
             return (
@@ -473,7 +517,8 @@ export default function ChoDashboardPage() {
           },
         },
         {
-          title: '复用系数', dataIndex: 'reuseValue', key: 'rm', width: 140, align: 'center' as const, className: 'cho-col-reuse',
+          title: <FmtHeader label="复用系数" tip="跨团队/BU 复用范围" />,
+          dataIndex: 'reuseValue', key: 'rm', width: 130, align: 'center' as const, className: 'cho-col-reuse',
           render: (v: string | null, record: any) => {
             if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
             const level = record.reuseValueLevel;
@@ -494,16 +539,16 @@ export default function ChoDashboardPage() {
       ],
     },
 
-    // ── 一句话简介 ──
+    // ── 最终价值计分 ──
     {
-      title: '一句话简介',
-      dataIndex: 'briefIntro',
-      key: 'briefIntro',
-      width: 160,
-      ellipsis: true,
-      render: (v: string | null) => (
-        <span className="text-[11px] leading-snug" style={{ color: v ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
-          {v || '—'}
+      title: <FmtHeader label="最终价值计分" tip="(月节省工时+月降本工时) × 归属地区人力成本系数 × 复用价值系数" />,
+      dataIndex: 'finalValueScore',
+      key: 'fvs',
+      width: 90,
+      align: 'center' as const,
+      render: (v: number | null) => (
+        <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#7c3aed' : 'var(--text-muted)' }}>
+          {v != null ? v : '—'}
         </span>
       ),
     },
@@ -527,6 +572,12 @@ export default function ChoDashboardPage() {
           z-index: 3 !important;
         }
         /* ── 表头分组 ── */
+        .cho-group-compare > .ant-table-cell {
+          background: #f8fafc !important;
+          border-left: 3px solid #64748b !important;
+          border-top: 3px solid #64748b !important;
+          color: #334155 !important;
+        }
         .cho-group-result > .ant-table-cell {
           background: #e0e7ff !important;
           border-left: 3px solid #4f46e5 !important;
@@ -539,6 +590,11 @@ export default function ChoDashboardPage() {
           border-top: 3px solid #ea580c !important;
           color: #c2410c !important;
         }
+        /* ── 前后对比列底色 ── */
+        .cho-col-before { background: rgba(251,191,36,0.06) !important; }
+        .cho-col-after { background: rgba(16,185,129,0.06) !important; }
+        .cho-table-row:hover .cho-col-before { background: rgba(251,191,36,0.12) !important; }
+        .cho-table-row:hover .cho-col-after { background: rgba(16,185,129,0.12) !important; }
         /* ── 数据行分组底色 ── */
         .cho-col-result {
           background: rgba(224, 231, 255, 0.25) !important;
@@ -601,22 +657,26 @@ export default function ChoDashboardPage() {
           </div>
         </div>
 
-        {/* 核心公式说明 */}
+        {/* 核心公式（紧凑单行） */}
         <div
-          className="glass rounded-xl px-5 py-3 mb-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-1"
-          style={{ borderColor: 'rgba(220, 38, 38, 0.2)', background: 'rgba(254, 242, 242, 0.7)' }}
+          className="glass rounded-lg px-4 py-2 mb-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-0.5"
+          style={{ borderColor: 'rgba(220, 38, 38, 0.15)', background: 'rgba(254, 242, 242, 0.6)' }}
         >
-          <span className="text-xs font-semibold" style={{ color: '#dc2626' }}>核心公式</span>
-          <span className="text-xs font-mono font-bold" style={{ color: '#991b1b' }}>
-            月总工时 <span style={{ color: '#dc2626' }}>=</span> 月均操作次数 <span style={{ color: '#dc2626' }}>×</span> 单次操作耗时 <span style={{ color: '#dc2626' }}>×</span> 操作人数
+          <span className="text-[11px] font-semibold" style={{ color: '#dc2626' }}>核心公式</span>
+          <span className="text-[11px] font-mono font-bold" style={{ color: '#991b1b' }}>
+            月工时 = 频次 × 耗时 × 人数
           </span>
-          <span className="text-[10px]" style={{ color: '#9ca3af' }}>·</span>
-          <span className="text-xs font-mono" style={{ color: '#b91c1c' }}>
-            节省工时 <span style={{ color: '#dc2626' }}>=</span> 改造前月总工时 <span style={{ color: '#dc2626' }}>−</span> 改造后月总工时
+          <span className="text-[10px]" style={{ color: '#d1d5db' }}>|</span>
+          <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>
+            节省 = 前月工时 − 后月工时
           </span>
-          <span className="text-[10px]" style={{ color: '#9ca3af' }}>·</span>
-          <span className="text-xs font-mono" style={{ color: '#c2410c' }}>
-            推广预估 <span style={{ color: '#ea580c' }}>=</span> 节省工时 <span style={{ color: '#ea580c' }}>×</span> 复用系数
+          <span className="text-[10px]" style={{ color: '#d1d5db' }}>|</span>
+          <span className="text-[11px] font-mono" style={{ color: '#c2410c' }}>
+            推广预估 = 节省 × 复用系数
+          </span>
+          <span className="text-[10px]" style={{ color: '#d1d5db' }}>|</span>
+          <span className="text-[11px] font-mono" style={{ color: '#7c3aed' }}>
+            最终计分 = (节省+降本) × 地区系数 × 复用
           </span>
         </div>
 
@@ -671,7 +731,7 @@ export default function ChoDashboardPage() {
               rowKey="id"
               pagination={false}
               size="small"
-              scroll={{ x: 1100 }}
+              scroll={{ x: 1400 }}
               rowClassName={() => 'cho-table-row'}
             />
           </div>
@@ -679,13 +739,13 @@ export default function ChoDashboardPage() {
 
         {/* 底部说明 */}
         <div className="mt-4 text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          <span className="font-semibold">月总工时</span> = 频次(次/月) × 单次耗时 × 人数 ·
+          <span className="font-semibold">月工时</span> = 频次 × 耗时 × 人数 ·
+          <span className="font-semibold"> 节省</span> = 前月工时 − 后月工时 ·
+          <span className="font-semibold"> 推广预估</span> = 节省 × 复用系数 ·
+          <span className="font-semibold"> 最终计分</span> = (节省+降本) × 地区系数 × 复用 ·
           <span className="font-semibold"> 绿色</span> = 改善 ·
           <span className="font-semibold"> 红色</span> = 需关注 ·
-          <span className="font-semibold"> 频次</span>统一折算为次/月 ·
-          <span className="font-semibold"> 节省工时/频次/月总工时</span>取飞书公式字段 ·
-          <span className="font-semibold"> 对比条</span>按各指标全表最大值归一化 ·
-          <span className="font-semibold"> 推广预估节省工时</span> = 节省工时 × 复用价值系数
+          悬停表头 <span className="font-semibold">ⓘ</span> 查看公式说明
         </div>
 
         {/* 方案详情弹窗 */}
