@@ -51,6 +51,7 @@ interface ChoSubmission {
   afterFreq: number | null;
   beforeMonthlyHours: number | null;
   finalValueScore: number | null;
+  sceneRegionCoefficientValue: number | null;
 }
 
 interface OverviewResponse {
@@ -235,7 +236,17 @@ export default function ChoDashboardPage() {
       const reuseSavedHours = reuseMultiplier != null && savedHours != null
         ? Math.round(reuseMultiplier * savedHours * 10) / 10
         : null;
-      return { ...s, beforeFreq, afterFreq, beforeHours, afterHours, savedHours, reuseMultiplier, reuseSavedHours, fixedSeq: idx + 1 };
+      // 月均降本折算工时 = 月均降本费用 / (50 × 场景归属地区系数值)
+      const monthlyCostNum = s.monthlySavedCost ? parseFloat(String(s.monthlySavedCost).replace(/[^0-9.\-]/g, '')) : null;
+      const regionCoeff = s.sceneRegionCoefficientValue;
+      const monthlyCostSavingHours = monthlyCostNum != null && regionCoeff != null && regionCoeff > 0
+        ? Math.round((monthlyCostNum / (50 * regionCoeff)) * 10) / 10
+        : null;
+      // 月节省总工时 = 月均提效节省工时 + 月均降本折算工时
+      const totalMonthlySavedHours = savedHours != null || monthlyCostSavingHours != null
+        ? Math.round(((savedHours ?? 0) + (monthlyCostSavingHours ?? 0)) * 10) / 10
+        : null;
+      return { ...s, beforeFreq, afterFreq, beforeHours, afterHours, savedHours, reuseMultiplier, reuseSavedHours, monthlyCostSavingHours, totalMonthlySavedHours, fixedSeq: idx + 1 };
     });
   }, [data]);
 
@@ -275,27 +286,6 @@ export default function ChoDashboardPage() {
   // ── Max values for inline bars ──
   const maxSavedHours = useMemo(() => Math.max(0, ...enriched.map((s) => s.savedHours ?? 0)), [enriched]);
   const maxReuseSaved = useMemo(() => Math.max(0, ...enriched.map((s) => s.reuseSavedHours ?? 0)), [enriched]);
-
-  // ── 4 指标改造前后对比的全表 max（用于进度条归一化，全表统一刻度横向比较）──
-  const compareMax = useMemo(() => {
-    const people = Math.max(
-      0,
-      ...enriched.map((s) => Math.max(s.beforePeopleCount ?? 0, s.afterPeopleCount ?? 0)),
-    );
-    const freq = Math.max(
-      0,
-      ...enriched.map((s) => Math.max(s.beforeFreq ?? 0, s.afterFreq ?? 0)),
-    );
-    const duration = Math.max(
-      0,
-      ...enriched.map((s) => Math.max(s.oldHoursPerTask ?? 0, s.newDuration ?? 0)),
-    );
-    const monthlyHours = Math.max(
-      0,
-      ...enriched.map((s) => Math.max(s.beforeHours ?? 0, s.afterHours ?? 0)),
-    );
-    return { people, freq, duration, monthlyHours };
-  }, [enriched]);
 
   // ── Filtered & sorted ──
   const tableData = useMemo(() => {
@@ -364,97 +354,38 @@ export default function ChoDashboardPage() {
       ),
     },
 
-    // ── 改造前后对比（4 指标 × 前后） ──
+    // ── 改造前后对比（4 指标竖排：每行一个指标，前/后并列） ──
     {
       title: <FmtHeader label="改造前后对比" tip="月工时=频次×耗时×人数，每个指标显示改造前后对比" />,
       key: 'compare-group',
       className: 'cho-group-compare',
-      children: [
-        // 月工时
-        {
-          title: <FmtHeader label="月工时" tip="= 操作频次 × 单次耗时 × 操作人数" />,
-          key: 'monthly-hours',
-          children: [
-            {
-              title: '前', key: 'mh-before', width: 65, align: 'right' as const, className: 'cho-col-before',
-              render: (_: unknown, r: typeof tableData[number]) => (
-                <span className="font-mono text-[11px]" style={{ color: '#9ca3af' }}>{numOrDash(r.beforeHours, 'h')}</span>
-              ),
-            },
-            {
-              title: '后', key: 'mh-after', width: 65, align: 'right' as const, className: 'cho-col-after',
-              render: (_: unknown, r: typeof tableData[number]) => {
-                const dir = changeDir(r.beforeHours, r.afterHours);
-                const color = dir === 'down' ? '#16a34a' : dir === 'up' ? '#dc2626' : 'var(--foreground)';
-                return <span className="font-mono text-[11px] font-medium" style={{ color }}>{numOrDash(r.afterHours, 'h')}</span>;
-              },
-            },
-          ],
-        },
-        // 操作频次
-        {
-          title: <FmtHeader label="操作频次" tip="每月操作次数，飞书公式字段优先" />,
-          key: 'freq',
-          children: [
-            {
-              title: '前', key: 'freq-before', width: 65, align: 'right' as const, className: 'cho-col-before',
-              render: (_: unknown, r: typeof tableData[number]) => (
-                <span className="font-mono text-[11px]" style={{ color: '#9ca3af' }}>{fmtFreq(r.beforeFreq)}</span>
-              ),
-            },
-            {
-              title: '后', key: 'freq-after', width: 65, align: 'right' as const, className: 'cho-col-after',
-              render: (_: unknown, r: typeof tableData[number]) => {
-                const dir = changeDir(r.beforeFreq, r.afterFreq);
-                const color = dir === 'down' ? '#16a34a' : dir === 'up' ? '#dc2626' : 'var(--foreground)';
-                return <span className="font-mono text-[11px] font-medium" style={{ color }}>{fmtFreq(r.afterFreq)}</span>;
-              },
-            },
-          ],
-        },
-        // 单次耗时
-        {
-          title: <FmtHeader label="单次耗时" tip="每次操作耗时（小时）" />,
-          key: 'duration',
-          children: [
-            {
-              title: '前', key: 'dur-before', width: 65, align: 'right' as const, className: 'cho-col-before',
-              render: (_: unknown, r: typeof tableData[number]) => (
-                <span className="font-mono text-[11px]" style={{ color: '#9ca3af' }}>{numOrDash(r.oldHoursPerTask, 'h')}</span>
-              ),
-            },
-            {
-              title: '后', key: 'dur-after', width: 65, align: 'right' as const, className: 'cho-col-after',
-              render: (_: unknown, r: typeof tableData[number]) => {
-                const dir = changeDir(r.oldHoursPerTask, r.newDuration);
-                const color = dir === 'down' ? '#16a34a' : dir === 'up' ? '#dc2626' : 'var(--foreground)';
-                return <span className="font-mono text-[11px] font-medium" style={{ color }}>{numOrDash(r.newDuration, 'h')}</span>;
-              },
-            },
-          ],
-        },
-        // 操作人数
-        {
-          title: <FmtHeader label="操作人数" tip="执行该操作的人数" />,
-          key: 'people',
-          children: [
-            {
-              title: '前', key: 'ppl-before', width: 65, align: 'right' as const, className: 'cho-col-before',
-              render: (_: unknown, r: typeof tableData[number]) => (
-                <span className="font-mono text-[11px]" style={{ color: '#9ca3af' }}>{numOrDash(r.beforePeopleCount, '人')}</span>
-              ),
-            },
-            {
-              title: '后', key: 'ppl-after', width: 65, align: 'right' as const, className: 'cho-col-after',
-              render: (_: unknown, r: typeof tableData[number]) => {
-                const dir = changeDir(r.beforePeopleCount, r.afterPeopleCount);
-                const color = dir === 'down' ? '#16a34a' : dir === 'up' ? '#dc2626' : 'var(--foreground)';
-                return <span className="font-mono text-[11px] font-medium" style={{ color }}>{numOrDash(r.afterPeopleCount, '人')}</span>;
-              },
-            },
-          ],
-        },
-      ],
+      width: 200,
+      render: (_: unknown, r: typeof tableData[number]) => {
+        const rows = [
+          { label: '月工时', before: numOrDash(r.beforeHours, 'h'), after: numOrDash(r.afterHours, 'h'), dir: changeDir(r.beforeHours, r.afterHours) },
+          { label: '操作频次', before: fmtFreq(r.beforeFreq), after: fmtFreq(r.afterFreq), dir: changeDir(r.beforeFreq, r.afterFreq) },
+          { label: '单次耗时', before: numOrDash(r.oldHoursPerTask, 'h'), after: numOrDash(r.newDuration, 'h'), dir: changeDir(r.oldHoursPerTask, r.newDuration) },
+          { label: '操作人数', before: numOrDash(r.beforePeopleCount, '人'), after: numOrDash(r.afterPeopleCount, '人'), dir: changeDir(r.beforePeopleCount, r.afterPeopleCount) },
+        ];
+        return (
+          <div className="flex flex-col gap-[3px]">
+            <div className="flex text-[9px] font-semibold mb-0.5" style={{ color: 'var(--text-muted)' }}>
+              <span className="w-[60px]"></span>
+              <span className="w-[52px] text-center cho-col-before rounded-sm px-1">前</span>
+              <span className="w-[8px]"></span>
+              <span className="w-[52px] text-center cho-col-after rounded-sm px-1">后</span>
+            </div>
+            {rows.map((row) => (
+              <div key={row.label} className="flex items-center">
+                <span className="w-[60px] text-[10px] font-medium truncate" style={{ color: 'var(--text-muted)' }}>{row.label}</span>
+                <span className="w-[52px] text-right font-mono text-[11px] px-1" style={{ color: '#9ca3af' }}>{row.before}</span>
+                <span className="w-[8px] text-center text-[9px]" style={{ color: '#d1d5db' }}>→</span>
+                <span className="w-[52px] text-right font-mono text-[11px] font-medium px-1" style={{ color: row.dir === 'down' ? '#16a34a' : row.dir === 'up' ? '#dc2626' : 'var(--foreground)' }}>{row.after}</span>
+              </div>
+            ))}
+          </div>
+        );
+      },
     },
 
     // ── 改造成效 ──
@@ -541,7 +472,7 @@ export default function ChoDashboardPage() {
 
     // ── 最终价值计分 ──
     {
-      title: <FmtHeader label="最终价值计分" tip="(月节省工时+月降本工时) × 归属地区人力成本系数 × 复用价值系数" />,
+      title: <FmtHeader label="最终价值计分" tip="= 月均节省总工时 × 归属地区人力成本系数 × 复用价值系数" />,
       dataIndex: 'finalValueScore',
       key: 'fvs',
       width: 90,
@@ -657,29 +588,6 @@ export default function ChoDashboardPage() {
           </div>
         </div>
 
-        {/* 核心公式（紧凑单行） */}
-        <div
-          className="glass rounded-lg px-4 py-2 mb-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-0.5"
-          style={{ borderColor: 'rgba(220, 38, 38, 0.15)', background: 'rgba(254, 242, 242, 0.6)' }}
-        >
-          <span className="text-[11px] font-semibold" style={{ color: '#dc2626' }}>核心公式</span>
-          <span className="text-[11px] font-mono font-bold" style={{ color: '#991b1b' }}>
-            月工时 = 频次 × 耗时 × 人数
-          </span>
-          <span className="text-[10px]" style={{ color: '#d1d5db' }}>|</span>
-          <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>
-            节省 = 前月工时 − 后月工时
-          </span>
-          <span className="text-[10px]" style={{ color: '#d1d5db' }}>|</span>
-          <span className="text-[11px] font-mono" style={{ color: '#c2410c' }}>
-            推广预估 = 节省 × 复用系数
-          </span>
-          <span className="text-[10px]" style={{ color: '#d1d5db' }}>|</span>
-          <span className="text-[11px] font-mono" style={{ color: '#7c3aed' }}>
-            最终计分 = (节省+降本) × 地区系数 × 复用
-          </span>
-        </div>
-
         {/* 筛选 + 排序 */}
         <div className="glass rounded-xl px-4 py-3 mb-4" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <div className="flex flex-wrap items-center gap-2">
@@ -716,6 +624,37 @@ export default function ChoDashboardPage() {
           </div>
         </div>
 
+        {/* 核心公式（筛选条件下方，分行展示） */}
+        <div
+          className="glass rounded-lg px-5 py-3 mb-4"
+          style={{ borderColor: 'rgba(220, 38, 38, 0.15)', background: 'rgba(254, 242, 242, 0.6)' }}
+        >
+          <div className="text-[11px] font-bold mb-2" style={{ color: '#dc2626' }}>核心公式</div>
+          <div className="space-y-1.5">
+            <div className="flex items-baseline gap-2">
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>1</span>
+              <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>月均提效节省工时</span>
+              <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>= 月均操作频次 × 单次操作耗时 × 操作人数</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>2</span>
+              <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>月均降本折算工时</span>
+              <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>= 月均降本费用 / (50 × 场景归属地区系数值)</span>
+              <span className="text-[10px]" style={{ color: '#9ca3af' }}>定义：按 [全球HR时薪均值] 折算为工时数</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>3</span>
+              <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>月节省总工时</span>
+              <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>= 月均提效节省工时 + 月均降本折算工时</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed' }}>4</span>
+              <span className="text-[11px] font-semibold" style={{ color: '#5b21b6' }}>最终价值计分</span>
+              <span className="text-[11px] font-mono" style={{ color: '#6d28d9' }}>= 月均节省总工时 × 归属地区人力成本系数 × 复用价值系数</span>
+            </div>
+          </div>
+        </div>
+
         {/* 数据表格 */}
         {loading ? (
           <div className="flex justify-center py-16"><Spin size="large" /></div>
@@ -731,7 +670,7 @@ export default function ChoDashboardPage() {
               rowKey="id"
               pagination={false}
               size="small"
-              scroll={{ x: 1400 }}
+              scroll={{ x: 1100 }}
               rowClassName={() => 'cho-table-row'}
             />
           </div>
@@ -739,10 +678,10 @@ export default function ChoDashboardPage() {
 
         {/* 底部说明 */}
         <div className="mt-4 text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          <span className="font-semibold">月工时</span> = 频次 × 耗时 × 人数 ·
-          <span className="font-semibold"> 节省</span> = 前月工时 − 后月工时 ·
-          <span className="font-semibold"> 推广预估</span> = 节省 × 复用系数 ·
-          <span className="font-semibold"> 最终计分</span> = (节省+降本) × 地区系数 × 复用 ·
+          <span className="font-semibold">① 月均提效节省工时</span> = 频次 × 耗时 × 人数 ·
+          <span className="font-semibold"> ② 月均降本折算工时</span> = 降本费用 / (50 × 地区系数) ·
+          <span className="font-semibold"> ③ 月节省总工时</span> = ① + ② ·
+          <span className="font-semibold"> ④ 最终价值计分</span> = ③ × 地区人力成本系数 × 复用系数 ·
           <span className="font-semibold"> 绿色</span> = 改善 ·
           <span className="font-semibold"> 红色</span> = 需关注 ·
           悬停表头 <span className="font-semibold">ⓘ</span> 查看公式说明
@@ -822,18 +761,22 @@ function SubmissionDetailModal({ record, onClose }: { record: any | null; onClos
     >
       <div className="space-y-5 pt-2">
         {/* 核心指标 */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.15)' }}>
-            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>节省工时</div>
+            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>① 提效节省工时</div>
             <div className="text-lg font-bold font-mono" style={{ color: '#16a34a' }}>{numOrDash(r.savedHours, 'h')}</div>
           </div>
+          <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
+            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>② 降本折算工时</div>
+            <div className="text-lg font-bold font-mono" style={{ color: '#d97706' }}>{numOrDash(r.monthlyCostSavingHours, 'h')}</div>
+          </div>
           <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.1)' }}>
-            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>提效比例</div>
-            <div className="text-lg font-bold font-mono" style={{ color: 'var(--primary)' }}>{fmtPct(r.efficiencyRate)}</div>
+            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>③ 月节省总工时</div>
+            <div className="text-lg font-bold font-mono" style={{ color: 'var(--primary)' }}>{numOrDash(r.totalMonthlySavedHours, 'h')}</div>
           </div>
           <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.12)' }}>
-            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>推广预估节省工时</div>
-            <div className="text-lg font-bold font-mono" style={{ color: '#d97706' }}>{numOrDash(r.reuseSavedHours, 'h')}</div>
+            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>④ 最终价值计分</div>
+            <div className="text-lg font-bold font-mono" style={{ color: '#7c3aed' }}>{r.finalValueScore != null ? r.finalValueScore : '—'}</div>
           </div>
         </div>
 
@@ -922,7 +865,7 @@ function SubmissionDetailModal({ record, onClose }: { record: any | null; onClos
           </table>
         </div>
 
-        {/* 复用 & 费用 */}
+        {/* 复用 & 费用 & 系数 */}
         <div className="flex flex-wrap gap-2">
           {r.reuseValue && (
             <Tag color="purple" style={{ margin: 0 }}>
@@ -934,8 +877,11 @@ function SubmissionDetailModal({ record, onClose }: { record: any | null; onClos
               {r.reuseValueLevel}
             </Tag>
           )}
-          {r.aiCost && <Tag style={{ margin: 0 }}>Token 费用 {r.aiCost}</Tag>}
           {r.monthlySavedCost && <Tag color="green" style={{ margin: 0 }}>降本 {r.monthlySavedCost}</Tag>}
+          {r.sceneRegionCoefficientValue != null && (
+            <Tag color="blue" style={{ margin: 0 }}>地区系数 {r.sceneRegionCoefficientValue}</Tag>
+          )}
+          {r.aiCost && <Tag style={{ margin: 0 }}>Token 费用 {r.aiCost}</Tag>}
         </div>
 
         {/* AI 工具 */}
