@@ -351,35 +351,42 @@ export default function ChoDashboardPage() {
       ),
     },
 
-    // ── 改造前后对比（前/后为行，4 指标为列） ──
+    // ── 改造前后对比（前/后为行，指标为列，列宽自适应内容） ──
     {
       title: <FmtHeader label="改造前后对比" tip="月工时=频次×耗时×人数，每行显示改造前/后的全部指标" />,
       key: 'compare-group',
       className: 'cho-group-compare',
-      width: 260,
+      width: 280,
       render: (_: unknown, r: typeof tableData[number]) => {
+        // 列宽按内容自适应：频次最长(22次/月→~48px)，月工时次之(44h→~32px)，耗时/人数较短
         const cols = [
-          { label: '月工时', before: numOrDash(r.beforeHours, 'h'), after: numOrDash(r.afterHours, 'h'), dir: changeDir(r.beforeHours, r.afterHours) },
-          { label: '频次', before: fmtFreq(r.beforeFreq), after: fmtFreq(r.afterFreq), dir: changeDir(r.beforeFreq, r.afterFreq) },
-          { label: '耗时', before: numOrDash(r.oldHoursPerTask, 'h', 1), after: numOrDash(r.newDuration, 'h', 1), dir: changeDir(r.oldHoursPerTask, r.newDuration) },
-          { label: '人数', before: numOrDash(r.beforePeopleCount, '人'), after: numOrDash(r.afterPeopleCount, '人'), dir: changeDir(r.beforePeopleCount, r.afterPeopleCount) },
+          { label: '频次', before: fmtFreq(r.beforeFreq), after: fmtFreq(r.afterFreq), dir: changeDir(r.beforeFreq, r.afterFreq), flex: 4 },
+          { label: '耗时', before: numOrDash(r.oldHoursPerTask, 'h', 1), after: numOrDash(r.newDuration, 'h', 1), dir: changeDir(r.oldHoursPerTask, r.newDuration), flex: 3 },
+          { label: '人数', before: numOrDash(r.beforePeopleCount, '人'), after: numOrDash(r.afterPeopleCount, '人'), dir: changeDir(r.beforePeopleCount, r.afterPeopleCount), flex: 3 },
+          { label: '月工时', before: numOrDash(r.beforeHours, 'h'), after: numOrDash(r.afterHours, 'h'), dir: changeDir(r.beforeHours, r.afterHours), flex: 3 },
         ];
+        const arrowColor = (dir: 'up' | 'down' | null) => dir === 'down' ? '#16a34a' : '#dc2626';
+        const valColor = (dir: 'up' | 'down' | null) => dir != null ? (dir === 'down' ? '#16a34a' : '#dc2626') : 'var(--foreground)';
         return (
           <div className="flex flex-col gap-[2px]">
-            {/* 表头：指标名 */}
-            <div className="flex text-[9px] font-semibold" style={{ color: 'var(--text-muted)' }}>
-              <span className="w-[28px]"></span>
-              {cols.map((c) => <span key={c.label} className="flex-1 text-center">{c.label}</span>)}
+            {/* 表头 */}
+            <div className="flex items-center text-[9px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+              <span style={{ width: 28 }}></span>
+              {cols.map((c) => <span key={c.label} style={{ flex: c.flex }} className="text-center">{c.label}</span>)}
             </div>
             {/* 前 */}
             <div className="flex items-center">
-              <span className="w-[28px] text-[9px] font-semibold text-center cho-col-before rounded-sm" style={{ color: '#b45309' }}>前</span>
-              {cols.map((c) => <span key={c.label} className="flex-1 text-right font-mono text-[11px] px-0.5" style={{ color: '#9ca3af' }}>{c.before}</span>)}
+              <span className="text-[9px] font-semibold text-center cho-col-before rounded-sm" style={{ width: 28, color: '#b45309' }}>前</span>
+              {cols.map((c) => <span key={c.label} style={{ flex: c.flex, color: '#9ca3af' }} className="text-right font-mono text-[11px] px-0.5 whitespace-nowrap">{c.before}</span>)}
             </div>
-            {/* 后 */}
+            {/* 后：无变化=默认色，有变化=彩色+箭头 */}
             <div className="flex items-center">
-              <span className="w-[28px] text-[9px] font-semibold text-center cho-col-after rounded-sm" style={{ color: '#047857' }}>后</span>
-              {cols.map((c) => <span key={c.label} className="flex-1 text-right font-mono text-[11px] font-medium px-0.5" style={{ color: c.dir === 'down' ? '#16a34a' : c.dir === 'up' ? '#dc2626' : 'var(--foreground)' }}>{c.after}</span>)}
+              <span className="text-[9px] font-semibold text-center cho-col-after rounded-sm" style={{ width: 28, color: '#047857' }}>后</span>
+              {cols.map((c) => (
+                <span key={c.label} style={{ flex: c.flex, color: valColor(c.dir) }} className="text-right font-mono text-[11px] font-medium px-0.5 whitespace-nowrap">
+                  {c.after}{c.dir && <span className="text-[9px] ml-0.5" style={{ color: arrowColor(c.dir) }}>{c.dir === 'down' ? '↓' : '↑'}</span>}
+                </span>
+              ))}
             </div>
           </div>
         );
