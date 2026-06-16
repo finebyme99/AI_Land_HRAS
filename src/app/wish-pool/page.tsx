@@ -18,44 +18,59 @@ import { useAuth } from '@/lib/auth-context';
 interface WishItem {
   id: string;
   recordUrl?: string;
-  title?: string;
-  briefIntro?: string;
-  sceneCategory?: string;
-  coreValue?: string;
-  sceneSource?: string;
-  regionCoefficient?: string;
-  landingProgress?: string;
-  competitionProgress?: string;
-  bizOwner?: string[];
-  aiOwner?: string[];
-  submitter?: string[];
-  teamMembers?: string[];
-  team?: string[];
-  teamType?: string;
-  beforeProcess?: string;
-  painPoints?: string[];
-  beforeFrequency?: string;
-  beforeOperationCount?: number;
-  beforeFreq?: number;
-  beforePeopleCount?: number;
-  beforeHoursPerTask?: number;
-  beforeMonthlyHours?: number;
-  monthlySavedHours?: number;
-  monthlySavedCost?: number;
-  costReductionNote?: string;
-  costSavedHours?: number;
-  totalSavedHours?: number;
-  afterProcess?: string;
-  afterFrequency?: string;
-  afterOperationCount?: number;
-  afterFreq?: number;
-  afterPeopleCount?: number;
-  afterHoursPerTask?: number;
-  afterMonthlyHours?: number;
-  reuseValue?: string;
-  totalEfficiencyRate?: number;
-  finalValueScore?: number;
-  valueRank?: number;
+  proposalNo?: string;           // 场景编号
+  title?: string;                // 场景名称
+  briefIntro?: string;           // 一句话简介
+  sceneCategory?: string;        // 场景分类
+  coreValue?: string;            // 核心价值
+  sceneSource?: string;          // 场景来源
+  regionCoefficient?: string;    // 场景归属地区系数
+  regionCoefficientValue?: number; // 场景归属地区系数值
+  landingProgress?: string;      // 落地进展
+  competitionProgress?: string;  // 大赛进展
+  reviewPeriod?: string;         // 评审周期
+  plannedStartDate?: string;     // 计划启动日期
+  pilotDate?: string;            // 试点上线日期
+  rolloutDate?: string;          // 推广上线日期
+  fullLaunchDate?: string;       // 全面上线日期
+  progressRecord?: string;       // 进展记录&链接
+  bizOwner?: string[];           // 业务负责人
+  aiOwner?: string[];            // AI负责人
+  submitter?: string[];          // 提报人
+  teamMembers?: string[];        // 组队成员
+  creator?: string[];            // 创建人
+  team?: string[];               // 提报团队
+  teamType?: string;             // 提报组队类型
+  aiTools?: string[];            // AI工具
+  beforeProcess?: string;        // 原业务场景及流程
+  painPoints?: string[];         // 原核心痛点
+  beforeFrequency?: string;      // 原操作频率
+  beforeOperationCount?: number; // 原操作次数
+  beforeFreq?: number;           // 原操作频次
+  beforePeopleCount?: number;    // 原操作人数
+  beforeHoursPerTask?: number;   // 原单次操作耗时
+  beforeMonthlyHours?: number;   // 原月均耗时
+  monthlySavedHours?: number;    // 月均提效节省工时
+  monthlySavedCost?: number;     // 月均降本费用
+  costReductionNote?: string;    // 降本费用说明
+  costSavedHours?: number;       // 月均降本折算工时
+  totalSavedHours?: number;      // 月均节省总工时
+  afterProcess?: string;         // 新业务流程
+  afterFrequency?: string;       // 新操作频率
+  afterOperationCount?: number;  // 新操作次数
+  afterFreq?: number;            // 新操作频次
+  afterPeopleCount?: number;     // 新操作人数
+  afterHoursPerTask?: number;    // 新单次操作耗时
+  afterMonthlyHours?: number;    // 新月均耗时
+  aiCost?: number;               // 月均Token费用
+  reuseValue?: string;           // 推广复用价值系数
+  reuseValueNumber?: number;     // 推广复用价值系数值
+  reuseValueLevel?: string;      // 推广复用价值等级
+  totalEfficiencyRate?: number;  // 总降本提效比例
+  finalValueScore?: number;      // 最终价值计分
+  valueRank?: number;            // 价值排名
+  implementation?: string;       // AI实现过程简述
+  implementationLink?: string;   // AI实现效果
 }
 
 interface Stats {

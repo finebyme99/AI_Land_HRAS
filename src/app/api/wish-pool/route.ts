@@ -11,45 +11,74 @@ const ZT_APP_ID = 'cli_a84a9ed9597fd01c';
 const FEISHU_API = 'https://open.feishu.cn/open-apis';
 
 // ── 字段ID映射（避免改名后失效）──
-const FIELD_MAP: Record<string, { key: string; type: 'text' | 'number' | 'select' | 'multi_select' | 'person' | 'formula' }> = {
-  fldDcOTnW4: { key: 'title', type: 'text' },
-  fldlpawKgA: { key: 'briefIntro', type: 'text' },
-  fldE8SZzmI: { key: 'sceneCategory', type: 'select' },
-  fldPxacMpt: { key: 'coreValue', type: 'select' },
-  fldThy9kKb: { key: 'sceneSource', type: 'select' },
-  fldXhEnBvg: { key: 'regionCoefficient', type: 'select' },
-  fldhwT0rxo: { key: 'landingProgress', type: 'select' },
-  fldB6kfpnh: { key: 'competitionProgress', type: 'select' },
-  fldOPdGFRc: { key: 'bizOwner', type: 'person' },
-  fld3pVZQVL: { key: 'aiOwner', type: 'person' },
-  fld9yLQYLi: { key: 'submitter', type: 'person' },
-  fldOgRb9sy: { key: 'teamMembers', type: 'person' },
-  fldSV3R1G8: { key: 'team', type: 'multi_select' },
-  fldtBn1gev: { key: 'teamType', type: 'select' },
-  fldkkE1EGV: { key: 'beforeProcess', type: 'text' },
-  fldNALVQXX: { key: 'painPoints', type: 'multi_select' },
-  fldUptCqVS: { key: 'beforeFrequency', type: 'select' },
-  fldw19zbWG: { key: 'beforeOperationCount', type: 'number' },
-  fldDtaPr2p: { key: 'beforeFreq', type: 'formula' },
-  fldx49PLQr: { key: 'beforePeopleCount', type: 'number' },
-  fldV4jkM2n: { key: 'beforeHoursPerTask', type: 'number' },
-  fldmy5aJih: { key: 'beforeMonthlyHours', type: 'formula' },
-  fld6rI1t6G: { key: 'monthlySavedHours', type: 'formula' },
-  fldzOLsLo8: { key: 'monthlySavedCost', type: 'number' },
-  flddlLIFbK: { key: 'costReductionNote', type: 'text' },
-  fldDSt92Tf: { key: 'costSavedHours', type: 'formula' },
-  fld5C3AaoI: { key: 'totalSavedHours', type: 'formula' },
-  fld7o13soD: { key: 'afterProcess', type: 'text' },
-  fldsfXkpC8: { key: 'afterFrequency', type: 'select' },
-  fldGv5AfiQ: { key: 'afterOperationCount', type: 'number' },
-  fld5yUP3uT: { key: 'afterFreq', type: 'formula' },
-  fldn45vqCo: { key: 'afterPeopleCount', type: 'number' },
-  flda1D6jod: { key: 'afterHoursPerTask', type: 'number' },
-  fldsCdkEyn: { key: 'afterMonthlyHours', type: 'formula' },
-  fld4DkPbMz: { key: 'reuseValue', type: 'select' },
-  fldbn5SIVj: { key: 'totalEfficiencyRate', type: 'formula' },
-  fldkABrLqx: { key: 'finalValueScore', type: 'formula' },
-  flddtbTw7z: { key: 'valueRank', type: 'formula' },
+// 完整映射表见：memory/project_field_mapping.md
+const FIELD_MAP: Record<string, { key: string; type: 'text' | 'number' | 'select' | 'multi_select' | 'person' | 'formula' | 'date' | 'url' }> = {
+  // 场景信息
+  fld2VQOHAv: { key: 'proposalNo', type: 'text' },           // 场景编号
+  fldDcOTnW4: { key: 'title', type: 'text' },                // 场景名称
+  fldlpawKgA: { key: 'briefIntro', type: 'text' },           // 一句话简介
+  fldE8SZzmI: { key: 'sceneCategory', type: 'select' },      // 场景分类
+  fldPxacMpt: { key: 'coreValue', type: 'select' },          // 核心价值
+  fldThy9kKb: { key: 'sceneSource', type: 'select' },        // 场景来源
+  fldOPdGFRc: { key: 'bizOwner', type: 'person' },           // 业务负责人
+  fld3pVZQVL: { key: 'aiOwner', type: 'person' },            // AI负责人
+
+  // 落地进展
+  fldhwT0rxo: { key: 'landingProgress', type: 'select' },    // 落地进展
+  fldwqzQgaf: { key: 'plannedStartDate', type: 'date' },     // 计划启动日期
+  fldNpQq6dB: { key: 'pilotDate', type: 'date' },            // 试点上线日期
+  fldMxSDEFj: { key: 'rolloutDate', type: 'date' },          // 推广上线日期
+  fldn9joTVD: { key: 'fullLaunchDate', type: 'date' },       // 全面上线日期
+  fldpCNQCqH: { key: 'progressRecord', type: 'text' },       // 进展记录&链接
+
+  // AI大赛
+  fldB6kfpnh: { key: 'competitionProgress', type: 'select' }, // 大赛进展
+  fldPG9fMUJ: { key: 'reviewPeriod', type: 'text' },          // 评审周期
+  fld9yLQYLi: { key: 'submitter', type: 'person' },           // 提报人
+  fldOgRb9sy: { key: 'teamMembers', type: 'person' },         // 组队成员
+  fldSaGRXZ2: { key: 'creator', type: 'person' },             // 创建人
+  fldSV3R1G8: { key: 'team', type: 'multi_select' },          // 提报团队
+  fldtBn1gev: { key: 'teamType', type: 'select' },            // 提报组队类型
+  fldfITi2Qi: { key: 'aiTools', type: 'multi_select' },       // AI工具
+
+  // AI前指标
+  fldkkE1EGV: { key: 'beforeProcess', type: 'text' },         // 原业务场景及流程
+  fldNALVQXX: { key: 'painPoints', type: 'multi_select' },    // 原核心痛点
+  fldUptCqVS: { key: 'beforeFrequency', type: 'select' },     // 原操作频率
+  fldw19zbWG: { key: 'beforeOperationCount', type: 'number' },// 原操作次数
+  fldDtaPr2p: { key: 'beforeFreq', type: 'formula' },         // 原操作频次
+  fldx49PLQr: { key: 'beforePeopleCount', type: 'number' },   // 原操作人数
+  fldV4jkM2n: { key: 'beforeHoursPerTask', type: 'number' },  // 原单次操作耗时
+  fldmy5aJih: { key: 'beforeMonthlyHours', type: 'formula' }, // 原月均耗时
+
+  // AI后指标
+  fld7o13soD: { key: 'afterProcess', type: 'text' },          // 新业务流程
+  fldsfXkpC8: { key: 'afterFrequency', type: 'select' },      // 新操作频率
+  fldGv5AfiQ: { key: 'afterOperationCount', type: 'number' }, // 新操作次数
+  fld5yUP3uT: { key: 'afterFreq', type: 'formula' },          // 新操作频次
+  fldn45vqCo: { key: 'afterPeopleCount', type: 'number' },    // 新操作人数
+  flda1D6jod: { key: 'afterHoursPerTask', type: 'number' },   // 新单次操作耗时
+  fldsCdkEyn: { key: 'afterMonthlyHours', type: 'formula' },  // 新月均耗时
+  fldfHuekYe: { key: 'aiCost', type: 'number' },              // 月均Token费用
+
+  // 价值计分
+  fld6rI1t6G: { key: 'monthlySavedHours', type: 'formula' },  // 月均提效节省工时
+  fldzOLsLo8: { key: 'monthlySavedCost', type: 'number' },    // 月均降本费用
+  flddlLIFbK: { key: 'costReductionNote', type: 'text' },     // 降本费用说明
+  fldDSt92Tf: { key: 'costSavedHours', type: 'formula' },     // 月均降本折算工时
+  fld5C3AaoI: { key: 'totalSavedHours', type: 'formula' },    // 月均节省总工时
+  fldbn5SIVj: { key: 'totalEfficiencyRate', type: 'formula' },// 总降本提效比例
+  fldXhEnBvg: { key: 'regionCoefficient', type: 'select' },   // 场景归属地区系数
+  fldpbRx0ap: { key: 'regionCoefficientValue', type: 'number' }, // 场景归属地区系数值
+  fld4DkPbMz: { key: 'reuseValue', type: 'select' },          // 推广复用价值系数
+  fldGDCshHC: { key: 'reuseValueNumber', type: 'number' },    // 推广复用价值系数值
+  fldfup5hBp: { key: 'reuseValueLevel', type: 'select' },     // 推广复用价值等级
+  fldkABrLqx: { key: 'finalValueScore', type: 'formula' },    // 最终价值计分
+  flddtbTw7z: { key: 'valueRank', type: 'formula' },          // 价值排名
+
+  // 实现过程
+  fld9rhGAA6: { key: 'implementation', type: 'text' },        // AI实现过程简述
+  fld0lveT5q: { key: 'implementationLink', type: 'url' },     // AI实现效果
 };
 
 // 构建反向映射（key → fieldId）
@@ -105,6 +134,18 @@ function extractValue(value: any, type: string): unknown {
         return value.map((v: { name?: string; id?: string }) => v.name ?? v.id ?? '');
       }
       return [];
+
+    case 'date':
+      // 飞书日期字段返回时间戳（毫秒）
+      if (typeof value === 'number') return new Date(value).toISOString();
+      if (typeof value === 'string') return value;
+      return null;
+
+    case 'url':
+      // 飞书链接字段返回 {link, text} 对象
+      if (typeof value === 'object' && value !== null && 'link' in value) return value.link;
+      if (typeof value === 'string') return value;
+      return null;
 
     default:
       return value;
