@@ -15,12 +15,14 @@ import {
   BellOutlined,
   LogoutOutlined,
   TeamOutlined,
+  StarOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 
 const navItems = [
   { key: '/', label: '首页', icon: <HomeOutlined /> },
   { key: '/cases', label: 'HRAS案例库', icon: <BookOutlined /> },
+  { key: '/wish-pool', label: '许愿池', icon: <StarOutlined />, adminOnly: true },
   { key: '/competitions', label: 'AI大赛', icon: <TrophyOutlined /> },
   { key: '/courses', label: '公开课', icon: <ReadOutlined /> },
   { key: '/apps', label: '工具推荐', icon: <AppstoreOutlined /> },
@@ -38,6 +40,12 @@ export default function Navigation() {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { user, loading, isAdmin, isReviewer, signOut } = useAuth();
+
+  // 根据权限过滤导航项
+  const filteredNavItems = navItems.filter((item) => {
+    if ('adminOnly' in item && item.adminOnly) return isAdmin;
+    return true;
+  });
 
   const handleLogout = async () => {
     await signOut();
@@ -65,7 +73,7 @@ export default function Navigation() {
             </span>
           </Link>
           <nav className="flex items-center gap-1">
-            {navItems.map((item) => {
+            {filteredNavItems.map((item) => {
               const active = pathname === item.key || (item.key !== '/' && pathname.startsWith(item.key));
               return (
                 <Link
@@ -263,7 +271,7 @@ export default function Navigation() {
           borderTop: '1px solid rgba(255, 255, 255, 0.7)',
         }}
       >
-        {navItems.slice(0, 5).map((item) => {
+        {filteredNavItems.slice(0, 5).map((item) => {
           const active = pathname === item.key;
           return (
             <Link

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HR AI 场景价值看板 — CHO 决策视角</title>
+<style>
+  :root {
+    --gold: #f59e0b; --silver: #94a3b8; --bronze: #d97706;
+    --blue: #3b82f6; --green: #22c55e; --red: #ef4444;
+    --purple: #8b5cf6; --cyan: #06b6d4; --pink: #ec4899;
+    --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0;
+    --text: #1e293b; --text2: #64748b; --text3: #94a3b8;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, 'SF Pro Display', 'Inter', 'PingFang SC', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+
+  /* Header */
+  .header { background: var(--card); border-bottom: 1px solid var(--border); padding: 16px 24px; position: sticky; top: 0; z-index: 10; }
+  .header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 18px; font-weight: 700; }
+  .header p { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; background: #f1f5f9; border-radius: 8px; padding: 3px; }
+  .tab { padding: 6px 16px; border-radius: 6px; border: none; background: none; font-size: 13px; font-weight: 500; color: var(--text2); cursor: pointer; transition: all .2s; }
+  .tab.active { background: white; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Layout */
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .space > * + * { margin-top: 16px; }
+
+  /* Card */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .card-head { padding: 14px 20px 10px; border-bottom: 1px solid #f1f5f9; }
+  .card-head h3 { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+  .card-head .sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .card-body { padding: 18px 20px; }
+
+  /* Metric */
+  .metric-label { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .metric-value { font-size: 28px; font-weight: 800; line-height: 1.1; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* HBar */
+  .hbar { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+  .hbar-label { width: 100px; text-align: right; font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+  .hbar-track { flex: 1; height: 18px; background: #f1f5f9; border-radius: 9px; overflow: hidden; }
+  .hbar-fill { height: 100%; border-radius: 9px; transition: width .6s ease; }
+  .hbar-val { width: 60px; font-size: 11px; font-family: 'SF Mono', monospace; color: var(--text2); flex-shrink: 0; }
+
+  /* Status pill */
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; color: white; }
+
+  /* Table */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th { text-align: left; padding: 8px 10px; color: var(--text2); font-weight: 500; font-size: 11px; border-bottom: 1px solid var(--border); }
+  .tbl td { padding: 8px 10px; border-bottom: 1px solid #f8fafc; }
+  .tbl tr:hover { background: #f8fafc; }
+  .tbl .mono { font-family: 'SF Mono', monospace; color: var(--text2); }
+  .tbl .num { text-align: right; font-family: 'SF Mono', monospace; color: var(--text2); }
+
+  /* Rank bar */
+  .rank-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .rank-badge { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; flex-shrink: 0; }
+  .rank-info { flex: 1; min-width: 0; }
+  .rank-name { font-size: 13px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .rank-bar-track { margin-top: 4px; height: 16px; background: #f1f5f9; border-radius: 8px; overflow: hidden; }
+  .rank-bar-fill { height: 100%; border-radius: 8px; display: flex; align-items: center; padding-left: 6px; transition: width .6s ease; }
+  .rank-bar-text { font-size: 10px; color: white; font-family: 'SF Mono', monospace; white-space: nowrap; }
+  .rank-stats { text-align: right; flex-shrink: 0; width: 70px; }
+  .rank-stats div { font-size: 11px; }
+
+  /* Alert box */
+  .alert { padding: 12px 14px; border-radius: 8px; margin-top: 14px; font-size: 12px; }
+  .alert-red { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .alert-amber { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .alert p + p { margin-top: 4px; }
+
+  /* Gap card */
+  .gap-card { border-radius: 8px; padding: 14px; border: 1px solid; }
+  .gap-card.critical { background: #fef2f2; border-color: #fecaca; }
+  .gap-card.medium { background: #fffbeb; border-color: #fde68a; }
+  .gap-card.low { background: #f8fafc; border-color: #e2e8f0; }
+  .gap-head { display: flex; justify-content: space-between; align-items: center; }
+  .gap-sev { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+  .gap-sev.critical { background: #fee2e2; color: #b91c1c; }
+  .gap-sev.medium { background: #fef3c7; color: #92400e; }
+  .gap-sev.low { background: #e2e8f0; color: #475569; }
+  .gap-bar { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .gap-bar-fill { height: 100%; border-radius: 3px; }
+  .gap-meta { font-size: 11px; font-family: monospace; color: var(--text2); }
+  .gap-desc { font-size: 11px; color: var(--text2); margin-top: 6px; }
+  .gap-fix { font-size: 11px; color: var(--blue); margin-top: 3px; }
+
+  /* Stat boxes */
+  .stat-box { border-radius: 10px; padding: 16px; text-align: center; }
+  .stat-box .num { font-size: 32px; font-weight: 800; }
+  .stat-box .label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  /* Formula card */
+  .formula-card { border-radius: 10px; padding: 14px; }
+  .formula-card h4 { font-size: 13px; font-weight: 600; }
+  .formula-card p { font-size: 11px; margin-top: 3px; }
+
+  /* Funnel */
+  .funnel { display: flex; align-items: flex-end; gap: 10px; height: 180px; padding: 0 10px; }
+  .funnel-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .funnel-bar { width: 100%; border-radius: 6px 6px 0 0; transition: height .5s ease; }
+  .funnel-num { font-size: 16px; font-weight: 700; color: var(--text); }
+  .funnel-label { font-size: 11px; color: var(--text2); text-align: center; line-height: 1.2; }
+
+  /* Date fill */
+  .date-fill { background: #f8fafc; border-radius: 10px; padding: 14px; text-align: center; }
+  .date-fill .big { font-size: 22px; font-weight: 700; color: #cbd5e1; }
+  .date-fill .lbl { font-size: 11px; color: var(--text2); margin-top: 4px; }
+  .date-fill .bar { height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .date-fill .bar-fill { height: 100%; background: var(--blue); border-radius: 2px; }
+
+  .hidden { display: none; }
+  .mt4 { margin-top: 16px; }
+  .mb4 { margin-bottom: 16px; }
+  @media (max-width: 768px) {
+    .grid2, .grid4 { grid-template-columns: 1fr; }
+    .header-inner { flex-direction: column; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <h1>HR AI 场景价值看板</h1>
+      <p>CHO / 管理层决策视角 · 22 个场景 · 数据截至 2026-06-16</p>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="overview">总览</button>
+      <button class="tab" data-tab="pipeline">落地管线</button>
+      <button class="tab" data-tab="value">价值排名</button>
+      <button class="tab" data-tab="gaps">数据质量</button>
+    </div>
+  </div>
+</div>
+
+<div class="container" id="content"></div>
+
+<script>
+// ── Data ──
+const D = [
+  {id:"AI052",name:"Aily行政服务台基于知识库智能回答",cat:"行政管理",team:"ZT_ASSC",prog:"",contest:"评审中",cycle:"2605",oldH:595389,newH:42240,savedH:553149,cost:0,totalS:553149,ratio:.929,vs:1659446,rank:1,tier:"金",val:"提效",src:"AI大赛"},
+  {id:"AI059",name:"人力数据自动可视化分析平台",cat:"数据分析",team:"",prog:"",contest:"未参赛",cycle:"",oldH:23232,newH:0,savedH:23232,cost:0,totalS:23232,ratio:1,vs:139392,rank:2,tier:"金",val:"提效",src:"AI许愿"},
+  {id:"AI058",name:"人才盘点全流程管理平台",cat:"组织与人才发展",team:"",prog:"",contest:"未参赛",cycle:"",oldH:440,newH:0,savedH:440,cost:13333,totalS:618,ratio:1,vs:3707,rank:3,tier:"金",val:"提效",src:"AI许愿"},
+  {id:"AI063",name:"调薪/奖金分配平台",cat:"薪酬绩效",team:"",prog:"待启动",contest:"未参赛",cycle:"",oldH:667,newH:0,savedH:667,cost:0,totalS:667,ratio:1,vs:3000,rank:4,tier:"金",val:"提效",src:"AI许愿"},
+  {id:"AI047",name:"考勤签字报表核对分发确认流程自动化",cat:"基础人事支持",team:"GUS",prog:"",contest:"评审中",cycle:"2605",oldH:480,newH:16,savedH:464,cost:0,totalS:464,ratio:.967,vs:1856,rank:5,tier:"银",val:"提效",src:"AI大赛"},
+  {id:"AI057",name:"组织能力数据自动分类与分析",cat:"组织与人才发展",team:"",prog:"",contest:"未参赛",cycle:"",oldH:300,newH:0,savedH:300,cost:0,totalS:300,ratio:1,vs:1350,rank:6,tier:"金",val:"提效",src:"AI许愿"},
+  {id:"AI048",name:"活动表彰海报设计自动生成",cat:"文化氛围",team:"GUS",prog:"",contest:"评审中",cycle:"2605",oldH:150,newH:2,savedH:148,cost:1500,totalS:168,ratio:.988,vs:756,rank:7,tier:"金",val:"降本",src:"AI大赛"},
+  {id:"AI060",name:"干部360评估",cat:"组织与人才发展",team:"",prog:"",contest:"未参赛",cycle:"",oldH:60,newH:0,savedH:60,cost:4916,totalS:126,ratio:1,vs:753,rank:8,tier:"金",val:"提效",src:"AI许愿"},
+  {id:"AI049",name:"亚马逊月度账单自动整理",cat:"行政管理",team:"GF_ASSC",prog:"",contest:"评审中",cycle:"2605",oldH:240,newH:48,savedH:192,cost:0,totalS:192,ratio:.8,vs:384,rank:9,tier:"铜",val:"提效",src:"AI大赛"},
+  {id:"AI044",name:"线下考勤签字表自动识别整理接入OTWS",cat:"考勤管理",team:"ZT_HSSC",prog:"",contest:"评审中",cycle:"2605",oldH:80,newH:11,savedH:69,cost:0,totalS:69,ratio:.863,vs:276,rank:10,tier:"银",val:"提效",src:"AI大赛"},
+  {id:"AI042",name:"运输采购竞价系统",cat:"日常工作",team:"",prog:"",contest:"未参赛",cycle:"",oldH:176,newH:0,savedH:176,cost:500,totalS:186,ratio:1,vs:186,rank:11,tier:"铜",val:"提效",src:"AI许愿"},
+  {id:"AI055",name:"薪资流水录屏生成标准流水收集表",cat:"基础人事支持",team:"ZT_HSSC",prog:"",contest:"评审中",cycle:"2605",oldH:330,newH:229,savedH:101,cost:0,totalS:101,ratio:.307,vs:101,rank:12,tier:"铜",val:"提效",src:"AI大赛"},
+  {id:"AI051",name:"培训项目全流程计划生成",cat:"日常工作",team:"LBU",prog:"",contest:"评审中",cycle:"2605",oldH:40,newH:12,savedH:28,cost:0,totalS:28,ratio:.7,vs:84,rank:13,tier:"银",val:"提效",src:"AI大赛"},
+  {id:"AI056",name:"劳务工考勤表与发票自动整理核对",cat:"核算与报账",team:"ZT_HSSC",prog:"",contest:"评审中",cycle:"2605",oldH:280,newH:196,savedH:84,cost:0,totalS:84,ratio:.3,vs:84,rank:14,tier:"铜",val:"提效",src:"AI大赛"},
+  {id:"AI045",name:"国内补贴自动核算",cat:"薪酬绩效",team:"GF_HSSC",prog:"",contest:"评审中",cycle:"2605",oldH:24,newH:.09,savedH:24,cost:0,totalS:24,ratio:.996,vs:72,rank:15,tier:"银",val:"提效",src:"AI大赛"},
+  {id:"AI040",name:"FBU交付前台人工成本工时成本拆分自动化",cat:"数据分析",team:"",prog:"待启动",contest:"未参赛",cycle:"",oldH:8,newH:0,savedH:8,cost:0,totalS:8,ratio:1,vs:16,rank:16,tier:"铜",val:"提效",src:"AI许愿"},
+  {id:"AI043",name:"意大利PDF工资单一键转为Excel表",cat:"核算与报账",team:"GEU",prog:"",contest:"评审中",cycle:"2606",oldH:23,newH:19,savedH:4,cost:0,totalS:4,ratio:.178,vs:16,rank:17,tier:"银",val:"提效",src:"AI大赛"},
+  {id:"AI050",name:"人力&业务数据分析与看板生成",cat:"数据分析",team:"ABU",prog:"",contest:"评审中",cycle:"2605",oldH:8,newH:3,savedH:5,cost:0,totalS:5,ratio:.625,vs:15,rank:18,tier:"银",val:"提效",src:"AI大赛"},
+  {id:"AI054",name:"招聘背调录音生成可视化背调报告",cat:"基础人事支持",team:"ZT_HSSC",prog:"",contest:"评审中",cycle:"2605",oldH:99,newH:86,savedH:13,cost:0,totalS:13,ratio:.133,vs:13,rank:19,tier:"铜",val:"提效",src:"AI大赛"},
+  {id:"AI062",name:"奖金分配工具",cat:"薪酬绩效",team:"",prog:"",contest:"未参赛",cycle:"",oldH:3.5,newH:0,savedH:3.5,cost:0,totalS:3.5,ratio:1,vs:11,rank:21,tier:"金",val:"提效",src:"AI许愿"},
+  {id:"AI053",name:"招聘与内推奖金自动核算",cat:"核算与报账",team:"ZT_HSSC",prog:"",contest:"评审中",cycle:"2605",oldH:12,newH:6,savedH:6,cost:0,totalS:6,ratio:.5,vs:6,rank:22,tier:"铜",val:"提效",src:"AI大赛"},
+  {id:"AI046",name:"员工关怀文化物料设计自动生成",cat:"文化氛围",team:"GUS",prog:"",contest:"评审中",cycle:"2605",oldH:0,newH:0,savedH:0,cost:0,totalS:0,ratio:0,vs:0,rank:49,tier:"金",val:"降本",src:"AI大赛"},
+];
+
+const TC = {"金":"#f59e0b","银":"#94a3b8","铜":"#d97706"};
+const CC = {"数据分析":"#6366f1","招聘管理":"#f97316","薪酬绩效":"#3b82f6","培训管理":"#a855f7","组织与人才发展":"#06b6d4","文化氛围":"#ec4899","核算与报账":"#8b5cf6","基础人事支持":"#22c55e","行政管理":"#84cc16","日常工作":"#10b981","考勤管理":"#3b82f6"};
+const SC = {"待启动":"#94a3b8","训练验证中":"#60a5fa","试点上线":"#fb923c","推广上线":"#38bdf8","全面上线":"#4ade80","关闭":"#f87171"};
+const STAGES = ["待启动","训练验证中","试点上线","推广上线","全面上线","关闭"];
+
+function fmt(n){if(n>=1e4)return(n/1e4).toFixed(1)+"万";if(n>=1e3)return(n/1e3).toFixed(1)+"k";return Math.round(n).toString();}
+function fmtF(n){return n.toLocaleString("zh-CN",{maximumFractionDigits:0});}
+
+// ── Stats ──
+const totalSaved = D.reduce((s,d)=>s+d.totalS,0);
+const totalCost = D.reduce((s,d)=>s+d.cost,0);
+const avgRatio = D.filter(d=>d.ratio>0).reduce((s,d,_,a)=>s+d.ratio/a.length,0);
+const catMap={},teamMap={},tierC={"金":0,"银":0,"铜":0},progMap={};
+STAGES.forEach(s=>progMap[s]=0); progMap["未标记"]=0;
+D.forEach(d=>{
+  catMap[d.cat]=(catMap[d.cat]||0)+d.totalS;
+  if(d.team)teamMap[d.team]=(teamMap[d.team]||0)+d.totalS;
+  tierC[d.tier]++;
+  if(d.prog&&STAGES.includes(d.prog))progMap[d.prog]++;else progMap["未标记"]++;
+});
+const contestIn = D.filter(d=>d.contest==="评审中").length;
+const contestOut = D.filter(d=>d.contest==="未参赛").length;
+
+function hbar(label,val,max,color){
+  const pct=max>0?(val/max)*100:0;
+  return `<div class="hbar"><span class="hbar-label">${label}</span><div class="hbar-track"><div class="hbar-fill" style="width:${Math.max(pct,1)}%;background:${color}"></div></div><span class="hbar-val">${fmt(val)}h</span></div>`;
+}
+
+// ── Tab Renderers ──
+function renderOverview(){
+  const maxCat=Math.max(...Object.values(catMap));
+  const maxTeam=Math.max(...Object.values(teamMap));
+  return `
+  <div class="grid4 mb4">
+    <div class="card"><div class="card-body">
+      <div class="metric-label">月均节省总工时</div>
+      <div class="metric-value" style="color:#1e40af">${fmt(totalSaved)}h</div>
+      <div class="metric-sub">≈ ${fmtF(Math.round(totalSaved/8/22))} 人·天/月</div>
+    </div></div>
+    <div class="card"><div class="card-body">
+      <div class="metric-label">月均降本费用</div>
+      <div class="metric-value" style="color:#059669">¥${fmtF(totalCost)}</div>
+      <div class="metric-sub">不含内部人力成本</div>
+    </div></div>
+    <div class="card"><div class="card-body">
+      <div class="metric-label">平均提效比例</div>
+      <div class="metric-value" style="color:#7c3aed">${(avgRatio*100).toFixed(0)}%</div>
+      <div class="metric-sub">有提效数据的场景均值</div>
+    </div></div>
+    <div class="card"><div class="card-body">
+      <div class="metric-label">高复用场景（金/银/铜）</div>
+      <div style="display:flex;align-items:end;gap:16px">
+        <div><div class="metric-value" style="color:#f59e0b;font-size:24px">${tierC["金"]}</div><div class="metric-sub">金</div></div>
+        <div><div class="metric-value" style="color:#94a3b8;font-size:24px">${tierC["银"]}</div><div class="metric-sub">银</div></div>
+        <div><div class="metric-value" style="color:#d97706;font-size:24px">${tierC["铜"]}</div><div class="metric-sub">铜</div></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="grid2 mb4">
+    <div class="card">
+      <div class="card-head"><h3>按场景分类 — 月均节省工时</h3><div class="sub">横向比较各职能领域的 AI 提效贡献</div></div>
+      <div class="card-body">${Object.entries(catMap).sort((a,b)=>b[1]-a[1]).map(([c,v])=>hbar(c,v,maxCat,CC[c]||"#6b7280")).join("")}</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>按提报团队 — 月均节省工时</h3><div class="sub">识别 AI 转型的先锋团队</div></div>
+      <div class="card-body">
+        ${Object.entries(teamMap).sort((a,b)=>b[1]-a[1]).map(([t,v])=>hbar(t,v,maxTeam,"#6366f1")).join("")}
+        <div class="alert alert-amber" style="margin-top:12px">⚠ 9 个 AI 许愿场景未填写提报团队，无法归因到团队贡献排名</div>
+      </div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-head"><h3>落地进展</h3><div class="sub">场景从启动到全面上线的推进状态</div></div>
+      <div class="card-body">
+        <div style="display:flex;align-items:flex-end;gap:6px;height:120px;padding:0 4px">
+          ${(()=>{const mx=Math.max(...STAGES.map(s=>progMap[s]),1);return STAGES.map(s=>{const c=progMap[s];const h=Math.max((c/mx)*90,3);return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:14px;font-weight:700;color:var(--text)">'+c+'</div><div style="width:100%;border-radius:4px 4px 0 0;height:'+h+'px;background:'+SC[s]+'"></div><div style="font-size:10px;color:var(--text2);text-align:center;line-height:1.15">'+s+'</div></div>';}).join("")})()}
+        </div>
+        <div class="alert alert-amber" style="margin-top:12px">
+          <span style="font-weight:600">${progMap["未标记"]} / ${D.length} 场景未标记进展</span> — 建议设为必填字段
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>大赛参赛状态</h3><div class="sub">AI 大赛 vs AI 许愿 的场景分布与评审进度</div></div>
+      <div class="card-body">
+        <div class="grid2" style="gap:10px">
+          <div class="stat-box" style="background:#eff6ff;padding:12px"><div class="num" style="color:#3b82f6;font-size:28px">${contestIn}</div><div class="label">AI大赛 · 评审中</div></div>
+          <div class="stat-box" style="background:#f0fdf4;padding:12px"><div class="num" style="color:#16a34a;font-size:28px">0</div><div class="label">AI大赛 · 终审通过</div></div>
+          <div class="stat-box" style="background:#fef2f2;padding:12px"><div class="num" style="color:#ef4444;font-size:28px">0</div><div class="label">AI大赛 · 取消</div></div>
+          <div class="stat-box" style="background:#f5f3ff;padding:12px"><div class="num" style="color:#8b5cf6;font-size:28px">${contestOut}</div><div class="label">AI许愿 · 未参赛</div></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderPipeline(){
+  const maxP=Math.max(...STAGES.map(s=>progMap[s]),1);
+  return `
+  <div class="card mb4">
+    <div class="card-head"><h3>落地进展漏斗</h3><div class="sub">场景从启动到全面上线的推进状态</div></div>
+    <div class="card-body">
+      <div class="funnel">
+        ${STAGES.map(s=>{const c=progMap[s];const h=Math.max((c/maxP)*150,4);return `<div class="funnel-col"><div class="funnel-num">${c}</div><div class="funnel-bar" style="height:${h}px;background:${SC[s]}"></div><div class="funnel-label">${s}</div></div>`;}).join("")}
+      </div>
+      <div class="alert alert-red">
+        <p style="font-weight:600">⚠ 关键问题：${progMap["未标记"]} / ${D.length} 个场景未标记落地进展</p>
+        <p>绝大多数场景缺乏进度追踪数据，CHO 无法判断实际推进节奏。建议：将「落地进展」设为必填字段，建立每周/每月更新机制。</p>
+      </div>
+    </div>
+  </div>
+  <div class="card mb4">
+    <div class="card-head"><h3>里程碑日期填写率</h3><div class="sub">构建时间线视图、做价值排期的数据基础</div></div>
+    <div class="card-body">
+      <div class="grid4">
+        ${["计划启动日期","试点上线日期","推广上线日期","全面上线日期"].map(f=>`<div class="date-fill"><div class="big">~0/${D.length}</div><div class="lbl">${f}</div><div class="bar"><div class="bar-fill" style="width:0%"></div></div></div>`).join("")}
+      </div>
+      <div class="alert alert-amber" style="margin-top:12px">
+        里程碑日期几乎全部为空 → 无法构建时间线视图，无法做价值排期。建议：至少对 Top 10 高价值场景补填计划和实际上线日期。
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>各场景落地进展一览</h3><div class="sub">按价值排名展示每个场景的当前状态</div></div>
+    <div class="card-body" style="overflow-x:auto">
+      <table class="tbl"><thead><tr>
+        <th>排名</th><th>场景</th><th>分类</th><th>等级</th><th>落地进展</th><th style="text-align:right">月节省</th>
+      </tr></thead><tbody>
+        ${[...D].sort((a,b)=>a.rank-b.rank).map(d=>`<tr>
+          <td class="mono">#${d.rank}</td>
+          <td><span class="mono" style="color:var(--text3);margin-right:4px">${d.id}</span>${d.name.length>26?d.name.slice(0,26)+"…":d.name}</td>
+          <td><span class="pill" style="background:${CC[d.cat]||"#6b7280"}">${d.cat}</span></td>
+          <td><span class="pill" style="background:${TC[d.tier]};width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">${d.tier}</span></td>
+          <td>${d.prog?`<span class="pill" style="background:${SC[d.prog]}">${d.prog}</span>`:'<span style="color:#cbd5e1;font-size:12px">— 未填</span>'}</td>
+          <td class="num">${fmt(d.totalS)}h</td>
+        </tr>`).join("")}
+      </tbody></table>
+    </div>
+  </div>`;
+}
+
+function renderValue(){
+  const maxVS=D[0].vs;
+  return `
+  <div class="card mb4">
+    <div class="card-head"><h3>Top 10 高价值场景</h3><div class="sub">按最终价值计分排名 = 月均节省总工时 × 地区系数 × 复用系数</div></div>
+    <div class="card-body">
+      ${[...D].sort((a,b)=>a.rank-b.rank).slice(0,10).map((d,i)=>{
+        const pct=(d.vs/maxVS)*100;
+        const bg=i<3?"#f59e0b":"#e2e8f0";const fg=i<3?"#fff":"#64748b";
+        return `<div class="rank-item">
+          <div class="rank-badge" style="background:${bg}">${d.rank}</div>
+          <div class="rank-info">
+            <div class="rank-name">
+              ${d.name}
+              <span class="pill" style="background:${TC[d.tier]};font-size:10px">${d.tier}</span>
+              <span style="font-size:11px;color:var(--text3)">${d.cat}</span>
+            </div>
+            <div class="rank-bar-track">
+              <div class="rank-bar-fill" style="width:${Math.max(pct,3)}%;background:linear-gradient(90deg,${TC[d.tier]}cc,${TC[d.tier]}55)">
+                ${pct>15?`<span class="rank-bar-text">${fmtF(Math.round(d.vs))}</span>`:""}
+              </div>
+            </div>
+          </div>
+          <div class="rank-stats">
+            <div class="mono" style="color:var(--text)">${fmt(d.totalS)}h/月</div>
+            <div style="color:var(--text3)">${(d.ratio*100).toFixed(0)}% 提效</div>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>
+  <div class="card mb4">
+    <div class="card-head"><h3>价值计分公式解读</h3><div class="sub">最终价值计分 = 月均节省总工时 × 地区系数 × 复用系数</div></div>
+    <div class="card-body">
+      <div class="grid2">
+        <div class="formula-card" style="background:#eff6ff">
+          <h4 style="color:#1e40af">月均节省总工时</h4>
+          <p style="color:#3b82f6">= 月均提效节省工时 + 月均降本折算工时</p>
+          <p style="color:#60a5fa">降本折算：月均降本费用 ÷ (50 × 地区系数)</p>
+        </div>
+        <div class="formula-card" style="background:#f0fdf4">
+          <h4 style="color:#166534">场景归属地区系数</h4>
+          <p style="color:#16a34a">国内 ×1 · 海外 ×2 · 全球 ×1.5</p>
+          <p style="color:#4ade80">基于全球 HR 人力成本水平</p>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="formula-card" style="background:#fffbeb">
+          <h4 style="color:#92400e">推广复用价值系数</h4>
+          <p style="color:#d97706">个人 ×1 · BU 内 ×2 · 跨 BU ×3 · 全集团 ×4</p>
+          <p style="color:#f59e0b">复用范围越广，价值倍数越高</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>核心价值分布</h3><div class="sub">提效 vs 降本的场景区分</div></div>
+    <div class="card-body">
+      <div class="grid2">
+        <div class="stat-box" style="background:#fff7ed">
+          <div class="num" style="color:#f97316">${D.filter(d=>d.val==="提效").length}</div>
+          <div class="label">提效型场景</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">以节省人力工时为核心</div>
+        </div>
+        <div class="stat-box" style="background:#ecfdf5">
+          <div class="num" style="color:#10b981">${D.filter(d=>d.val.includes("降本")).length}</div>
+          <div class="label">降本型场景</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">直接降低非人力运营成本</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderGaps(){
+  const gaps = [
+    {field:"落地进展",filled:D.filter(d=>d.prog).length,total:D.length,sev:"critical",impact:"无法展示进度漏斗，CHO 无法判断整体推进节奏",fix:"将「落地进展」设为必填字段，要求各场景负责人每周更新"},
+    {field:"里程碑日期（4个日期字段）",filled:2,total:D.length*4,sev:"critical",impact:"无法构建时间线视图，无法做价值排期预测",fix:"至少对 Top 10 场景补填计划启动/试点/推广/全面上线日期"},
+    {field:"提报团队",filled:D.filter(d=>d.team).length,total:D.length,sev:"medium",impact:"9 个 AI 许愿场景无法归因到团队，团队贡献排名不完整",fix:"AI 许愿场景补填提报团队"},
+    {field:"新月均耗时",filled:D.filter(d=>d.newH>0||(d.oldH>0&&d.savedH>0)).length,total:D.length,sev:"medium",impact:"部分场景仅有原工时、无新工时，提效比例无法计算",fix:"对已进入试点/上线阶段的场景补充 AI 化后的实际耗时"},
+    {field:"月均降本费用",filled:D.filter(d=>d.cost>0).length,total:D.length,sev:"low",impact:"仅 3 个场景有降本数据，总降本金额不完整",fix:"如有外部费用节省（外包、工具订阅），请补充"},
+  ];
+  return `
+  <div class="card">
+    <div class="card-head"><h3>数据完整性诊断</h3><div class="sub">CHO 看板依赖这些数据 — 以下是当前数据质量的关键缺口</div></div>
+    <div class="card-body space">
+      ${gaps.map(g=>`
+        <div class="gap-card ${g.sev}">
+          <div class="gap-head">
+            <span style="font-size:13px;font-weight:600;color:var(--text)">${g.field}</span>
+            <span class="gap-sev ${g.sev}">${g.sev==="critical"?"严重":g.sev==="medium"?"中等":"轻微"}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+            <div class="gap-bar" style="flex:1"><div class="gap-bar-fill" style="width:${(g.filled/g.total)*100}%;background:${g.sev==="critical"?"#f87171":"#fbbf24"}"></div></div>
+            <span class="gap-meta">${g.filled}/${g.total}</span>
+          </div>
+          <div class="gap-desc">${g.impact}</div>
+          <div class="gap-fix">→ ${g.fix}</div>
+        </div>
+      `).join("")}
+    </div>
+  </div>`;
+}
+
+// ── Tab Switching ──
+const renderers = {overview:renderOverview,pipeline:renderPipeline,value:renderValue,gaps:renderGaps};
+const el = document.getElementById("content");
+function switchTab(key){
+  el.innerHTML = renderers[key]();
+  document.querySelectorAll(".tab").forEach(t=>{t.classList.toggle("active",t.dataset.tab===key);});
+}
+document.getElementById("tabs").addEventListener("click",e=>{
+  if(e.target.classList.contains("tab"))switchTab(e.target.dataset.tab);
+});
+switchTab("overview");
+</script>
+</body>
+</html>
