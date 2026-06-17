@@ -55,6 +55,8 @@ interface ChoSubmission {
   monthlyCostSavingHours: number | null;
   totalMonthlySavedHours: number | null;
   reuseValueCoefficient: number | null;
+  totalEfficiencyRate: number | null;
+  regionCoefficient: string | null;
 }
 
 interface OverviewResponse {
@@ -333,21 +335,6 @@ export default function ChoDashboardPage() {
       ),
     },
 
-    // ── 一句话简介（第3列） ──
-    {
-      title: '一句话简介',
-      dataIndex: 'briefIntro',
-      key: 'briefIntro',
-      width: 160,
-      align: 'center' as const,
-      ellipsis: true,
-      render: (v: string | null) => (
-        <span className="text-[11px] leading-snug" style={{ color: v ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
-          {v || '—'}
-        </span>
-      ),
-    },
-
     // ── 改造前后对比（前/后为行，指标为列，列宽自适应内容） ──
     {
       title: <FmtHeader label="改造前后对比" tip="月工时=频次×耗时×人数，每行显示改造前/后的全部指标" />,
@@ -410,8 +397,8 @@ export default function ChoDashboardPage() {
           },
         },
         {
-          title: <FmtHeader label="提效比例" tip="月均提效比例（飞书公式字段）" />,
-          dataIndex: 'efficiencyRate', key: 'eff', width: 80, align: 'center' as const, className: 'cho-col-result',
+          title: <FmtHeader label="提效比例" tip="总降本提效比例（飞书公式字段）" />,
+          dataIndex: 'totalEfficiencyRate', key: 'eff', width: 80, align: 'center' as const, className: 'cho-col-result',
           render: (v: number | null) => <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{fmtPct(v)}</span>,
         },
         {
@@ -449,9 +436,15 @@ export default function ChoDashboardPage() {
           },
         },
         {
-          title: <FmtHeader label="地区系数" tip="场景归属地区系数值" />,
-          dataIndex: 'sceneRegionCoefficientValue', key: 'rc', width: 70, align: 'center' as const, className: 'cho-col-reuse',
-          render: (v: number | null) => <span className="font-mono text-xs" style={{ color: v != null ? 'var(--foreground)' : 'var(--text-muted)' }}>{v != null ? v : '—'}</span>,
+          title: <FmtHeader label="地区系数" tip="场景归属地区系数（如：海外 x2）" />,
+          key: 'rc', width: 100, align: 'center' as const, className: 'cho-col-reuse',
+          render: (_: unknown, r: typeof tableData[number]) => {
+            const text = r.regionCoefficient;
+            const val = r.sceneRegionCoefficientValue;
+            if (!text && val == null) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
+            const display = text && val != null ? `${text} x${val}` : text ?? (val != null ? `x${val}` : '—');
+            return <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{display}</span>;
+          },
         },
       ],
     },
@@ -466,6 +459,21 @@ export default function ChoDashboardPage() {
       render: (v: number | null) => (
         <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#7c3aed' : 'var(--text-muted)' }}>
           {v != null ? Math.round(v) : '—'}
+        </span>
+      ),
+    },
+
+    // ── 一句话简介（最后一列） ──
+    {
+      title: '一句话简介',
+      dataIndex: 'briefIntro',
+      key: 'briefIntro',
+      width: 200,
+      align: 'center' as const,
+      ellipsis: true,
+      render: (v: string | null) => (
+        <span className="text-[11px] leading-snug" style={{ color: v ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+          {v || '—'}
         </span>
       ),
     },
