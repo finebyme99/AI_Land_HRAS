@@ -55,7 +55,6 @@ interface ChoSubmission {
   monthlyCostSavingHours: number | null;
   totalMonthlySavedHours: number | null;
   reuseValueCoefficient: number | null;
-  totalEfficiencyRate: number | null;
   regionCoefficient: string | null;
   sceneSource: string | null;
   landingProgress: string | null;
@@ -91,7 +90,7 @@ const SORT_OPTIONS = [
   { value: 'finalValueScore', label: '最终价值计分' },
   { value: 'savedHours', label: '月均提效节省工时' },
   { value: 'totalMonthlySavedHours', label: '月均节省总工时' },
-  { value: 'totalEfficiencyRate', label: '总降本提效比例' },
+  { value: 'efficiencyRate', label: '总降本提效比例' },
   { value: 'beforeHours', label: '原月均耗时' },
   { value: 'afterHours', label: '新月均耗时' },
   { value: 'monthlySavedCost', label: '月均降本费用' },
@@ -320,7 +319,7 @@ export default function ChoDashboardPage() {
         case 'finalValueScore': return (b.finalValueScore ?? -1) - (a.finalValueScore ?? -1);
         case 'savedHours': return (b.savedHours ?? -1) - (a.savedHours ?? -1);
         case 'totalMonthlySavedHours': return (b.totalMonthlySavedHours ?? -1) - (a.totalMonthlySavedHours ?? -1);
-        case 'totalEfficiencyRate': return (b.totalEfficiencyRate ?? -1) - (a.totalEfficiencyRate ?? -1);
+        case 'efficiencyRate': return (b.efficiencyRate ?? -1) - (a.efficiencyRate ?? -1);
         case 'beforeHours': return (b.beforeHours ?? -1) - (a.beforeHours ?? -1);
         case 'afterHours': return (b.afterHours ?? -1) - (a.afterHours ?? -1);
         case 'monthlySavedCost': return (parseFloat(String(b.monthlySavedCost).replace(/[^0-9.\-]/g, '')) ?? -1) - (parseFloat(String(a.monthlySavedCost).replace(/[^0-9.\-]/g, '')) ?? -1);
@@ -431,7 +430,7 @@ export default function ChoDashboardPage() {
         },
         {
           title: <FmtHeader label="提效比例" tip="总降本提效比例（飞书公式字段）" />,
-          dataIndex: 'totalEfficiencyRate', key: 'eff', width: 80, align: 'center' as const, className: 'cho-col-result',
+          dataIndex: 'efficiencyRate', key: 'eff', width: 80, align: 'center' as const, className: 'cho-col-result',
           render: (v: number | null) => <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{fmtPct(v)}</span>,
         },
         {

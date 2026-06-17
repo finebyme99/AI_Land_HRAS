@@ -22,7 +22,7 @@ import { useAuth } from '@/lib/auth-context';
 const navItems = [
   { key: '/', label: '首页', icon: <HomeOutlined /> },
   { key: '/cases', label: 'HRAS案例库', icon: <BookOutlined /> },
-  { key: '/wish-pool', label: '许愿池', icon: <StarOutlined />, adminOnly: true },
+  { key: '/wish-pool', label: '场景池', icon: <StarOutlined />, adminOnly: true },
   { key: '/competitions', label: 'AI大赛', icon: <TrophyOutlined /> },
   { key: '/courses', label: '公开课', icon: <ReadOutlined /> },
   { key: '/apps', label: '工具推荐', icon: <AppstoreOutlined /> },
