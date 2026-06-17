@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Spin, Tag, Button, App } from 'antd';
 import {
@@ -142,9 +142,9 @@ function HBar({ label, value, max, color }: { label: string; value: number; max:
 }
 
 // ── 统计卡片组件 ──
-function MetricCard({ label, value, sub, color, icon }: { label: string; value: string; sub?: string; color: string; icon: React.ReactNode }) {
+function MetricCard({ label, value, sub, color, icon, onMouseEnter, onMouseLeave }: { label: string; value: string; sub?: string; color: string; icon: React.ReactNode; onMouseEnter?: (e: React.MouseEvent) => void; onMouseLeave?: () => void }) {
   return (
-    <div className="glass rounded-xl p-5" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
+    <div className="glass rounded-xl p-5" style={{ borderColor: 'rgba(255,255,255,0.6)', cursor: 'pointer' }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
       <div className="flex items-center gap-2 mb-2">
         <span style={{ color, fontSize: 16 }}>{icon}</span>
         <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</span>
@@ -286,6 +286,17 @@ export default function WishPoolPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState('value');
+  const [hoveredRow, setHoveredRow] = useState<WishItem | null>(null);
+  const [listHover, setListHover] = useState<{ label: string; items: WishItem[]; x: number; y: number } | null>(null);
+
+  // 悬浮处理
+  const handleRowEnter = (item: WishItem) => setHoveredRow(item);
+  const handleRowLeave = () => setHoveredRow(null);
+  const showListHover = (label: string, hoverItems: WishItem[]) => (e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setListHover({ label, items: hoverItems, x: rect.left, y: rect.bottom + 6 });
+  };
+  const hideListHover = () => setListHover(null);
 
   // 权限检查
   useEffect(() => {
@@ -396,6 +407,8 @@ export default function WishPoolPage() {
                   sub="AI 许愿 + AI 大赛"
                   color="#1a3a8a"
                   icon={<StarOutlined />}
+                  onMouseEnter={showListHover('场景总数', items)}
+                  onMouseLeave={hideListHover}
                 />
                 <MetricCard
                   label="预估月省工时"
@@ -403,6 +416,8 @@ export default function WishPoolPage() {
                   sub="全部场景月均节省总工时"
                   color="#F27F22"
                   icon={<TrophyOutlined />}
+                  onMouseEnter={showListHover('预估月省工时', items.filter(d => d.totalSavedHours || d.monthlySavedHours))}
+                  onMouseLeave={hideListHover}
                 />
                 <MetricCard
                   label="已落地/试点"
@@ -410,6 +425,8 @@ export default function WishPoolPage() {
                   sub="试点 + 推广 + 全面"
                   color="#1a3a8a"
                   icon={<RocketOutlined />}
+                  onMouseEnter={showListHover('已落地/试点', items.filter(d => ['试点上线', '推广上线', '全面上线'].includes(d.landingProgress || '')))}
+                  onMouseLeave={hideListHover}
                 />
                 <MetricCard
                   label="评审中"
@@ -417,6 +434,8 @@ export default function WishPoolPage() {
                   sub="AI 大赛参审场景"
                   color="#F27F22"
                   icon={<BarChartOutlined />}
+                  onMouseEnter={showListHover('评审中', items.filter(d => d.competitionProgress === '评审中'))}
+                  onMouseLeave={hideListHover}
                 />
               </div>
 
@@ -432,7 +451,9 @@ export default function WishPoolPage() {
                     {Object.entries(stats.categoryMap)
                       .sort((a, b) => b[1] - a[1])
                       .map(([cat, count]) => (
-                        <HBar key={cat} label={cat} value={count} max={maxCat} color={CATEGORY_COLORS[cat] || '#6b7280'} />
+                        <div key={cat} onMouseEnter={showListHover(cat, items.filter(d => d.sceneCategory === cat))} onMouseLeave={hideListHover} style={{ cursor: 'pointer' }}>
+                          <HBar label={cat} value={count} max={maxCat} color={CATEGORY_COLORS[cat] || '#6b7280'} />
+                        </div>
                       ))}
                   </div>
                 </div>
@@ -448,7 +469,9 @@ export default function WishPoolPage() {
                       .sort((a, b) => b[1] - a[1])
                       .slice(0, 10)
                       .map(([team, count]) => (
-                        <HBar key={team} label={team} value={count} max={maxTeam} color="#1a3a8a" />
+                        <div key={team} onMouseEnter={showListHover(team, items.filter(d => d.team === team))} onMouseLeave={hideListHover} style={{ cursor: 'pointer' }}>
+                          <HBar label={team} value={count} max={maxTeam} color="#1a3a8a" />
+                        </div>
                       ))}
                   </div>
                 </div>
@@ -469,7 +492,7 @@ export default function WishPoolPage() {
                         const maxP = Math.max(...['待启动', '训练验证中', '试点上线', '推广上线', '全面上线'].map((s) => stats.progressMap[s] || 0), 1);
                         const h = Math.max((count / maxP) * 90, 3);
                         return (
-                          <div key={stage} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                          <div key={stage} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }} onMouseEnter={showListHover(stage, items.filter(d => d.landingProgress === stage))} onMouseLeave={hideListHover}>
                             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--foreground)' }}>{count}</div>
                             <div style={{ width: '100%', borderRadius: '4px 4px 0 0', height: h, background: PROGRESS_COLORS[stage] }} />
                             <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.15 }}>{stage}</div>
@@ -524,52 +547,49 @@ export default function WishPoolPage() {
                     </thead>
                     <tbody>
                       {ranked.map((item) => (
-                        <Popover
+                        <tr
                           key={item.id}
-                          content={<SceneDetailPopup item={item} />}
-                          trigger="hover"
-                          placement="rightTop"
-                          mouseEnterDelay={0.3}
-                          overlayInnerStyle={{ padding: '12px 16px', background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)' }}
+                          className="hover:bg-white/20 transition-colors"
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={() => handleRowEnter(item)}
+                          onMouseLeave={handleRowLeave}
                         >
-                          <tr className="hover:bg-white/20 transition-colors" style={{ cursor: 'pointer' }}>
-                            <td className="py-2 px-3 font-mono text-xs" style={{ color: (item.valueRank ?? 999) <= 3 ? '#F27F22' : 'var(--text-muted)', fontWeight: (item.valueRank ?? 999) <= 3 ? 700 : 400, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              {item.valueRank ? `#${item.valueRank}` : '-'}
-                            </td>
-                            <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              <a href={item.recordUrl} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: 'var(--foreground)' }}>
-                                {(item.title || '-').length > 24 ? (item.title || '-').slice(0, 24) + '…' : (item.title || '-')}
-                              </a>
-                            </td>
-                            <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              {item.sceneCategory && (
-                                <Tag color={CATEGORY_COLORS[item.sceneCategory] || '#6b7280'} className="text-[11px]">{item.sceneCategory}</Tag>
-                              )}
-                            </td>
-                            <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{item.team || '—'}</td>
-                            <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              {item.landingProgress ? (
-                                <Tag color={PROGRESS_COLORS[item.landingProgress] || '#6b7280'} className="text-[11px]">{item.landingProgress}</Tag>
-                              ) : (
-                                <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>
-                              )}
-                            </td>
-                            <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap' }}>
-                              {[
-                                item.plannedStartDate && `启动 ${item.plannedStartDate.slice(0, 7)}`,
-                                item.pilotDate && `试点 ${item.pilotDate.slice(0, 7)}`,
-                                item.rolloutDate && `推广 ${item.rolloutDate.slice(0, 7)}`,
-                                item.fullLaunchDate && `全面 ${item.fullLaunchDate.slice(0, 7)}`,
-                              ].filter(Boolean).join(' · ') || '—'}
-                            </td>
-                            <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              {item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-'}
-                            </td>
-                            <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              {item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '-'}
-                            </td>
-                          </tr>
-                        </Popover>
+                          <td className="py-2 px-3 font-mono text-xs" style={{ color: (item.valueRank ?? 999) <= 3 ? '#F27F22' : 'var(--text-muted)', fontWeight: (item.valueRank ?? 999) <= 3 ? 700 : 400, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            {item.valueRank ? `#${item.valueRank}` : '-'}
+                          </td>
+                          <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            <a href={item.recordUrl} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: 'var(--foreground)' }}>
+                              {(item.title || '-').length > 24 ? (item.title || '-').slice(0, 24) + '…' : (item.title || '-')}
+                            </a>
+                          </td>
+                          <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            {item.sceneCategory && (
+                              <Tag color={CATEGORY_COLORS[item.sceneCategory] || '#6b7280'} className="text-[11px]">{item.sceneCategory}</Tag>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{item.team || '—'}</td>
+                          <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            {item.landingProgress ? (
+                              <Tag color={PROGRESS_COLORS[item.landingProgress] || '#6b7280'} className="text-[11px]">{item.landingProgress}</Tag>
+                            ) : (
+                              <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap' }}>
+                            {[
+                              item.plannedStartDate && `启动 ${item.plannedStartDate.slice(0, 7)}`,
+                              item.pilotDate && `试点 ${item.pilotDate.slice(0, 7)}`,
+                              item.rolloutDate && `推广 ${item.rolloutDate.slice(0, 7)}`,
+                              item.fullLaunchDate && `全面 ${item.fullLaunchDate.slice(0, 7)}`,
+                            ].filter(Boolean).join(' · ') || '—'}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            {item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-'}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            {item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '-'}
+                          </td>
+                        </tr>
                       ))}
                     </tbody>
                   </table>
@@ -660,6 +680,21 @@ export default function WishPoolPage() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* 排名表格悬浮详情弹窗 — 固定居中 */}
+          {hoveredRow && (
+            <div style={{ position: 'fixed', top: '50%', left: '55%', transform: 'translate(-50%, -50%)', zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 14, padding: '16px 20px', boxShadow: '0 12px 48px rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.7)', maxWidth: 460 }}>
+              <SceneDetailPopup item={hoveredRow} />
+            </div>
+          )}
+
+          {/* 图表/卡片悬浮明细列表 — 跟随鼠标位置 */}
+          {listHover && (
+            <div style={{ position: 'fixed', left: Math.min(listHover.x, window.innerWidth - 420), top: listHover.y, zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid rgba(255,255,255,0.6)' }} onMouseEnter={() => setListHover(prev => prev)} onMouseLeave={hideListHover}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3a8a', marginBottom: 6 }}>{listHover.label} · {listHover.items.length} 个场景</div>
+              <SceneHoverList items={listHover.items} />
             </div>
           )}
         </>

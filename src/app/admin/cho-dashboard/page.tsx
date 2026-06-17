@@ -125,6 +125,14 @@ function fmtFreq(monthly: number | null | undefined): string {
   return `${n}次/月`;
 }
 
+/** 操作频率 + 操作次数 → 拼合显示（如 "3次/周"） */
+function fmtFreqRaw(freq: string | null, count: number | null): string {
+  if (count == null && !freq) return '—';
+  const unitMap: Record<string, string> = { '每日': '日', '每天': '日', '每周': '周', '每月': '月', '每季': '季', '每年': '年' };
+  const unit = freq ? (unitMap[freq] ?? freq) : '次';
+  return count != null ? `${count}次/${unit}` : '—';
+}
+
 /** 飞书存储为小数 0~1，显示为百分比，四舍五入取整 */
 function fmtPct(v: number | null | undefined): string {
   if (v == null) return '—';
@@ -381,7 +389,7 @@ export default function ChoDashboardPage() {
      
       render: (_: unknown, r: typeof tableData[number]) => {
         const cols = [
-          { label: '频次', before: fmtFreq(r.beforeFreq), after: fmtFreq(r.afterFreq), dir: changeDir(r.beforeFreq, r.afterFreq), flex: 4 },
+          { label: '频次', before: fmtFreqRaw(r.oldFrequency, r.oldOperationCount), after: fmtFreqRaw(r.newFrequency, r.newOperationCount), dir: changeDir(r.oldOperationCount, r.newOperationCount), flex: 4 },
           { label: '耗时', before: numOrDash(r.oldHoursPerTask, 'h', 1), after: numOrDash(r.newDuration, 'h', 1), dir: changeDir(r.oldHoursPerTask, r.newDuration), flex: 3 },
           { label: '人数', before: numOrDash(r.beforePeopleCount, '人'), after: numOrDash(r.afterPeopleCount, '人'), dir: changeDir(r.beforePeopleCount, r.afterPeopleCount), flex: 3 },
           { label: '月工时', before: numOrDash(r.beforeMonthlyHours, 'h'), after: numOrDash(r.afterMonthlyHours, 'h'), dir: changeDir(r.beforeMonthlyHours, r.afterMonthlyHours), flex: 3 },
@@ -441,7 +449,31 @@ export default function ChoDashboardPage() {
         {
           title: <FmtHeader label="降本折算工时" tip="= 月均降本费用 / (50 × 地区系数)" />,
           dataIndex: 'monthlyCostSavingHours', key: 'mcsh', width: 95, align: 'center' as const, className: 'cho-col-result',
-          render: (v: number | null) => <span className="font-mono text-xs" style={{ color: v != null && v > 0 ? '#d97706' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>,
+          render: (v: number | null, record: any) => {
+            const cost = record.monthlySavedCost;
+            const note = record.costReductionNote;
+            const hasDetail = v != null && v > 0 && (cost || note);
+            const content = (
+              <span className="font-mono text-xs" style={{ color: v != null && v > 0 ? '#d97706' : 'var(--text-muted)' }}>
+                {numOrDash(v, 'h')}
+              </span>
+            );
+            if (!hasDetail) return content;
+            return (
+              <Tooltip
+                title={
+                  <div className="text-xs">
+                    {cost && <div>月均降本费用：¥{cost}</div>}
+                    {note && <div className="mt-1" style={{ color: 'rgba(255,255,255,0.7)' }}>说明：{note}</div>}
+                  </div>
+                }
+              >
+                <span className="cursor-help border-b border-dashed" style={{ borderColor: '#d97706' }}>
+                  {content}
+                </span>
+              </Tooltip>
+            );
+          },
         },
         {
           title: <FmtHeader label="节省总工时" tip="= 月均提效节省工时 + 月均降本折算工时" />,
