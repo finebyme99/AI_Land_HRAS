@@ -208,7 +208,7 @@ export default function ChoDashboardPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [filterExpanded, setFilterExpanded] = useState(false);
   const [sortBy, setSortBy] = useState('finalValueScore');
-  const [titleWidth, setTitleWidth] = useState(220);
+  const [titleWidth, setTitleWidth] = useState(300);
   const [detailRecord, setDetailRecord] = useState<typeof enriched[number] | null>(null);
 
   useEffect(() => {
@@ -300,16 +300,15 @@ export default function ChoDashboardPage() {
 
   // ── Enriched data: 尽量全用飞书公式字段 ──
   // 口径说明（2026-06 优化）：
-  //   - beforeFreq/afterFreq   ：飞书公式字段（原/新操作频次），缺失才客户端算
   //   - beforeHours            ：飞书 beforeMonthlyHours（原月均耗时）优先
-  //   - afterHours             ：无对应飞书公式字段，用 afterFreq(飞书公式) × newDuration × afterPeopleCount
+  //   - afterHours             ：飞书 afterMonthlyHours（新月均耗时）优先，缺失才客户端算
   //   - savedHours             ：统一用飞书 monthlySavedHours（月均提效节省工时）；仅当飞书字段缺失时回退客户端算
   const enriched = useMemo(() => {
     return (data?.submissions ?? []).map((s, idx) => {
       const beforeFreq = s.beforeFreq ?? calcMonthlyFreq(s.oldFrequency, s.oldOperationCount);
       const afterFreq = s.afterFreq ?? calcMonthlyFreq(s.newFrequency, s.newOperationCount);
       const beforeHours = s.beforeMonthlyHours ?? calcMonthlyHours(beforeFreq, s.oldHoursPerTask, s.beforePeopleCount);
-      const afterHours = calcMonthlyHours(afterFreq, s.newDuration, s.afterPeopleCount);
+      const afterHours = s.afterMonthlyHours ?? calcMonthlyHours(afterFreq, s.newDuration, s.afterPeopleCount);
       // savedHours: 统一用飞书 monthlySavedHours；飞书缺失时才客户端兜底（避免显示「—」）
       const savedHours = s.monthlySavedHours ?? (
         beforeHours != null && afterHours != null
@@ -443,7 +442,6 @@ export default function ChoDashboardPage() {
             className="text-xs font-medium truncate text-left hover:underline w-full"
             style={{ color: 'var(--primary)' }}
           >
-            <LinkOutlined className="mr-1" style={{ fontSize: 10, opacity: 0.5 }} />
             {title}
           </button>
           <div className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{record.team || '—'}</div>

@@ -586,7 +586,7 @@ export default function CompetitionsPage() {
                       </div>
                     </div>
                     <div className="relative z-10 flex items-center gap-2 shrink-0">
-                      <a href="https://ztn.feishu.cn/share/base/form/shrcnzpkRvRFdo6359hFYfCTpZg" target="_blank" rel="noopener noreferrer"
+                      <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold"
                         style={{ background: '#fff', color: '#1a3a8a', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
                         <RocketOutlined />提报入口
@@ -785,7 +785,7 @@ export default function CompetitionsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <a href="https://ztn.feishu.cn/share/base/form/shrcnzpkRvRFdo6359hFYfCTpZg" target="_blank" rel="noopener noreferrer"
+                    <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer"
                       className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
                       style={{ background: 'var(--accent)', color: '#fff' }}>
                       参与提报
