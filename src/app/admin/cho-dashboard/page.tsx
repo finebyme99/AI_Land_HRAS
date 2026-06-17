@@ -188,6 +188,7 @@ export default function ChoDashboardPage() {
   const [sceneSourceFilter, setSceneSourceFilter] = useState<string>('AI大赛');
   const [landingProgressFilter, setLandingProgressFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [filterExpanded, setFilterExpanded] = useState(false);
   const [sortBy, setSortBy] = useState('finalValueScore');
   const [detailRecord, setDetailRecord] = useState<typeof enriched[number] | null>(null);
 
@@ -638,31 +639,43 @@ export default function ChoDashboardPage() {
         </div>
 
         {/* 筛选 + 排序 */}
-        <div className="glass rounded-xl px-4 py-3 mb-4 space-y-2" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-          {/* 搜索条件（配置表标记"是否作为搜索条件=是"的字段） */}
-          <FilterRow label="部门" icon={<TeamOutlined />} options={[{ value: 'all', label: '全部', count: enriched.length }, ...teams.map((t) => ({ value: t, label: t, count: teamCounts[t] ?? 0 }))]} value={teamFilter} onChange={setTeamFilter} />
-          <FilterRow label="场景分类" options={[{ value: 'all', label: '全部', count: enriched.length }, ...sceneCategoryOptions.map((o) => ({ ...o, label: o.value }))]} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
-          <FilterRow label="核心价值" options={[{ value: 'all', label: '全部', count: enriched.length }, ...coreValueOptions.map((o) => ({ ...o, label: o.value }))]} value={coreValueFilter} onChange={setCoreValueFilter} />
-          <FilterRow label="场景来源" options={[{ value: 'all', label: '全部', count: enriched.length }, ...sceneSourceOptions.map((o) => ({ ...o, label: o.value }))]} value={sceneSourceFilter} onChange={setSceneSourceFilter} />
-          <FilterRow label="落地进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...landingProgressOptions.map((o) => ({ ...o, label: o.value }))]} value={landingProgressFilter} onChange={setLandingProgressFilter} />
-          <FilterRow label="大赛进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...statusOptions.map((o) => ({ ...o, label: o.value }))]} value={statusFilter} onChange={setStatusFilter} />
-          {/* 排序条件（配置表标记"是否作为排序条件=是"的字段） */}
-          <div className="flex flex-wrap items-center gap-2 pt-2" style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
-            <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>排序</span>
-            {SORT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setSortBy(opt.value)}
-                className="px-2 py-0.5 rounded-md text-[11px] font-medium transition-all"
-                style={{
-                  background: sortBy === opt.value ? 'var(--primary)' : 'rgba(0,0,0,0.04)',
-                  color: sortBy === opt.value ? '#fff' : 'var(--text-secondary)',
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
+        <div className="glass rounded-xl px-4 py-3 mb-4" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>排序</span>
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setSortBy(opt.value)}
+                  className="px-2 py-0.5 rounded-md text-[11px] font-medium transition-all"
+                  style={{
+                    background: sortBy === opt.value ? 'var(--primary)' : 'rgba(0,0,0,0.04)',
+                    color: sortBy === opt.value ? '#fff' : 'var(--text-secondary)',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setFilterExpanded(!filterExpanded)}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all hover:bg-gray-100"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              {filterExpanded ? '收起筛选' : '展开筛选'}
+              <span className="text-[10px]">{filterExpanded ? '▲' : '▼'}</span>
+            </button>
           </div>
+          {filterExpanded && (
+            <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+              <FilterRow label="部门" icon={<TeamOutlined />} options={[{ value: 'all', label: '全部', count: enriched.length }, ...teams.map((t) => ({ value: t, label: t, count: teamCounts[t] ?? 0 }))]} value={teamFilter} onChange={setTeamFilter} />
+              <FilterRow label="场景分类" options={[{ value: 'all', label: '全部', count: enriched.length }, ...sceneCategoryOptions.map((o) => ({ ...o, label: o.value }))]} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
+              <FilterRow label="核心价值" options={[{ value: 'all', label: '全部', count: enriched.length }, ...coreValueOptions.map((o) => ({ ...o, label: o.value }))]} value={coreValueFilter} onChange={setCoreValueFilter} />
+              <FilterRow label="场景来源" options={[{ value: 'all', label: '全部', count: enriched.length }, ...sceneSourceOptions.map((o) => ({ ...o, label: o.value }))]} value={sceneSourceFilter} onChange={setSceneSourceFilter} />
+              <FilterRow label="落地进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...landingProgressOptions.map((o) => ({ ...o, label: o.value }))]} value={landingProgressFilter} onChange={setLandingProgressFilter} />
+              <FilterRow label="大赛进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...statusOptions.map((o) => ({ ...o, label: o.value }))]} value={statusFilter} onChange={setStatusFilter} />
+            </div>
+          )}
         </div>
 
         {/* 核心公式（筛选条件下方，分行展示） */}
