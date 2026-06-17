@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Spin, Tag, Button, App } from 'antd';
+import { Spin, Tag, Button, App, Popover } from 'antd';
 import {
   SyncOutlined,
   StarOutlined,
@@ -151,6 +151,94 @@ function MetricCard({ label, value, sub, color, icon }: { label: string; value: 
       </div>
       <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1, color }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{sub}</div>}
+    </div>
+  );
+}
+
+// ── 场景详情悬浮弹窗 ──
+function SceneDetailPopup({ item }: { item: WishItem }) {
+  const labelStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 11, whiteSpace: 'nowrap' };
+  const valStyle: React.CSSProperties = { color: 'var(--foreground)', fontSize: 12, fontWeight: 500, textAlign: 'right' as const };
+  const sectionTitle = (text: string, color: string) => (
+    <div style={{
+      fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.5,
+      borderBottom: `1px solid ${color}30`, paddingBottom: 4, marginBottom: 6, marginTop: 10,
+    }}>{text}</div>
+  );
+  const row = (label: string, value: React.ReactNode, full?: boolean) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '3px 0', gridColumn: full ? '1 / -1' : undefined }}>
+      <span style={labelStyle}>{label}</span>
+      <span style={{ ...valStyle, maxWidth: full ? 260 : 120, wordBreak: 'break-word' }}>{value || '—'}</span>
+    </div>
+  );
+  const arr = (v: string[] | undefined) => v?.length ? v.join('、') : null;
+
+  return (
+    <div style={{ width: 400, maxHeight: 480, overflowY: 'auto', padding: '2px 0' }}>
+      {/* Header */}
+      <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          {item.proposalNo && <Tag style={{ fontSize: 10, margin: 0, background: 'rgba(26,58,138,0.1)', borderColor: 'rgba(26,58,138,0.2)', color: '#1a3a8a' }}>{item.proposalNo}</Tag>}
+          {item.sceneCategory && <Tag color={CATEGORY_COLORS[item.sceneCategory] || '#6b7280'} style={{ fontSize: 10, margin: 0 }}>{item.sceneCategory}</Tag>}
+          {item.landingProgress && <Tag color={PROGRESS_COLORS[item.landingProgress] || '#6b7280'} style={{ fontSize: 10, margin: 0 }}>{item.landingProgress}</Tag>}
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--foreground)', lineHeight: 1.3 }}>{item.title || '未命名场景'}</div>
+        {item.briefIntro && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{item.briefIntro}</div>}
+      </div>
+
+      {/* 场景信息 */}
+      {sectionTitle('场景信息', '#1a3a8a')}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+        {row('核心价值', item.coreValue)}
+        {row('场景来源', item.sceneSource)}
+        {row('业务负责人', arr(item.bizOwner))}
+        {row('AI负责人', arr(item.aiOwner))}
+        {row('计划启动', item.plannedStartDate?.slice(0, 10))}
+      </div>
+
+      {/* AI前指标 */}
+      {sectionTitle('AI前指标', '#1a3a8a')}
+      {item.beforeProcess && row('原业务流程', item.beforeProcess.length > 80 ? item.beforeProcess.slice(0, 80) + '…' : item.beforeProcess, true)}
+      {item.painPoints && item.painPoints.length > 0 && row('原核心痛点', item.painPoints.join('、'), true)}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+        {row('原操作频次', item.beforeFreq ? `${item.beforeFreq}次/月` : null)}
+        {row('原操作人数', item.beforePeopleCount ? `${item.beforePeopleCount}人` : null)}
+        {row('单次耗时', item.beforeHoursPerTask ? `${item.beforeHoursPerTask}h` : null)}
+        {row('原月均耗时', item.beforeMonthlyHours ? `${fmtF(Math.round(item.beforeMonthlyHours))}h` : null)}
+      </div>
+
+      {/* 价值计分指标 */}
+      {sectionTitle('价值计分指标', '#F27F22')}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+        {row('月均提效节省', item.monthlySavedHours ? `${fmtF(Math.round(item.monthlySavedHours))}h` : null)}
+        {row('月均降本费用', item.monthlySavedCost ? `¥${fmtF(item.monthlySavedCost)}` : null)}
+        {row('降本折算工时', item.costSavedHours ? `${fmtF(Math.round(item.costSavedHours))}h` : null)}
+        {row('月均节省总工时', item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : null)}
+        {row('总降本提效', item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : null)}
+        {row('地区系数', item.regionCoefficient)}
+      </div>
+      <div style={{ display: 'flex', gap: 16, marginTop: 8, padding: '6px 10px', background: 'rgba(242,127,34,0.06)', borderRadius: 8, border: '1px solid rgba(242,127,34,0.15)' }}>
+        <div>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>最终价值计分</span>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#F27F22', fontFamily: 'SF Mono, monospace' }}>{item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-'}</div>
+        </div>
+        <div>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>价值排名</span>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#1a3a8a', fontFamily: 'SF Mono, monospace' }}>{item.valueRank ? `#${item.valueRank}` : '-'}</div>
+        </div>
+      </div>
+      {item.costReductionNote && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontStyle: 'italic' }}>降本说明：{item.costReductionNote}</div>}
+
+      {/* AI后指标 */}
+      {sectionTitle('AI后指标', '#1a3a8a')}
+      {item.afterProcess && row('新业务流程', item.afterProcess.length > 80 ? item.afterProcess.slice(0, 80) + '…' : item.afterProcess, true)}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+        {row('新操作频次', item.afterFreq ? `${item.afterFreq}次/月` : null)}
+        {row('新操作人数', item.afterPeopleCount ? `${item.afterPeopleCount}人` : null)}
+        {row('新单次耗时', item.afterHoursPerTask ? `${item.afterHoursPerTask}h` : null)}
+        {row('新月均耗时', item.afterMonthlyHours ? `${fmtF(Math.round(item.afterMonthlyHours))}h` : null)}
+        {row('月均Token费用', item.aiCost ? `¥${fmtF(item.aiCost)}` : null)}
+      </div>
     </div>
   );
 }
@@ -402,43 +490,52 @@ export default function WishPoolPage() {
                     </thead>
                     <tbody>
                       {ranked.map((item) => (
-                        <tr key={item.id} className="hover:bg-white/20 transition-colors">
-                          <td className="py-2 px-3 font-mono text-xs" style={{ color: (item.valueRank ?? 999) <= 3 ? '#F27F22' : 'var(--text-muted)', fontWeight: (item.valueRank ?? 999) <= 3 ? 700 : 400, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            {item.valueRank ? `#${item.valueRank}` : '-'}
-                          </td>
-                          <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            <a href={item.recordUrl} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: 'var(--foreground)' }}>
-                              {(item.title || '-').length > 24 ? (item.title || '-').slice(0, 24) + '…' : (item.title || '-')}
-                            </a>
-                          </td>
-                          <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            {item.sceneCategory && (
-                              <Tag color={CATEGORY_COLORS[item.sceneCategory] || '#6b7280'} className="text-[11px]">{item.sceneCategory}</Tag>
-                            )}
-                          </td>
-                          <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{item.team || '—'}</td>
-                          <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            {item.landingProgress ? (
-                              <Tag color={PROGRESS_COLORS[item.landingProgress] || '#6b7280'} className="text-[11px]">{item.landingProgress}</Tag>
-                            ) : (
-                              <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>
-                            )}
-                          </td>
-                          <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap' }}>
-                            {[
-                              item.plannedStartDate && `启动 ${item.plannedStartDate.slice(0, 7)}`,
-                              item.pilotDate && `试点 ${item.pilotDate.slice(0, 7)}`,
-                              item.rolloutDate && `推广 ${item.rolloutDate.slice(0, 7)}`,
-                              item.fullLaunchDate && `全面 ${item.fullLaunchDate.slice(0, 7)}`,
-                            ].filter(Boolean).join(' · ') || '—'}
-                          </td>
-                          <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            {item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-'}
-                          </td>
-                          <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            {item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '-'}
-                          </td>
-                        </tr>
+                        <Popover
+                          key={item.id}
+                          content={<SceneDetailPopup item={item} />}
+                          trigger="hover"
+                          placement="rightTop"
+                          mouseEnterDelay={0.3}
+                          overlayInnerStyle={{ padding: '12px 16px', background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)' }}
+                        >
+                          <tr className="hover:bg-white/20 transition-colors" style={{ cursor: 'pointer' }}>
+                            <td className="py-2 px-3 font-mono text-xs" style={{ color: (item.valueRank ?? 999) <= 3 ? '#F27F22' : 'var(--text-muted)', fontWeight: (item.valueRank ?? 999) <= 3 ? 700 : 400, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                              {item.valueRank ? `#${item.valueRank}` : '-'}
+                            </td>
+                            <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                              <a href={item.recordUrl} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: 'var(--foreground)' }}>
+                                {(item.title || '-').length > 24 ? (item.title || '-').slice(0, 24) + '…' : (item.title || '-')}
+                              </a>
+                            </td>
+                            <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                              {item.sceneCategory && (
+                                <Tag color={CATEGORY_COLORS[item.sceneCategory] || '#6b7280'} className="text-[11px]">{item.sceneCategory}</Tag>
+                              )}
+                            </td>
+                            <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{item.team || '—'}</td>
+                            <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                              {item.landingProgress ? (
+                                <Tag color={PROGRESS_COLORS[item.landingProgress] || '#6b7280'} className="text-[11px]">{item.landingProgress}</Tag>
+                              ) : (
+                                <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>
+                              )}
+                            </td>
+                            <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap' }}>
+                              {[
+                                item.plannedStartDate && `启动 ${item.plannedStartDate.slice(0, 7)}`,
+                                item.pilotDate && `试点 ${item.pilotDate.slice(0, 7)}`,
+                                item.rolloutDate && `推广 ${item.rolloutDate.slice(0, 7)}`,
+                                item.fullLaunchDate && `全面 ${item.fullLaunchDate.slice(0, 7)}`,
+                              ].filter(Boolean).join(' · ') || '—'}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                              {item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-'}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                              {item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '-'}
+                            </td>
+                          </tr>
+                        </Popover>
                       ))}
                     </tbody>
                   </table>

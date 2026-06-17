@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Spin, App, Switch, Tabs, Tag } from 'antd';
-import { SyncOutlined, TrophyOutlined, CalendarOutlined, UserOutlined, BankOutlined, CodeOutlined, BookOutlined, CheckCircleOutlined, LockOutlined, AuditOutlined, FormOutlined, FlagOutlined, RightOutlined, RocketOutlined, FireOutlined } from '@ant-design/icons';
+import { SyncOutlined, TrophyOutlined, CalendarOutlined, UserOutlined, BankOutlined, CodeOutlined, BookOutlined, CheckCircleOutlined, LockOutlined, AuditOutlined, FormOutlined, FlagOutlined, RightOutlined, RocketOutlined, FireOutlined, BarChartOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import { HARDCODED_REVIEWER_PROPOSALS } from '@/lib/constants';
 import CompetitionCard from '@/components/CompetitionCard';
@@ -201,6 +201,15 @@ export default function CompetitionsPage() {
               <HighlightSweep text="HRAS AI 应用大赛 · 按月评选优秀方案" className="text-2xl font-bold" gradient="linear-gradient(135deg, #d46b08 0%, #f27f22 50%, #fa8c16 100%)" />
             </div>
           </div>
+          {isAdmin && (
+            <a
+              href="/admin/cho-dashboard"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #16a34a, #0891b2)', boxShadow: '0 4px 15px rgba(22,163,74,0.25)' }}
+            >
+              <BarChartOutlined /> 成效看板
+            </a>
+          )}
         </div>
 
         <Tabs
