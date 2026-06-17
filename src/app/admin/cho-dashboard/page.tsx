@@ -272,28 +272,6 @@ export default function ChoDashboardPage() {
     });
   }, [data]);
 
-  // ── Summary ──
-  const summary = useMemo(() => {
-    // 只统计大赛进展=评审中的方案
-    const reviewed = enriched.filter((s) => s.competitionStatus === '评审中');
-    const totalPeople = reviewed.reduce((sum, s) => sum + (s.beforePeopleCount ?? 0), 0);
-    const totalBefore = reviewed.reduce((sum, s) => sum + (s.beforeHours ?? 0), 0);
-    const totalAfter = reviewed.reduce((sum, s) => sum + (s.afterHours ?? 0), 0);
-    const totalSaved = reviewed.reduce((sum, s) => sum + (s.savedHours ?? 0), 0);
-    const withEff = reviewed.filter((s) => s.efficiencyRate != null);
-    const avgEff = withEff.length > 0
-      ? withEff.reduce((sum, s) => sum + (s.efficiencyRate ?? 0), 0) / withEff.length
-      : null;
-    return {
-      count: reviewed.length,
-      totalPeople,
-      totalBefore: Math.round(totalBefore * 10) / 10,
-      totalAfter: Math.round(totalAfter * 10) / 10,
-      totalSaved: Math.round(totalSaved * 10) / 10,
-      avgEfficiency: avgEff != null ? Math.round(avgEff * 1000) / 10 : null,
-    };
-  }, [enriched]);
-
   // ── Teams ──
   const teams = useMemo(() => {
     const set = new Set<string>();
@@ -344,6 +322,26 @@ export default function ChoDashboardPage() {
     });
     return sorted.map((s, i) => ({ ...s, seq: i + 1 }));
   }, [enriched, teamFilter, sceneCategoryFilter, coreValueFilter, sceneSourceFilter, landingProgressFilter, statusFilter, sortBy]);
+
+  // ── Summary（基于筛选后的数据）──
+  const summary = useMemo(() => {
+    const totalPeople = tableData.reduce((sum, s) => sum + (s.beforePeopleCount ?? 0), 0);
+    const totalBefore = tableData.reduce((sum, s) => sum + (s.beforeHours ?? 0), 0);
+    const totalAfter = tableData.reduce((sum, s) => sum + (s.afterHours ?? 0), 0);
+    const totalSaved = tableData.reduce((sum, s) => sum + (s.savedHours ?? 0), 0);
+    const withEff = tableData.filter((s) => s.efficiencyRate != null);
+    const avgEff = withEff.length > 0
+      ? withEff.reduce((sum, s) => sum + (s.efficiencyRate ?? 0), 0) / withEff.length
+      : null;
+    return {
+      count: tableData.length,
+      totalPeople,
+      totalBefore: Math.round(totalBefore * 10) / 10,
+      totalAfter: Math.round(totalAfter * 10) / 10,
+      totalSaved: Math.round(totalSaved * 10) / 10,
+      avgEfficiency: avgEff != null ? Math.round(avgEff * 1000) / 10 : null,
+    };
+  }, [tableData]);
 
   // ── Table columns ──
   const columns: TableColumnsType<typeof tableData[number]> = [
@@ -685,14 +683,13 @@ export default function ChoDashboardPage() {
             >
               <SyncOutlined spin={syncing} /> 从飞书同步
             </button>
-            <Select value={period} onChange={setPeriod} options={PERIOD_OPTIONS} style={{ width: 150 }} size="middle" />
           </div>
         </div>
 
         {/* 顶部统计 */}
         <div className="glass rounded-2xl p-5 mb-5" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <StatCard icon={<BarChartOutlined />} label="方案数" value={String(summary.count)} color="var(--primary)" />
+            <StatCard icon={<BarChartOutlined />} label="参赛方案数" value={String(summary.count)} color="var(--primary)" />
             <StatCard icon={<TeamOutlined />} label="覆盖人数" value={summary.totalPeople > 0 ? `${summary.totalPeople}` : '—'} sub="执行人数合计" color="#0891b2" />
             <StatCard icon={<ClockCircleOutlined />} label="原总工时" value={summary.totalBefore > 0 ? `${summary.totalBefore}h` : '—'} sub="月均合计" color="#d97706" />
             <StatCard icon={<ThunderboltOutlined />} label="AI 后工时" value={summary.totalAfter > 0 ? `${summary.totalAfter}h` : '—'} sub="月均合计" color="#7c3aed" />
@@ -730,6 +727,10 @@ export default function ChoDashboardPage() {
           </div>
           {filterExpanded && (
             <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>评审周期</span>
+                <Select value={period} onChange={setPeriod} options={PERIOD_OPTIONS} style={{ width: 120 }} size="small" />
+              </div>
               <FilterRow label="部门" icon={<TeamOutlined />} options={[{ value: 'all', label: '全部', count: enriched.length }, ...teams.map((t) => ({ value: t, label: t, count: teamCounts[t] ?? 0 }))]} value={teamFilter} onChange={setTeamFilter} />
               <FilterRow label="场景分类" options={[{ value: 'all', label: '全部', count: enriched.length }, ...sceneCategoryOptions.map((o) => ({ ...o, label: o.value }))]} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
               <FilterRow label="核心价值" options={[{ value: 'all', label: '全部', count: enriched.length }, ...coreValueOptions.map((o) => ({ ...o, label: o.value }))]} value={coreValueFilter} onChange={setCoreValueFilter} />
