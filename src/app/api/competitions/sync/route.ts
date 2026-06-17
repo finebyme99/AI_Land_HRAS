@@ -100,10 +100,15 @@ function mapRecord(record: any): Record<string, unknown> {
     if (!key) continue;
     if (value == null) continue;
 
-    // status 字段特殊处理：飞书 opt ID 数组 → 汉字字符串
-    if (key === 'status' && Array.isArray(value) && value.length > 0) {
-      const optId = String(value[0]);
-      mapped[key] = FEISHU_STATUS_MAP[optId] ?? optId;
+    // status 字段特殊处理：飞书 opt ID 数组 → 汉字字符串；单选字符串直接用
+    if (key === 'status') {
+      if (Array.isArray(value) && value.length > 0) {
+        const optId = String(value[0]);
+        mapped[key] = FEISHU_STATUS_MAP[optId] ?? optId;
+      } else if (typeof value === 'string') {
+        mapped[key] = value;
+      }
+      continue;
     }
     // attachment field: [{file_token, name, type, url}] → 保留原对象
     else if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && ('file_token' in value[0] || ('url' in value[0] && 'type' in value[0]))) {
