@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Spin, Tag, Select, Input, Button, App } from 'antd';
+import { Spin, Tag, Button, App } from 'antd';
 import {
-  SearchOutlined,
   SyncOutlined,
   StarOutlined,
   TrophyOutlined,
@@ -167,10 +166,7 @@ export default function WishPoolPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [progressFilter, setProgressFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('value');
 
   // 权限检查
   useEffect(() => {
@@ -210,43 +206,6 @@ export default function WishPoolPage() {
     message.success('数据已刷新');
   };
 
-  // 筛选选项
-  const categoryOptions = useMemo(() => {
-    if (!stats) return [];
-    return [
-      { value: 'all', label: '全部分类' },
-      ...Object.keys(stats.categoryMap).map((cat) => ({ value: cat, label: `${cat} (${stats.categoryMap[cat]})` })),
-    ];
-  }, [stats]);
-
-  const progressOptions = useMemo(() => {
-    if (!stats) return [];
-    return [
-      { value: 'all', label: '全部进展' },
-      ...Object.keys(stats.progressMap).map((prog) => ({ value: prog, label: `${prog} (${stats.progressMap[prog]})` })),
-    ];
-  }, [stats]);
-
-  // 筛选后的数据
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      if (categoryFilter !== 'all' && item.sceneCategory !== categoryFilter) return false;
-      if (progressFilter !== 'all') {
-        const prog = item.landingProgress || '未标记';
-        if (prog !== progressFilter) return false;
-      }
-      if (search) {
-        const q = search.toLowerCase();
-        return (
-          (item.title || '').toLowerCase().includes(q) ||
-          (item.briefIntro || '').toLowerCase().includes(q) ||
-          (item.sceneCategory || '').toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [items, categoryFilter, progressFilter, search]);
-
   // 计算统计
   const maxCat = useMemo(() => stats ? Math.max(...Object.values(stats.categoryMap), 1) : 1, [stats]);
   const maxTeam = useMemo(() => stats ? Math.max(...Object.values(stats.teamMap), 1) : 1, [stats]);
@@ -279,9 +238,7 @@ export default function WishPoolPage() {
         </div>
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
           {[
-            { key: 'overview', label: '总览', icon: <BarChartOutlined /> },
-            { key: 'value', label: '价值排名', icon: <TrophyOutlined /> },
-            { key: 'pipeline', label: '落地管线', icon: <RocketOutlined /> },
+            { key: 'value', label: '场景价值明细', icon: <TrophyOutlined /> },
             { key: 'gaps', label: '数据质量', icon: <WarningOutlined /> },
           ].map((tab) => (
             <button
@@ -307,7 +264,7 @@ export default function WishPoolPage() {
         </div>
       ) : (
         <>
-          {activeTab === 'overview' && stats && (
+          {activeTab === 'value' && stats && (
             <div className="space-y-6">
               {/* 统计卡片 */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -427,11 +384,7 @@ export default function WishPoolPage() {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
 
-          {activeTab === 'value' && (
-            <div className="space-y-6">
               {/* 全部场景价值排名 */}
               <div className="glass rounded-xl overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
                 <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.3)' }}>
@@ -503,121 +456,6 @@ export default function WishPoolPage() {
                     <p><span style={{ color: '#F27F22', fontWeight: 600 }}>地区系数</span> <span style={{ color: 'var(--text-muted)' }}>=</span> <span style={{ color: 'var(--foreground)' }}>国内 ×1 · 海外 ×2 · 全球 ×1.5</span></p>
                     <p><span style={{ color: '#F27F22', fontWeight: 600 }}>复用系数</span> <span style={{ color: 'var(--text-muted)' }}>=</span> <span style={{ color: 'var(--foreground)' }}>个人 ×1 · BU内 ×2 · 跨BU ×3 · 全集团 ×4</span></p>
                   </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'pipeline' && (
-            <div className="space-y-6">
-              {/* 落地进展漏斗 */}
-              <div className="glass rounded-xl overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.3)' }}>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>落地进展漏斗</h3>
-                  <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>场景从启动到全面上线的推进状态</p>
-                </div>
-                <div className="p-5">
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 180, padding: '0 10px' }}>
-                    {['待启动', '训练验证中', '试点上线', '推广上线', '全面上线'].map((stage) => {
-                      const count = stats?.progressMap[stage] || 0;
-                      const maxP = Math.max(...['待启动', '训练验证中', '试点上线', '推广上线', '全面上线'].map((s) => stats?.progressMap[s] || 0), 1);
-                      const h = Math.max((count / maxP) * 150, 4);
-                      return (
-                        <div key={stage} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--foreground)' }}>{count}</div>
-                          <div style={{ width: '100%', borderRadius: '6px 6px 0 0', height: h, background: PROGRESS_COLORS[stage], transition: 'height 0.5s ease' }} />
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.2 }}>{stage}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {(stats?.progressMap['未标记'] || 0) > 0 && (
-                    <div className="mt-4 p-3 rounded-lg" style={{ background: 'rgba(242,127,34,0.08)', border: '1px solid rgba(242,127,34,0.2)' }}>
-                      <p style={{ fontWeight: 600, fontSize: 12, color: '#F27F22' }}>
-                        {stats?.progressMap['未标记']} / {stats?.total} 个场景未标记落地进展
-                      </p>
-                      <p style={{ fontSize: 11, color: '#F27F22', marginTop: 4, opacity: 0.85 }}>
-                        绝大多数场景缺乏进度追踪数据，CHO 无法判断实际推进节奏。建议：将「落地进展」设为必填字段，建立每周/每月更新机制。
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 场景列表 */}
-              <div className="glass rounded-xl overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.3)' }}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>各场景落地进展一览</h3>
-                      <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>按价值排名展示每个场景的当前状态</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Select value={categoryFilter} onChange={setCategoryFilter} options={categoryOptions} style={{ width: 120 }} size="small" />
-                      <Select value={progressFilter} onChange={setProgressFilter} options={progressOptions} style={{ width: 120 }} size="small" />
-                      <Input
-                        placeholder="搜索场景"
-                        prefix={<SearchOutlined />}
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        style={{ width: 160 }}
-                        allowClear
-                        size="small"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="p-5 overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr>
-                        <th className="text-left py-2 px-3 text-xs font-medium" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.3)' }}>排名</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.3)' }}>场景</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.3)' }}>分类</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.3)' }}>落地进展</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.3)' }}>价值分</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.3)' }}>月节省</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredItems
-                        .sort((a, b) => ((a.valueRank as number) ?? 999) - ((b.valueRank as number) ?? 999))
-                        .map((item) => (
-                          <tr key={item.id} className="hover:bg-white/20 transition-colors">
-                            <td className="py-2 px-3 font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              {item.valueRank ? `#${item.valueRank}` : '-'}
-                            </td>
-                            <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              <a href={item.recordUrl} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: 'var(--foreground)' }}>
-                                {(item.title || '-').length > 30 ? (item.title || '-').slice(0, 30) + '…' : (item.title || '-')}
-                              </a>
-                            </td>
-                            <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              {item.sceneCategory && (
-                                <Tag color={CATEGORY_COLORS[item.sceneCategory] || '#6b7280'} className="text-[11px]">
-                                  {item.sceneCategory}
-                                </Tag>
-                              )}
-                            </td>
-                            <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              {item.landingProgress ? (
-                                <Tag color={PROGRESS_COLORS[item.landingProgress] || '#6b7280'} className="text-[11px]">
-                                  {item.landingProgress}
-                                </Tag>
-                              ) : (
-                                <span style={{ color: '#cbd5e1', fontSize: 12 }}>— 未填</span>
-                              )}
-                            </td>
-                            <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              {item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-'}
-                            </td>
-                            <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                              {item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '-'}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
                 </div>
               </div>
             </div>

@@ -50,6 +50,7 @@ interface ChoSubmission {
   beforeFreq: number | null;
   afterFreq: number | null;
   beforeMonthlyHours: number | null;
+  afterMonthlyHours: number | null;
   finalValueScore: number | null;
   sceneRegionCoefficientValue: number | null;
   monthlyCostSavingHours: number | null;
@@ -342,6 +343,7 @@ export default function ChoDashboardPage() {
       align: 'center',
       fixed: 'left',
       className: 'cho-frozen-rank',
+     
       render: (seq: number) => (
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{seq}</span>
       ),
@@ -352,6 +354,7 @@ export default function ChoDashboardPage() {
       key: 'title',
       width: 170,
       ellipsis: true,
+     
       render: (title: string, record) => (
         <div>
           <button
@@ -374,12 +377,13 @@ export default function ChoDashboardPage() {
       className: 'cho-group-compare',
       width: 280,
       align: 'center' as const,
+     
       render: (_: unknown, r: typeof tableData[number]) => {
         const cols = [
           { label: '频次', before: fmtFreq(r.beforeFreq), after: fmtFreq(r.afterFreq), dir: changeDir(r.beforeFreq, r.afterFreq), flex: 4 },
           { label: '耗时', before: numOrDash(r.oldHoursPerTask, 'h', 1), after: numOrDash(r.newDuration, 'h', 1), dir: changeDir(r.oldHoursPerTask, r.newDuration), flex: 3 },
           { label: '人数', before: numOrDash(r.beforePeopleCount, '人'), after: numOrDash(r.afterPeopleCount, '人'), dir: changeDir(r.beforePeopleCount, r.afterPeopleCount), flex: 3 },
-          { label: '月工时', before: numOrDash(r.beforeHours, 'h'), after: numOrDash(r.afterHours, 'h'), dir: changeDir(r.beforeHours, r.afterHours), flex: 3 },
+          { label: '月工时', before: numOrDash(r.beforeMonthlyHours, 'h'), after: numOrDash(r.afterMonthlyHours, 'h'), dir: changeDir(r.beforeMonthlyHours, r.afterMonthlyHours), flex: 3 },
         ];
         const arrowColor = (dir: 'up' | 'down' | null) => dir === 'down' ? '#16a34a' : '#dc2626';
         const valColor = (dir: 'up' | 'down' | null) => dir != null ? (dir === 'down' ? '#16a34a' : '#dc2626') : 'var(--foreground)';
@@ -416,10 +420,10 @@ export default function ChoDashboardPage() {
       className: 'cho-group-result',
       children: [
         {
-          title: <FmtHeader label="月节省工时" tip="= 改造前月工时 − 改造后月工时" />,
+          title: <FmtHeader label="月节省工时" tip="= 原月均耗时 − 新月均耗时" />,
           dataIndex: 'savedHours', key: 'sh', width: 95, align: 'center' as const, className: 'cho-col-result',
           render: (v: number | null, record: any) => {
-            const dir = changeDir(record.beforeHours, record.afterHours);
+            const dir = changeDir(record.beforeMonthlyHours, record.afterMonthlyHours);
             return (
               <span className="inline-flex items-center gap-1">
                 <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>
@@ -434,9 +438,14 @@ export default function ChoDashboardPage() {
           render: (v: number | null) => <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{fmtPct(v)}</span>,
         },
         {
-          title: <FmtHeader label="月均降本费用" tip="月均降本费用（不含人力成本）" />,
-          dataIndex: 'monthlySavedCost', key: 'msc', width: 90, align: 'center' as const, className: 'cho-col-result',
-          render: (v: string | null) => <span className="font-mono text-xs" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{v || '—'}</span>,
+          title: <FmtHeader label="降本折算工时" tip="= 月均降本费用 / (50 × 地区系数)" />,
+          dataIndex: 'monthlyCostSavingHours', key: 'mcsh', width: 95, align: 'center' as const, className: 'cho-col-result',
+          render: (v: number | null) => <span className="font-mono text-xs" style={{ color: v != null && v > 0 ? '#d97706' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>,
+        },
+        {
+          title: <FmtHeader label="节省总工时" tip="= 月均提效节省工时 + 月均降本折算工时" />,
+          dataIndex: 'totalMonthlySavedHours', key: 'tmsh', width: 95, align: 'center' as const, className: 'cho-col-result',
+          render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>,
         },
       ],
     },
@@ -468,15 +477,9 @@ export default function ChoDashboardPage() {
           },
         },
         {
-          title: <FmtHeader label="地区系数" tip="场景归属地区系数（如：海外 x2）" />,
-          key: 'rc', width: 100, align: 'center' as const, className: 'cho-col-reuse',
-          render: (_: unknown, r: typeof tableData[number]) => {
-            const text = r.regionCoefficient;
-            const val = r.sceneRegionCoefficientValue;
-            if (!text && val == null) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
-            const display = text && val != null ? `${text} x${val}` : text ?? (val != null ? `x${val}` : '—');
-            return <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{display}</span>;
-          },
+          title: <FmtHeader label="地区系数" tip="场景归属地区系数" />,
+          dataIndex: 'regionCoefficient', key: 'rc', width: 90, align: 'center' as const, className: 'cho-col-reuse',
+          render: (v: string | null) => <span className="text-xs font-medium" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{v || '—'}</span>,
         },
       ],
     },
@@ -488,6 +491,7 @@ export default function ChoDashboardPage() {
       key: 'fvs',
       width: 90,
       align: 'center' as const,
+     
       render: (v: number | null) => (
         <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#7c3aed' : 'var(--text-muted)' }}>
           {v != null ? Math.round(v) : '—'}
@@ -503,6 +507,7 @@ export default function ChoDashboardPage() {
       width: 200,
       align: 'center' as const,
       ellipsis: true,
+     
       render: (v: string | null) => (
         <span className="text-[11px] leading-snug" style={{ color: v ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
           {v || '—'}
@@ -521,6 +526,24 @@ export default function ChoDashboardPage() {
         /* ── 表格容器：右侧留白 ── */
         .cho-table-wrap .ant-table {
           margin-right: 8px;
+        }
+        /* ── 列拖拽拉宽 ── */
+        .cho-table-wrap .react-resizable {
+          position: relative;
+        }
+        .cho-table-wrap .react-resizable-handle {
+          position: absolute;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          width: 6px;
+          cursor: col-resize;
+          background: transparent;
+          z-index: 1;
+        }
+        .cho-table-wrap .react-resizable-handle:hover,
+        .cho-table-wrap .react-resizable-handle:active {
+          background: rgba(26, 58, 138, 0.3);
         }
         /* ── 冻结列 ── */
         .cho-frozen-rank {
@@ -688,7 +711,7 @@ export default function ChoDashboardPage() {
               rowKey="id"
               pagination={false}
               size="small"
-              scroll={{ x: 1100 }}
+              scroll={{ x: 1400 }}
               rowClassName={() => 'cho-table-row'}
             />
           </div>
