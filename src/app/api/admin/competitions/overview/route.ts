@@ -136,6 +136,7 @@ export async function GET(request: NextRequest) {
         proposalNo: sub.proposal_no,
         submittedAt: sub.created_at,
         status,
+        competitionStatus: sub.status ?? null,
         totalScore,
         reviewCount: allReviewed.length,
         roleScores,

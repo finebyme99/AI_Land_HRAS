@@ -60,6 +60,7 @@ interface ChoSubmission {
   sceneSource: string | null;
   landingProgress: string | null;
   status: string | null;
+  competitionStatus: string | null;
 }
 
 interface OverviewResponse {
@@ -274,7 +275,7 @@ export default function ChoDashboardPage() {
   // ── Summary ──
   const summary = useMemo(() => {
     // 只统计大赛进展=评审中的方案
-    const reviewed = enriched.filter((s) => s.status === '评审中');
+    const reviewed = enriched.filter((s) => s.competitionStatus === '评审中');
     const totalPeople = reviewed.reduce((sum, s) => sum + (s.beforePeopleCount ?? 0), 0);
     const totalBefore = reviewed.reduce((sum, s) => sum + (s.beforeHours ?? 0), 0);
     const totalAfter = reviewed.reduce((sum, s) => sum + (s.afterHours ?? 0), 0);
@@ -316,7 +317,7 @@ export default function ChoDashboardPage() {
   const coreValueOptions = useMemo(() => makeOptions('extraValue'), [enriched]);
   const sceneSourceOptions = useMemo(() => makeOptions('sceneSource'), [enriched]);
   const landingProgressOptions = useMemo(() => makeOptions('landingProgress'), [enriched]);
-  const statusOptions = useMemo(() => makeOptions('status'), [enriched]);
+  const statusOptions = useMemo(() => makeOptions('competitionStatus'), [enriched]);
 
   // ── Filtered & sorted ──
   const tableData = useMemo(() => {
@@ -326,7 +327,7 @@ export default function ChoDashboardPage() {
     if (coreValueFilter !== 'all') list = list.filter((s) => s.extraValue === coreValueFilter);
     if (sceneSourceFilter !== 'all') list = list.filter((s) => s.sceneSource === sceneSourceFilter);
     if (landingProgressFilter !== 'all') list = list.filter((s) => s.landingProgress === landingProgressFilter);
-    if (statusFilter !== 'all') list = list.filter((s) => s.status === statusFilter);
+    if (statusFilter !== 'all') list = list.filter((s) => s.competitionStatus === statusFilter);
     const sorted = [...list].sort((a, b) => {
       switch (sortBy) {
         case 'finalValueScore': return (b.finalValueScore ?? -1) - (a.finalValueScore ?? -1);
