@@ -542,7 +542,7 @@ export default function CompetitionsPage() {
                 </>
               ),
             },
-          ]}
+          ].filter((tab) => tab.key !== 'review' || isAdmin || isReviewer)}
         />
       </div>
 
