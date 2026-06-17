@@ -82,7 +82,10 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '推广复用价值系数值': 'reuseValueCoefficient',
   '总降本提效比例': 'totalEfficiencyRate',
   '场景归属地区系数': 'regionCoefficient',
-  // 暂不映射：业务负责人 / AI负责人 / 实现效果 / 场景来源 / 落地进展 / 进展记录&链接 / 计划启动日期 / 试点上线日期 / 推广上线日期 / 全面上线日期 / 价值排名 / 降本费用说明 / 原月均执行次数 / 新月均执行次数 / 新月均耗时 / 【参考】原人均月耗时
+  '场景来源': 'sceneSource',
+  '落地进展': 'landingProgress',
+  '大赛进展': 'competitionProgress',
+  // 暂不映射：业务负责人 / AI负责人 / 实现效果 / 进展记录&链接 / 计划启动日期 / 试点上线日期 / 推广上线日期 / 全面上线日期 / 价值排名 / 降本费用说明 / 原月均执行次数 / 新月均执行次数 / 新月均耗时 / 【参考】原人均月耗时
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -500,6 +503,9 @@ export async function POST(request: NextRequest) {
         reuse_value_coefficient: mapped.reuseValueCoefficient != null ? Number(mapped.reuseValueCoefficient) || null : null,
         total_efficiency_rate: mapped.totalEfficiencyRate != null ? Number(mapped.totalEfficiencyRate) || null : null,
         region_coefficient: mapped.regionCoefficient ?? null,
+        scene_source: mapped.sceneSource ?? null,
+        landing_progress: mapped.landingProgress ?? null,
+        competition_progress: mapped.competitionProgress ?? null,
       });
     }
 

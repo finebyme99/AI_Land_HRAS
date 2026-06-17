@@ -57,6 +57,9 @@ interface ChoSubmission {
   reuseValueCoefficient: number | null;
   totalEfficiencyRate: number | null;
   regionCoefficient: string | null;
+  sceneSource: string | null;
+  landingProgress: string | null;
+  competitionProgress: string | null;
 }
 
 interface OverviewResponse {
@@ -85,11 +88,15 @@ const PERIOD_OPTIONS = [
 ];
 
 const SORT_OPTIONS = [
-  { value: 'savedHours', label: '节省工时' },
-  { value: 'reuseSaved', label: '推广预估节省工时' },
-  { value: 'efficiency', label: '提效比例' },
-  { value: 'beforeHours', label: '原工时' },
-  { value: 'people', label: '人数' },
+  { value: 'finalValueScore', label: '最终价值计分' },
+  { value: 'savedHours', label: '月均提效节省工时' },
+  { value: 'totalMonthlySavedHours', label: '月均节省总工时' },
+  { value: 'totalEfficiencyRate', label: '总降本提效比例' },
+  { value: 'beforeHours', label: '原月均耗时' },
+  { value: 'afterHours', label: '新月均耗时' },
+  { value: 'monthlySavedCost', label: '月均降本费用' },
+  { value: 'aiCost', label: '月均Token费用' },
+  { value: 'reuseValueCoefficient', label: '复用价值系数' },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -176,7 +183,12 @@ export default function ChoDashboardPage() {
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState('savedHours');
+  const [sceneCategoryFilter, setSceneCategoryFilter] = useState<string>('all');
+  const [coreValueFilter, setCoreValueFilter] = useState<string>('all');
+  const [sceneSourceFilter, setSceneSourceFilter] = useState<string>('all');
+  const [landingProgressFilter, setLandingProgressFilter] = useState<string>('all');
+  const [competitionProgressFilter, setCompetitionProgressFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState('finalValueScore');
   const [detailRecord, setDetailRecord] = useState<typeof enriched[number] | null>(null);
 
   useEffect(() => {
@@ -282,22 +294,43 @@ export default function ChoDashboardPage() {
     return counts;
   }, [enriched]);
 
+  // ── 搜索条件选项（配置表标记"是否作为搜索条件=是"的字段）──
+  const makeOptions = (field: keyof ChoSubmission) => {
+    const counts: Record<string, number> = {};
+    enriched.forEach((s) => { const v = s[field]; if (v && typeof v === 'string') counts[v] = (counts[v] ?? 0) + 1; });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([value, count]) => ({ value, count }));
+  };
+  const sceneCategoryOptions = useMemo(() => makeOptions('sceneCategory'), [enriched]);
+  const coreValueOptions = useMemo(() => makeOptions('extraValue'), [enriched]);
+  const sceneSourceOptions = useMemo(() => makeOptions('sceneSource'), [enriched]);
+  const landingProgressOptions = useMemo(() => makeOptions('landingProgress'), [enriched]);
+  const competitionProgressOptions = useMemo(() => makeOptions('competitionProgress'), [enriched]);
+
   // ── Filtered & sorted ──
   const tableData = useMemo(() => {
     let list = enriched;
     if (teamFilter !== 'all') list = list.filter((s) => s.team === teamFilter);
+    if (sceneCategoryFilter !== 'all') list = list.filter((s) => s.sceneCategory === sceneCategoryFilter);
+    if (coreValueFilter !== 'all') list = list.filter((s) => s.extraValue === coreValueFilter);
+    if (sceneSourceFilter !== 'all') list = list.filter((s) => s.sceneSource === sceneSourceFilter);
+    if (landingProgressFilter !== 'all') list = list.filter((s) => s.landingProgress === landingProgressFilter);
+    if (competitionProgressFilter !== 'all') list = list.filter((s) => s.competitionProgress === competitionProgressFilter);
     const sorted = [...list].sort((a, b) => {
       switch (sortBy) {
+        case 'finalValueScore': return (b.finalValueScore ?? -1) - (a.finalValueScore ?? -1);
         case 'savedHours': return (b.savedHours ?? -1) - (a.savedHours ?? -1);
-        case 'reuseSaved': return (b.reuseSavedHours ?? -1) - (a.reuseSavedHours ?? -1);
-        case 'efficiency': return (b.efficiencyRate ?? -1) - (a.efficiencyRate ?? -1);
+        case 'totalMonthlySavedHours': return (b.totalMonthlySavedHours ?? -1) - (a.totalMonthlySavedHours ?? -1);
+        case 'totalEfficiencyRate': return (b.totalEfficiencyRate ?? -1) - (a.totalEfficiencyRate ?? -1);
         case 'beforeHours': return (b.beforeHours ?? -1) - (a.beforeHours ?? -1);
-        case 'people': return (b.beforePeopleCount ?? -1) - (a.beforePeopleCount ?? -1);
+        case 'afterHours': return (b.afterHours ?? -1) - (a.afterHours ?? -1);
+        case 'monthlySavedCost': return (parseFloat(String(b.monthlySavedCost).replace(/[^0-9.\-]/g, '')) ?? -1) - (parseFloat(String(a.monthlySavedCost).replace(/[^0-9.\-]/g, '')) ?? -1);
+        case 'aiCost': return (parseFloat(String(b.aiCost).replace(/[^0-9.\-]/g, '')) ?? -1) - (parseFloat(String(a.aiCost).replace(/[^0-9.\-]/g, '')) ?? -1);
+        case 'reuseValueCoefficient': return (b.reuseValueCoefficient ?? -1) - (a.reuseValueCoefficient ?? -1);
         default: return 0;
       }
     });
     return sorted.map((s) => ({ ...s, seq: s.fixedSeq }));
-  }, [enriched, teamFilter, sortBy]);
+  }, [enriched, teamFilter, sceneCategoryFilter, coreValueFilter, sceneSourceFilter, landingProgressFilter, competitionProgressFilter, sortBy]);
 
   // ── Table columns ──
   const columns: TableColumnsType<typeof tableData[number]> = [
@@ -583,38 +616,30 @@ export default function ChoDashboardPage() {
         </div>
 
         {/* 筛选 + 排序 */}
-        <div className="glass rounded-xl px-4 py-3 mb-4" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--text-muted)' }}><TeamOutlined /> 部门</span>
-            {[{ value: 'all', label: '全部', count: enriched.length }, ...teams.map((t) => ({ value: t, label: t, count: teamCounts[t] ?? 0 }))].map((opt) => (
+        <div className="glass rounded-xl px-4 py-3 mb-4 space-y-2" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          {/* 搜索条件（配置表标记"是否作为搜索条件=是"的字段） */}
+          <FilterRow label="部门" icon={<TeamOutlined />} options={[{ value: 'all', label: '全部', count: enriched.length }, ...teams.map((t) => ({ value: t, label: t, count: teamCounts[t] ?? 0 }))]} value={teamFilter} onChange={setTeamFilter} />
+          <FilterRow label="场景分类" options={[{ value: 'all', label: '全部', count: enriched.length }, ...sceneCategoryOptions.map((o) => ({ ...o, label: o.value }))]} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
+          <FilterRow label="核心价值" options={[{ value: 'all', label: '全部', count: enriched.length }, ...coreValueOptions.map((o) => ({ ...o, label: o.value }))]} value={coreValueFilter} onChange={setCoreValueFilter} />
+          <FilterRow label="场景来源" options={[{ value: 'all', label: '全部', count: enriched.length }, ...sceneSourceOptions.map((o) => ({ ...o, label: o.value }))]} value={sceneSourceFilter} onChange={setSceneSourceFilter} />
+          <FilterRow label="落地进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...landingProgressOptions.map((o) => ({ ...o, label: o.value }))]} value={landingProgressFilter} onChange={setLandingProgressFilter} />
+          <FilterRow label="大赛进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...competitionProgressOptions.map((o) => ({ ...o, label: o.value }))]} value={competitionProgressFilter} onChange={setCompetitionProgressFilter} />
+          {/* 排序条件（配置表标记"是否作为排序条件=是"的字段） */}
+          <div className="flex flex-wrap items-center gap-2 pt-2" style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+            <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>排序</span>
+            {SORT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => setTeamFilter(opt.value)}
-                className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all"
+                onClick={() => setSortBy(opt.value)}
+                className="px-2 py-0.5 rounded-md text-[11px] font-medium transition-all"
                 style={{
-                  background: teamFilter === opt.value ? 'var(--primary)' : 'rgba(0,0,0,0.04)',
-                  color: teamFilter === opt.value ? '#fff' : 'var(--text-secondary)',
+                  background: sortBy === opt.value ? 'var(--primary)' : 'rgba(0,0,0,0.04)',
+                  color: sortBy === opt.value ? '#fff' : 'var(--text-secondary)',
                 }}
               >
-                {opt.label} <span className="opacity-60">({opt.count})</span>
+                {opt.label}
               </button>
             ))}
-            <div className="ml-auto flex items-center gap-2">
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>排序</span>
-              {SORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setSortBy(opt.value)}
-                  className="px-2 py-0.5 rounded-md text-[11px] font-medium transition-all"
-                  style={{
-                    background: sortBy === opt.value ? 'var(--primary)' : 'rgba(0,0,0,0.04)',
-                    color: sortBy === opt.value ? '#fff' : 'var(--text-secondary)',
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -716,6 +741,34 @@ function StatCard({ icon, label, value, sub, color, highlight }: {
       <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>{label}</span>
       <span className="text-xl font-bold font-mono mt-0.5" style={{ color }}>{value}</span>
       {sub && <span className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub}</span>}
+    </div>
+  );
+}
+
+/** 筛选行 pill 组件 */
+function FilterRow({ label, icon, options, value, onChange }: {
+  label: string; icon?: React.ReactNode;
+  options: { value: string; label: string; count: number }[];
+  value: string; onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+        {icon} {label}
+      </span>
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
+          className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all"
+          style={{
+            background: value === opt.value ? 'var(--primary)' : 'rgba(0,0,0,0.04)',
+            color: value === opt.value ? '#fff' : 'var(--text-secondary)',
+          }}
+        >
+          {opt.label} <span className="opacity-60">({opt.count})</span>
+        </button>
+      ))}
     </div>
   );
 }
