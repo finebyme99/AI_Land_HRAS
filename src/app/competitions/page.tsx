@@ -416,8 +416,8 @@ export default function CompetitionsPage() {
   // 排名排序
   const rankedEntries = useMemo(() => {
     return [...progressItems].sort((a, b) => {
-      const sa = a.finalValueScore || a.totalSavedHours || a.monthlySavedHours || 0;
-      const sb = b.finalValueScore || b.totalSavedHours || b.monthlySavedHours || 0;
+      const sa = a.finalValueScore ?? a.totalSavedHours ?? a.monthlySavedHours ?? 0;
+      const sb = b.finalValueScore ?? b.totalSavedHours ?? b.monthlySavedHours ?? 0;
       return sb - sa;
     });
   }, [progressItems]);

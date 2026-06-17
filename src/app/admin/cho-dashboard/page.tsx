@@ -100,6 +100,14 @@ const SORT_OPTIONS = [
   { value: 'reuseValueCoefficient', label: '复用价值系数' },
 ];
 
+// ─── 筛选条件完整选项（飞书多维表格字段配置） ───
+const SCENE_SOURCE_OPTIONS = ['AI大赛', 'AI许愿', 'HSSC统一新增', '待补充数据'];
+const LANDING_PROGRESS_OPTIONS = ['待启动', '训练验证中', '试点上线', '推广上线', '全面上线', '关闭'];
+const COMPETITION_PROGRESS_OPTIONS = ['未参赛', '数据补充中', '评审中', '终审通过', '并入其他方案', '取消'];
+const SCENE_CATEGORY_OPTIONS = ['数据分析', '招聘管理', '薪酬绩效', '培训管理', '组织与人才发展', '文化氛围', '核算与报账', '基础人事支持', '行政管理', '日常工作', '考勤管理', '其他（请补充）', '人才发展'];
+const CORE_VALUE_OPTIONS = ['提效', '降本（不含内部人力成本）'];
+const TEAM_OPTIONS = ['LBU', 'FBU', 'ABU', 'HQU', 'WX', 'GEU', 'GUS', 'ZT_HSSC', 'GF_HSSC', 'ZT_ASSC', 'GF_ASSC', 'HCOE'];
+
 // ─── Helpers ─────────────────────────────────────────────────────
 
 /** 频率文本 + 执行次数 → 每月次数 */
@@ -284,18 +292,6 @@ export default function ChoDashboardPage() {
     enriched.forEach((s) => { if (s.team) counts[s.team] = (counts[s.team] ?? 0) + 1; });
     return counts;
   }, [enriched]);
-
-  // ── 搜索条件选项（配置表标记"是否作为搜索条件=是"的字段）──
-  const makeOptions = (field: keyof ChoSubmission) => {
-    const counts: Record<string, number> = {};
-    enriched.forEach((s) => { const v = s[field]; if (v && typeof v === 'string') counts[v] = (counts[v] ?? 0) + 1; });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([value, count]) => ({ value, count }));
-  };
-  const sceneCategoryOptions = useMemo(() => makeOptions('sceneCategory'), [enriched]);
-  const coreValueOptions = useMemo(() => makeOptions('extraValue'), [enriched]);
-  const sceneSourceOptions = useMemo(() => makeOptions('sceneSource'), [enriched]);
-  const landingProgressOptions = useMemo(() => makeOptions('landingProgress'), [enriched]);
-  const statusOptions = useMemo(() => makeOptions('competitionStatus'), [enriched]);
 
   // ── Filtered & sorted ──
   const tableData = useMemo(() => {
@@ -731,12 +727,12 @@ export default function ChoDashboardPage() {
                 <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>评审周期</span>
                 <Select value={period} onChange={setPeriod} options={PERIOD_OPTIONS} style={{ width: 120 }} size="small" />
               </div>
-              <FilterRow label="部门" icon={<TeamOutlined />} options={[{ value: 'all', label: '全部', count: enriched.length }, ...teams.map((t) => ({ value: t, label: t, count: teamCounts[t] ?? 0 }))]} value={teamFilter} onChange={setTeamFilter} />
-              <FilterRow label="场景分类" options={[{ value: 'all', label: '全部', count: enriched.length }, ...sceneCategoryOptions.map((o) => ({ ...o, label: o.value }))]} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
-              <FilterRow label="核心价值" options={[{ value: 'all', label: '全部', count: enriched.length }, ...coreValueOptions.map((o) => ({ ...o, label: o.value }))]} value={coreValueFilter} onChange={setCoreValueFilter} />
-              <FilterRow label="场景来源" options={[{ value: 'all', label: '全部', count: enriched.length }, ...sceneSourceOptions.map((o) => ({ ...o, label: o.value }))]} value={sceneSourceFilter} onChange={setSceneSourceFilter} />
-              <FilterRow label="落地进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...landingProgressOptions.map((o) => ({ ...o, label: o.value }))]} value={landingProgressFilter} onChange={setLandingProgressFilter} />
-              <FilterRow label="大赛进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...statusOptions.map((o) => ({ ...o, label: o.value }))]} value={statusFilter} onChange={setStatusFilter} />
+              <FilterRow label="部门" icon={<TeamOutlined />} options={[{ value: 'all', label: '全部', count: enriched.length }, ...TEAM_OPTIONS.map((t) => ({ value: t, label: t, count: teamCounts[t] ?? 0 }))]} value={teamFilter} onChange={setTeamFilter} />
+              <FilterRow label="场景分类" options={[{ value: 'all', label: '全部', count: enriched.length }, ...SCENE_CATEGORY_OPTIONS.map((v) => ({ value: v, label: v, count: 0 }))]} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
+              <FilterRow label="核心价值" options={[{ value: 'all', label: '全部', count: enriched.length }, ...CORE_VALUE_OPTIONS.map((v) => ({ value: v, label: v, count: 0 }))]} value={coreValueFilter} onChange={setCoreValueFilter} />
+              <FilterRow label="场景来源" options={[{ value: 'all', label: '全部', count: enriched.length }, ...SCENE_SOURCE_OPTIONS.map((v) => ({ value: v, label: v, count: 0 }))]} value={sceneSourceFilter} onChange={setSceneSourceFilter} />
+              <FilterRow label="落地进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...LANDING_PROGRESS_OPTIONS.map((v) => ({ value: v, label: v, count: 0 }))]} value={landingProgressFilter} onChange={setLandingProgressFilter} />
+              <FilterRow label="大赛进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...COMPETITION_PROGRESS_OPTIONS.map((v) => ({ value: v, label: v, count: 0 }))]} value={statusFilter} onChange={setStatusFilter} />
             </div>
           )}
         </div>
