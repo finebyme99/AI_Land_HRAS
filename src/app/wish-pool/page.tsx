@@ -501,6 +501,12 @@ export default function WishPoolPage() {
   const hideListHover = () => {
     listTimer.current = setTimeout(() => setListHover(null), 200);
   };
+  const handleListEnter = () => {
+    clearTimeout(listTimer.current);
+  };
+  const handleListLeave = () => {
+    setListHover(null);
+  };
 
   // 权限检查
   useEffect(() => {
@@ -956,10 +962,12 @@ export default function WishPoolPage() {
             </div>
           )}
 
-          {/* 图表/卡片悬浮明细列表 — 跟随鼠标 */}
+          {/* 图表/卡片悬浮明细列表 — 跟随鼠标，可交互 */}
           {listHover && (
             <div
-              style={{ position: 'fixed', left: listHover.x, top: listHover.y, zIndex: 1050, pointerEvents: 'none', background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid rgba(255,255,255,0.6)', maxWidth: 560 }}
+              style={{ position: 'fixed', left: listHover.x, top: listHover.y, zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid rgba(255,255,255,0.6)', maxWidth: 560 }}
+              onMouseEnter={handleListEnter}
+              onMouseLeave={handleListLeave}
             >
               <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3a8a', marginBottom: 6 }}>{listHover.label} · {listHover.items.length} 个场景</div>
               <SceneHoverList items={listHover.items} />
