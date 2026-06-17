@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Spin, Tag, Button, App, Popover } from 'antd';
+import { Spin, Tag, Button, App } from 'antd';
 import {
   SyncOutlined,
   StarOutlined,
@@ -239,6 +239,37 @@ function SceneDetailPopup({ item }: { item: WishItem }) {
         {row('新月均耗时', item.afterMonthlyHours ? `${fmtF(Math.round(item.afterMonthlyHours))}h` : null)}
         {row('月均Token费用', item.aiCost ? `¥${fmtF(item.aiCost)}` : null)}
       </div>
+    </div>
+  );
+}
+
+// ── 图表/卡片悬浮明细列表 ──
+function SceneHoverList({ items }: { items: WishItem[] }) {
+  return (
+    <div style={{ maxHeight: 300, overflowY: 'auto', width: 380 }}>
+      <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            {['场景', '提报团队', '落地进展', '月省总工时', '复用价值', '地区'].map((h) => (
+              <th key={h} style={{ padding: '4px 5px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.3)', whiteSpace: 'nowrap', textAlign: 'left' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+              <td style={{ padding: '4px 5px', color: 'var(--foreground)', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title || '-'}</td>
+              <td style={{ padding: '4px 5px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.team || '—'}</td>
+              <td style={{ padding: '4px 5px' }}>
+                {item.landingProgress ? <Tag color={PROGRESS_COLORS[item.landingProgress] || '#6b7280'} style={{ fontSize: 10, margin: 0, lineHeight: '16px' }}>{item.landingProgress}</Tag> : <span style={{ color: '#cbd5e1' }}>—</span>}
+              </td>
+              <td style={{ padding: '4px 5px', color: 'var(--text-secondary)', fontFamily: 'SF Mono, monospace', whiteSpace: 'nowrap' }}>{item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '—'}</td>
+              <td style={{ padding: '4px 5px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.reuseValueLevel || '—'}</td>
+              <td style={{ padding: '4px 5px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.regionCoefficient || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

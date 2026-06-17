@@ -353,7 +353,7 @@ export default function ChoDashboardPage() {
       title: '标题',
       dataIndex: 'title',
       key: 'title',
-      width: 170,
+      width: 220,
       ellipsis: true,
      
       render: (title: string, record) => (
@@ -459,7 +459,7 @@ export default function ChoDashboardPage() {
       children: [
         {
           title: <FmtHeader label="复用价值系数" tip="跨团队/BU 复用范围" />,
-          dataIndex: 'reuseValue', key: 'rm', width: 130, align: 'center' as const, className: 'cho-col-reuse',
+          dataIndex: 'reuseValue', key: 'rm', width: 180, align: 'center' as const, className: 'cho-col-reuse',
           render: (v: string | null, record: any) => {
             if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
             const level = record.reuseValueLevel;
@@ -479,7 +479,7 @@ export default function ChoDashboardPage() {
         },
         {
           title: <FmtHeader label="地区系数" tip="场景归属地区系数" />,
-          dataIndex: 'regionCoefficient', key: 'rc', width: 90, align: 'center' as const, className: 'cho-col-reuse',
+          dataIndex: 'regionCoefficient', key: 'rc', width: 110, align: 'center' as const, className: 'cho-col-reuse',
           render: (v: string | null) => <span className="text-xs font-medium" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{v || '—'}</span>,
         },
       ],
@@ -724,7 +724,7 @@ export default function ChoDashboardPage() {
               rowKey="id"
               pagination={false}
               size="small"
-              scroll={{ x: 1400 }}
+              scroll={{ x: 1600 }}
               rowClassName={() => 'cho-table-row'}
             />
           </div>
