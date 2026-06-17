@@ -291,6 +291,165 @@ function SceneHoverList({ items }: { items: WishItem[] }) {
   );
 }
 
+// ── 点击下钻详情弹窗 ──
+function SceneDrillDownModal({ item, onClose }: { item: WishItem; onClose: () => void }) {
+  const sectionTitle = (text: string, color: string) => (
+    <div style={{
+      fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.5,
+      borderBottom: `2px solid ${color}30`, paddingBottom: 6, marginBottom: 12, marginTop: 20,
+    }}>{text}</div>
+  );
+  const labelStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 12 };
+  const valStyle: React.CSSProperties = { color: 'var(--foreground)', fontSize: 13, fontWeight: 500, textAlign: 'right' as const };
+  const row = (label: string, value: React.ReactNode, full?: boolean) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, padding: '5px 0', gridColumn: full ? '1 / -1' : undefined }}>
+      <span style={labelStyle}>{label}</span>
+      <span style={{ ...valStyle, maxWidth: full ? 500 : 240, wordBreak: 'break-word' }}>{value || '—'}</span>
+    </div>
+  );
+  const arr = (v: string[] | undefined) => v?.length ? v.join('、') : null;
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: '92%', maxWidth: 720, maxHeight: '85vh', background: 'rgba(255,255,255,0.98)',
+          backdropFilter: 'blur(24px)', borderRadius: 16, overflow: 'hidden',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.2)', animation: 'slideUp 0.3s ease-out',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Gradient Header */}
+        <div style={{ background: 'linear-gradient(135deg, #1a3a8a, #2d5bc7)', padding: '20px 24px', color: 'white', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            {item.proposalNo && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>{item.proposalNo}</Tag>}
+            {item.sceneCategory && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>{item.sceneCategory}</Tag>}
+            {item.landingProgress && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>{item.landingProgress}</Tag>}
+            {item.reuseValueLevel && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(242,127,34,0.3)', borderColor: 'rgba(242,127,34,0.5)', color: 'white' }}>{item.reuseValueLevel}</Tag>}
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{item.title || '未命名场景'}</div>
+          {item.briefIntro && <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>{item.briefIntro}</div>}
+          <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '0 24px 24px', maxHeight: 'calc(85vh - 120px)', overflowY: 'auto' }}>
+          {/* Score highlight */}
+          <div style={{ display: 'flex', gap: 24, padding: '16px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>价值排名</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#1a3a8a', fontFamily: 'SF Mono, monospace' }}>{item.valueRank ? `#${item.valueRank}` : '-'}</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>最终价值计分</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#F27F22', fontFamily: 'SF Mono, monospace' }}>{item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-'}</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>月均节省总工时</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#2d5bc7', fontFamily: 'SF Mono, monospace' }}>{item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : '-'}</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>总降本提效</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#4a7de0', fontFamily: 'SF Mono, monospace' }}>{item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : '-'}</div>
+            </div>
+          </div>
+
+          {/* 场景信息 */}
+          {sectionTitle('场景信息', '#1a3a8a')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
+            {row('核心价值', item.coreValue)}
+            {row('场景来源', item.sceneSource)}
+            {row('业务负责人', arr(item.bizOwner))}
+            {row('AI负责人', arr(item.aiOwner))}
+            {row('提报团队', item.team)}
+            {row('提报组队类型', item.teamType)}
+            {row('提报人', arr(item.submitter))}
+            {row('组队成员', arr(item.teamMembers))}
+            {row('AI工具', arr(item.aiTools))}
+            {row('计划启动', item.plannedStartDate?.slice(0, 10))}
+            {row('试点上线', item.pilotDate?.slice(0, 10))}
+            {row('推广上线', item.rolloutDate?.slice(0, 10))}
+            {row('全面上线', item.fullLaunchDate?.slice(0, 10))}
+          </div>
+
+          {/* AI前指标 */}
+          {sectionTitle('AI前指标', '#1a3a8a')}
+          {item.beforeProcess && row('原业务流程', item.beforeProcess, true)}
+          {item.painPoints && item.painPoints.length > 0 && row('原核心痛点', item.painPoints.join('、'), true)}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
+            {row('原操作频率', item.beforeFrequency)}
+            {row('原操作次数', item.beforeOperationCount ? `${item.beforeOperationCount}次` : null)}
+            {row('原操作频次', item.beforeFreq ? `${item.beforeFreq}次/月` : null)}
+            {row('原操作人数', item.beforePeopleCount ? `${item.beforePeopleCount}人` : null)}
+            {row('原单次耗时', item.beforeHoursPerTask ? `${item.beforeHoursPerTask}h` : null)}
+            {row('原月均耗时', item.beforeMonthlyHours ? `${fmtF(Math.round(item.beforeMonthlyHours))}h` : null)}
+          </div>
+
+          {/* AI后指标 */}
+          {sectionTitle('AI后指标', '#1a3a8a')}
+          {item.afterProcess && row('新业务流程', item.afterProcess, true)}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
+            {row('新操作频率', item.afterFrequency)}
+            {row('新操作次数', item.afterOperationCount ? `${item.afterOperationCount}次` : null)}
+            {row('新操作频次', item.afterFreq ? `${item.afterFreq}次/月` : null)}
+            {row('新操作人数', item.afterPeopleCount ? `${item.afterPeopleCount}人` : null)}
+            {row('新单次耗时', item.afterHoursPerTask ? `${item.afterHoursPerTask}h` : null)}
+            {row('新月均耗时', item.afterMonthlyHours ? `${fmtF(Math.round(item.afterMonthlyHours))}h` : null)}
+            {row('月均Token费用', item.aiCost ? `¥${fmtF(item.aiCost)}` : null)}
+          </div>
+
+          {/* 价值计分指标 */}
+          {sectionTitle('价值计分指标', '#F27F22')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
+            {row('月均提效节省', item.monthlySavedHours ? `${fmtF(Math.round(item.monthlySavedHours))}h` : null)}
+            {row('月均降本费用', item.monthlySavedCost ? `¥${fmtF(item.monthlySavedCost)}` : null)}
+            {item.costReductionNote && row('降本费用说明', item.costReductionNote, true)}
+            {row('降本折算工时', item.costSavedHours ? `${fmtF(Math.round(item.costSavedHours))}h` : null)}
+            {row('月均节省总工时', item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : null)}
+            {row('总降本提效', item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : null)}
+            {row('地区系数', item.regionCoefficient)}
+            {row('复用价值系数', item.reuseValue)}
+            {row('复用价值等级', item.reuseValueLevel)}
+          </div>
+
+          {/* 实现过程 */}
+          {(item.implementation || item.implementationLink) && (
+            <>
+              {sectionTitle('AI实现过程', '#2d5bc7')}
+              {item.implementation && <div style={{ fontSize: 13, color: 'var(--foreground)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{item.implementation}</div>}
+              {item.implementationLink && (
+                <a href={item.implementationLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: '#1a3a8a', textDecoration: 'underline' }}>
+                  查看实现效果 →
+                </a>
+              )}
+            </>
+          )}
+
+          {/* 进展记录 */}
+          {item.progressRecord && (
+            <>
+              {sectionTitle('进展记录', '#64748b')}
+              <div style={{ fontSize: 13, color: 'var(--foreground)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{item.progressRecord}</div>
+            </>
+          )}
+
+          {/* Link to Feishu */}
+          {item.recordUrl && (
+            <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+              <a href={item.recordUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#1a3a8a', textDecoration: 'underline' }}>
+                在飞书多维表格中查看 →
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── 主页面 ──
 export default function WishPoolPage() {
   const router = useRouter();
@@ -304,6 +463,7 @@ export default function WishPoolPage() {
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState('value');
   const [hoveredRow, setHoveredRow] = useState<WishItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<WishItem | null>(null);
   const [listHover, setListHover] = useState<{ label: string; items: WishItem[]; x: number; y: number } | null>(null);
   const detailTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const listTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -324,15 +484,18 @@ export default function WishPoolPage() {
   };
   const showListHover = (label: string, hoverItems: WishItem[]) => (e: React.MouseEvent) => {
     clearTimeout(listTimer.current);
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const gap = 16;
+    const offsetX = 15;
+    const offsetY = 15;
+    let x = e.clientX + offsetX;
+    let y = e.clientY + offsetY;
     const estimatedWidth = 520;
-    let x = rect.right + gap;
-    // 右侧空间不够时，往左移到不遮挡条形图的位置
+    const estimatedHeight = 400;
     if (x + estimatedWidth > window.innerWidth - 16) {
-      x = Math.max(rect.left - estimatedWidth - gap, 16);
+      x = e.clientX - estimatedWidth - offsetX;
     }
-    const y = Math.min(rect.top, window.innerHeight - 420);
+    if (y + estimatedHeight > window.innerHeight - 16) {
+      y = window.innerHeight - estimatedHeight - 16;
+    }
     setListHover({ label, items: hoverItems, x, y });
   };
   const hideListHover = () => {
@@ -463,6 +626,7 @@ export default function WishPoolPage() {
                   sub="全部场景月均节省总工时"
                   color="#F27F22"
                   icon={<TrophyOutlined />}
+                  glow
                   onMouseEnter={showListHover('预估月省工时', items.filter(d => d.totalSavedHours || d.monthlySavedHours))}
                   onMouseLeave={hideListHover}
                 />
@@ -600,6 +764,7 @@ export default function WishPoolPage() {
                           style={{ cursor: 'pointer' }}
                           onMouseEnter={() => handleRowEnter(item)}
                           onMouseLeave={handleRowLeave}
+                          onClick={() => setSelectedItem(item)}
                         >
                           <td className="py-2 px-3 font-mono text-xs" style={{ color: (item.valueRank ?? 999) <= 3 ? '#F27F22' : 'var(--text-muted)', fontWeight: (item.valueRank ?? 999) <= 3 ? 700 : 400, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                             {item.valueRank ? `#${item.valueRank}` : '-'}
@@ -730,6 +895,18 @@ export default function WishPoolPage() {
             </div>
           )}
 
+          {/* 动画样式 */}
+          <style key="wish-pool-anim">{`
+            @keyframes breatheGlow {
+              0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 0 0 0 rgba(242,127,34,0); }
+              50% { box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 0 16px 4px rgba(242,127,34,0.12); }
+            }
+            @keyframes slideUp {
+              from { transform: translateY(24px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+          `}</style>
+
           {/* 排名表格悬浮详情弹窗 — 固定居中 */}
           {hoveredRow && (
             <div
@@ -741,16 +918,19 @@ export default function WishPoolPage() {
             </div>
           )}
 
-          {/* 图表/卡片悬浮明细列表 — 跟随触发位置 */}
+          {/* 图表/卡片悬浮明细列表 — 跟随鼠标 */}
           {listHover && (
             <div
-              style={{ position: 'fixed', left: Math.min(listHover.x, window.innerWidth - 600), top: Math.min(listHover.y, window.innerHeight - 420), zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid rgba(255,255,255,0.6)' }}
-              onMouseEnter={handleListEnter}
-              onMouseLeave={handleListLeave}
+              style={{ position: 'fixed', left: listHover.x, top: listHover.y, zIndex: 1050, pointerEvents: 'none', background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid rgba(255,255,255,0.6)', maxWidth: 560 }}
             >
               <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3a8a', marginBottom: 6 }}>{listHover.label} · {listHover.items.length} 个场景</div>
               <SceneHoverList items={listHover.items} />
             </div>
+          )}
+
+          {/* 点击下钻详情弹窗 */}
+          {selectedItem && (
+            <SceneDrillDownModal item={selectedItem} onClose={() => setSelectedItem(null)} />
           )}
         </>
       )}

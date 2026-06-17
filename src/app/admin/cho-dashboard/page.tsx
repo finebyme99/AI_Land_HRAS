@@ -273,7 +273,7 @@ export default function ChoDashboardPage() {
 
   // ── Summary ──
   const summary = useMemo(() => {
-    // 只统计赛事状态=评审中的方案
+    // 只统计大赛进展=评审中的方案
     const reviewed = enriched.filter((s) => s.status === '评审中');
     const totalPeople = reviewed.reduce((sum, s) => sum + (s.beforePeopleCount ?? 0), 0);
     const totalBefore = reviewed.reduce((sum, s) => sum + (s.beforeHours ?? 0), 0);
