@@ -501,12 +501,6 @@ export default function WishPoolPage() {
   const hideListHover = () => {
     listTimer.current = setTimeout(() => setListHover(null), 200);
   };
-  const handleListEnter = () => {
-    clearTimeout(listTimer.current);
-  };
-  const handleListLeave = () => {
-    setListHover(null);
-  };
 
   // 权限检查
   useEffect(() => {
@@ -762,17 +756,18 @@ export default function WishPoolPage() {
                           key={item.id}
                           className="hover:bg-white/20 transition-colors"
                           style={{ cursor: 'pointer' }}
-                          onMouseEnter={() => handleRowEnter(item)}
-                          onMouseLeave={handleRowLeave}
                           onClick={() => setSelectedItem(item)}
                         >
                           <td className="py-2 px-3 font-mono text-xs" style={{ color: (item.valueRank ?? 999) <= 3 ? '#F27F22' : 'var(--text-muted)', fontWeight: (item.valueRank ?? 999) <= 3 ? 700 : 400, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                             {item.valueRank ? `#${item.valueRank}` : '-'}
                           </td>
-                          <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            <a href={item.recordUrl} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: 'var(--foreground)' }}>
+                          <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}
+                            onMouseEnter={() => handleRowEnter(item)}
+                            onMouseLeave={handleRowLeave}
+                          >
+                            <span className="hover:underline" style={{ color: 'var(--foreground)', cursor: 'pointer' }}>
                               {(item.title || '-').length > 24 ? (item.title || '-').slice(0, 24) + '…' : (item.title || '-')}
-                            </a>
+                            </span>
                           </td>
                           <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                             {item.sceneCategory && (
