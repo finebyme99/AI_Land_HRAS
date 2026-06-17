@@ -141,13 +141,30 @@ function HBar({ label, value, max, color }: { label: string; value: number; max:
   );
 }
 
-// ── 统计卡片组件 ──
-function MetricCard({ label, value, sub, color, icon, onMouseEnter, onMouseLeave }: { label: string; value: string; sub?: string; color: string; icon: React.ReactNode; onMouseEnter?: (e: React.MouseEvent) => void; onMouseLeave?: () => void }) {
+// ── 统计卡片组件（含悬浮抬升 + 呼吸光效）──
+function MetricCard({ label, value, sub, color, icon, glow, onMouseEnter, onMouseLeave }: { label: string; value: string; sub?: string; color: string; icon: React.ReactNode; glow?: boolean; onMouseEnter?: (e: React.MouseEvent) => void; onMouseLeave?: () => void }) {
+  const [hovered, setHovered] = useState(false);
   return (
-    <div className="glass rounded-xl p-5" style={{ borderColor: 'rgba(255,255,255,0.6)', cursor: 'pointer' }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-      <div className="flex items-center gap-2 mb-2">
-        <span style={{ color, fontSize: 16 }}>{icon}</span>
+    <div
+      className="rounded-xl p-5"
+      style={{
+        border: '1px solid rgba(255,255,255,0.6)',
+        cursor: 'pointer',
+        background: hovered ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.3)',
+        backdropFilter: 'blur(12px)',
+        transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
+        boxShadow: hovered
+          ? '0 12px 28px rgba(26,58,138,0.12), 0 4px 12px rgba(0,0,0,0.06)'
+          : '0 2px 8px rgba(0,0,0,0.04)',
+        transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.3s ease',
+        animation: glow && !hovered ? 'breatheGlow 3s ease-in-out infinite' : 'none',
+      }}
+      onMouseEnter={(e) => { setHovered(true); onMouseEnter?.(e); }}
+      onMouseLeave={() => { setHovered(false); onMouseLeave?.(); }}
+    >
+      <div className="flex items-center justify-between mb-2">
         <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</span>
+        <span style={{ color, fontSize: 14, opacity: 0.5 }}>{icon}</span>
       </div>
       <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1, color }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{sub}</div>}

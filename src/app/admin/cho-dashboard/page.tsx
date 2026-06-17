@@ -273,16 +273,18 @@ export default function ChoDashboardPage() {
 
   // ── Summary ──
   const summary = useMemo(() => {
-    const totalPeople = enriched.reduce((sum, s) => sum + (s.beforePeopleCount ?? 0), 0);
-    const totalBefore = enriched.reduce((sum, s) => sum + (s.beforeHours ?? 0), 0);
-    const totalAfter = enriched.reduce((sum, s) => sum + (s.afterHours ?? 0), 0);
-    const totalSaved = enriched.reduce((sum, s) => sum + (s.savedHours ?? 0), 0);
-    const withEff = enriched.filter((s) => s.efficiencyRate != null);
+    // 只统计赛事状态=评审中的方案
+    const reviewed = enriched.filter((s) => s.status === '评审中');
+    const totalPeople = reviewed.reduce((sum, s) => sum + (s.beforePeopleCount ?? 0), 0);
+    const totalBefore = reviewed.reduce((sum, s) => sum + (s.beforeHours ?? 0), 0);
+    const totalAfter = reviewed.reduce((sum, s) => sum + (s.afterHours ?? 0), 0);
+    const totalSaved = reviewed.reduce((sum, s) => sum + (s.savedHours ?? 0), 0);
+    const withEff = reviewed.filter((s) => s.efficiencyRate != null);
     const avgEff = withEff.length > 0
       ? withEff.reduce((sum, s) => sum + (s.efficiencyRate ?? 0), 0) / withEff.length
       : null;
     return {
-      count: enriched.length,
+      count: reviewed.length,
       totalPeople,
       totalBefore: Math.round(totalBefore * 10) / 10,
       totalAfter: Math.round(totalAfter * 10) / 10,
