@@ -297,6 +297,9 @@ export default function WishPoolPage() {
   // 计算统计
   const maxCat = useMemo(() => stats ? Math.max(...Object.values(stats.categoryMap), 1) : 1, [stats]);
   const maxTeam = useMemo(() => stats ? Math.max(...Object.values(stats.teamMap), 1) : 1, [stats]);
+  const totalMonthlySaved = useMemo(() => {
+    return items.reduce((sum, item) => sum + (item.totalSavedHours || item.monthlySavedHours || 0), 0);
+  }, [items]);
 
   if (authLoading) {
     return (
@@ -364,9 +367,9 @@ export default function WishPoolPage() {
                   icon={<StarOutlined />}
                 />
                 <MetricCard
-                  label="平均价值分"
-                  value={stats.avgScore > 0 ? stats.avgScore.toFixed(1) : '-'}
-                  sub={`${stats.withScoreCount} 个有分场景`}
+                  label="预估月省工时"
+                  value={totalMonthlySaved > 0 ? `${fmt(totalMonthlySaved)}h` : '-'}
+                  sub="全部场景月均节省总工时"
                   color="#F27F22"
                   icon={<TrophyOutlined />}
                 />

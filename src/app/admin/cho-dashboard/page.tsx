@@ -185,7 +185,7 @@ export default function ChoDashboardPage() {
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [sceneCategoryFilter, setSceneCategoryFilter] = useState<string>('all');
   const [coreValueFilter, setCoreValueFilter] = useState<string>('all');
-  const [sceneSourceFilter, setSceneSourceFilter] = useState<string>('all');
+  const [sceneSourceFilter, setSceneSourceFilter] = useState<string>('AI大赛');
   const [landingProgressFilter, setLandingProgressFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState('finalValueScore');
