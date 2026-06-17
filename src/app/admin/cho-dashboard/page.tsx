@@ -328,7 +328,7 @@ export default function ChoDashboardPage() {
         default: return 0;
       }
     });
-    return sorted.map((s) => ({ ...s, seq: s.fixedSeq }));
+    return sorted.map((s, i) => ({ ...s, seq: i + 1 }));
   }, [enriched, teamFilter, sceneCategoryFilter, coreValueFilter, sceneSourceFilter, landingProgressFilter, statusFilter, sortBy]);
 
   // ── Table columns ──
