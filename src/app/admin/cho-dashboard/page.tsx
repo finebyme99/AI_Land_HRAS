@@ -59,7 +59,7 @@ interface ChoSubmission {
   regionCoefficient: string | null;
   sceneSource: string | null;
   landingProgress: string | null;
-  competitionProgress: string | null;
+  status: string | null;
 }
 
 interface OverviewResponse {
@@ -187,7 +187,7 @@ export default function ChoDashboardPage() {
   const [coreValueFilter, setCoreValueFilter] = useState<string>('all');
   const [sceneSourceFilter, setSceneSourceFilter] = useState<string>('all');
   const [landingProgressFilter, setLandingProgressFilter] = useState<string>('all');
-  const [competitionProgressFilter, setCompetitionProgressFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState('finalValueScore');
   const [detailRecord, setDetailRecord] = useState<typeof enriched[number] | null>(null);
 
@@ -304,7 +304,7 @@ export default function ChoDashboardPage() {
   const coreValueOptions = useMemo(() => makeOptions('extraValue'), [enriched]);
   const sceneSourceOptions = useMemo(() => makeOptions('sceneSource'), [enriched]);
   const landingProgressOptions = useMemo(() => makeOptions('landingProgress'), [enriched]);
-  const competitionProgressOptions = useMemo(() => makeOptions('competitionProgress'), [enriched]);
+  const statusOptions = useMemo(() => makeOptions('status'), [enriched]);
 
   // ── Filtered & sorted ──
   const tableData = useMemo(() => {
@@ -314,7 +314,7 @@ export default function ChoDashboardPage() {
     if (coreValueFilter !== 'all') list = list.filter((s) => s.extraValue === coreValueFilter);
     if (sceneSourceFilter !== 'all') list = list.filter((s) => s.sceneSource === sceneSourceFilter);
     if (landingProgressFilter !== 'all') list = list.filter((s) => s.landingProgress === landingProgressFilter);
-    if (competitionProgressFilter !== 'all') list = list.filter((s) => s.competitionProgress === competitionProgressFilter);
+    if (statusFilter !== 'all') list = list.filter((s) => s.status === statusFilter);
     const sorted = [...list].sort((a, b) => {
       switch (sortBy) {
         case 'finalValueScore': return (b.finalValueScore ?? -1) - (a.finalValueScore ?? -1);
@@ -330,7 +330,7 @@ export default function ChoDashboardPage() {
       }
     });
     return sorted.map((s) => ({ ...s, seq: s.fixedSeq }));
-  }, [enriched, teamFilter, sceneCategoryFilter, coreValueFilter, sceneSourceFilter, landingProgressFilter, competitionProgressFilter, sortBy]);
+  }, [enriched, teamFilter, sceneCategoryFilter, coreValueFilter, sceneSourceFilter, landingProgressFilter, statusFilter, sortBy]);
 
   // ── Table columns ──
   const columns: TableColumnsType<typeof tableData[number]> = [
@@ -623,7 +623,7 @@ export default function ChoDashboardPage() {
           <FilterRow label="核心价值" options={[{ value: 'all', label: '全部', count: enriched.length }, ...coreValueOptions.map((o) => ({ ...o, label: o.value }))]} value={coreValueFilter} onChange={setCoreValueFilter} />
           <FilterRow label="场景来源" options={[{ value: 'all', label: '全部', count: enriched.length }, ...sceneSourceOptions.map((o) => ({ ...o, label: o.value }))]} value={sceneSourceFilter} onChange={setSceneSourceFilter} />
           <FilterRow label="落地进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...landingProgressOptions.map((o) => ({ ...o, label: o.value }))]} value={landingProgressFilter} onChange={setLandingProgressFilter} />
-          <FilterRow label="大赛进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...competitionProgressOptions.map((o) => ({ ...o, label: o.value }))]} value={competitionProgressFilter} onChange={setCompetitionProgressFilter} />
+          <FilterRow label="大赛进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...statusOptions.map((o) => ({ ...o, label: o.value }))]} value={statusFilter} onChange={setStatusFilter} />
           {/* 排序条件（配置表标记"是否作为排序条件=是"的字段） */}
           <div className="flex flex-wrap items-center gap-2 pt-2" style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
             <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>排序</span>

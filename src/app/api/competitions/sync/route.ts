@@ -59,18 +59,15 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '推广复用价值等级': 'reuseValueLevel',
   '月均降本费用（不含人力成本）': 'monthlySavedCost',
   '降本费用说明': 'costReductionNote',
-  '实现效果': 'implementationLink',
+  'AI实现效果': 'implementationLink',
   '场景编号': 'proposalNo',
   '提报组队类型': 'teamType',
   '组队成员': 'teamMembers',
   '核心价值': 'extraValue',
-  '实现过程简述': 'implementation',
-  '工时与降本真实性确认人': 'verifier',
+  'AI实现过程简述': 'implementation',
   '评审周期': 'period',
-  'AI大赛状态': 'status',
-  '赛事状态': 'status',  // 备用：与 AI大赛状态 共用同一组 opt
+  '大赛进展': 'status',
   '最终价值计分': 'finalValueScore',
-  '月均提效比例': 'efficiencyRate',
   '一句话简介': 'briefIntro',
   // ── 飞书公式字段（直接同步，不再客户端计算） ──
   '原操作频次': 'beforeFreq',
@@ -84,8 +81,7 @@ const FIELD_NAME_MAP: Record<string, string> = {
   '场景归属地区系数': 'regionCoefficient',
   '场景来源': 'sceneSource',
   '落地进展': 'landingProgress',
-  '大赛进展': 'competitionProgress',
-  // 暂不映射：业务负责人 / AI负责人 / 实现效果 / 进展记录&链接 / 计划启动日期 / 试点上线日期 / 推广上线日期 / 全面上线日期 / 价值排名 / 降本费用说明 / 原月均执行次数 / 新月均执行次数 / 新月均耗时 / 【参考】原人均月耗时
+  // 暂不映射：业务负责人 / AI负责人 / 进展记录&链接 / 计划启动日期 / 试点上线日期 / 推广上线日期 / 全面上线日期 / 价值排名 / 原月均执行次数 / 新月均执行次数 / 新月均耗时 / 【参考】原人均月耗时
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -505,7 +501,6 @@ export async function POST(request: NextRequest) {
         region_coefficient: mapped.regionCoefficient ?? null,
         scene_source: mapped.sceneSource ?? null,
         landing_progress: mapped.landingProgress ?? null,
-        competition_progress: mapped.competitionProgress ?? null,
       });
     }
 
