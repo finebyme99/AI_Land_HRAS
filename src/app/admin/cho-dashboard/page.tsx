@@ -238,11 +238,34 @@ export default function ChoDashboardPage() {
       const html2canvas = (await import('html2canvas-pro')).default;
       const element = document.getElementById('cho-dashboard-content');
       if (!element) return;
+      // 临时展开筛选面板以导出完整内容
+      const wasExpanded = filterExpanded;
+      if (!wasExpanded) setFilterExpanded(true);
+      await new Promise((r) => setTimeout(r, 100));
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#f8fafc',
+        logging: false,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        onclone: (clonedDoc) => {
+          const clonedEl = clonedDoc.getElementById('cho-dashboard-content');
+          if (clonedEl) {
+            // 确保克隆元素完整显示
+            clonedEl.style.width = `${element.scrollWidth}px`;
+            clonedEl.style.maxWidth = 'none';
+            // 移除 glass 效果中的 backdrop-filter（html2canvas 不支持）
+            const glasses = clonedEl.querySelectorAll('.glass');
+            glasses.forEach((g) => {
+              (g as HTMLElement).style.backdropFilter = 'none';
+              (g as HTMLElement).style.webkitBackdropFilter = 'none';
+            });
+          }
+        },
       });
+      // 恢复筛选面板状态
+      if (!wasExpanded) setFilterExpanded(false);
       const link = document.createElement('a');
       link.download = `成效看板_${period}_${new Date().toISOString().slice(0, 10)}.png`;
       link.href = canvas.toDataURL('image/png');
