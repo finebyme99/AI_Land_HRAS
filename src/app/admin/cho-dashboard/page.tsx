@@ -13,6 +13,7 @@ import {
   SwapRightOutlined,
   LinkOutlined,
   QuestionCircleOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 
@@ -230,6 +231,29 @@ export default function ChoDashboardPage() {
   useEffect(() => { if (isAdmin) fetchData(); }, [isAdmin, fetchData]);
 
   const [syncing, setSyncing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const handleExportImage = async () => {
+    setExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas-pro')).default;
+      const element = document.getElementById('cho-dashboard-content');
+      if (!element) return;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
+      const link = document.createElement('a');
+      link.download = `成效看板_${period}_${new Date().toISOString().slice(0, 10)}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      message.error('导出失败');
+      console.error(err);
+    } finally {
+      setExporting(false);
+    }
+  };
   const handleSync = async () => {
     setSyncing(true);
     message.loading({ content: '正在从飞书同步…', key: 'sync', duration: 0 });
@@ -657,29 +681,25 @@ export default function ChoDashboardPage() {
         }
       `}</style>
 
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* 标题栏 */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #16a34a, #0891b2)', color: '#fff' }}>
-              <BarChartOutlined />
-            </span>
-            <div>
-              <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>AI 落地成效总览</h1>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>改造前后对比 · 当前价值 + 未来预期</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-              style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
-            >
-              <SyncOutlined spin={syncing} /> 从飞书同步
-            </button>
-          </div>
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8" id="cho-dashboard-content">
+        {/* 操作栏 */}
+        <div className="flex items-center justify-end mb-4 gap-2">
+          <button
+            onClick={handleExportImage}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
+            style={{ background: '#7c3aed', boxShadow: '0 4px 15px rgba(124,58,237,0.25)' }}
+          >
+            <DownloadOutlined spin={exporting} /> 导出图片
+          </button>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
+            style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
+          >
+            <SyncOutlined spin={syncing} /> 从飞书同步
+          </button>
         </div>
 
         {/* 顶部统计 */}
