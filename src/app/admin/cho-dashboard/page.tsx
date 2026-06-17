@@ -198,6 +198,7 @@ export default function ChoDashboardPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [filterExpanded, setFilterExpanded] = useState(false);
   const [sortBy, setSortBy] = useState('finalValueScore');
+  const [titleWidth, setTitleWidth] = useState(220);
   const [detailRecord, setDetailRecord] = useState<typeof enriched[number] | null>(null);
 
   useEffect(() => {
@@ -361,9 +362,35 @@ export default function ChoDashboardPage() {
       title: '标题',
       dataIndex: 'title',
       key: 'title',
-      width: 220,
+      width: titleWidth,
       ellipsis: true,
-     
+      onHeaderCell: () => ({
+        style: { position: 'relative' },
+        children: (
+          <div className="flex items-center justify-between">
+            <span>标题</span>
+            <div
+              className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-300"
+              style={{ zIndex: 10 }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                const startX = e.clientX;
+                const startWidth = titleWidth;
+                const onMouseMove = (e: MouseEvent) => {
+                  const diff = e.clientX - startX;
+                  setTitleWidth(Math.max(120, startWidth + diff));
+                };
+                const onMouseUp = () => {
+                  document.removeEventListener('mousemove', onMouseMove);
+                  document.removeEventListener('mouseup', onMouseUp);
+                };
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+              }}
+            />
+          </div>
+        ),
+      }),
       render: (title: string, record) => (
         <div>
           <button

@@ -246,26 +246,26 @@ function SceneDetailPopup({ item }: { item: WishItem }) {
 // ── 图表/卡片悬浮明细列表 ──
 function SceneHoverList({ items }: { items: WishItem[] }) {
   return (
-    <div style={{ maxHeight: 300, overflowY: 'auto', width: 380 }}>
-      <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+    <div style={{ maxHeight: 360, overflowY: 'auto', overflowX: 'auto' }}>
+      <table style={{ fontSize: 11, borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
         <thead>
           <tr>
             {['场景', '提报团队', '落地进展', '月省总工时', '复用价值', '地区'].map((h) => (
-              <th key={h} style={{ padding: '4px 5px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.3)', whiteSpace: 'nowrap', textAlign: 'left' }}>{h}</th>
+              <th key={h} style={{ padding: '4px 8px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.3)', textAlign: 'left' }}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
             <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-              <td style={{ padding: '4px 5px', color: 'var(--foreground)', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title || '-'}</td>
-              <td style={{ padding: '4px 5px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.team || '—'}</td>
-              <td style={{ padding: '4px 5px' }}>
+              <td style={{ padding: '4px 8px', color: 'var(--foreground)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title || '-'}</td>
+              <td style={{ padding: '4px 8px', color: 'var(--text-secondary)' }}>{item.team || '—'}</td>
+              <td style={{ padding: '4px 8px' }}>
                 {item.landingProgress ? <Tag color={PROGRESS_COLORS[item.landingProgress] || '#6b7280'} style={{ fontSize: 10, margin: 0, lineHeight: '16px' }}>{item.landingProgress}</Tag> : <span style={{ color: '#cbd5e1' }}>—</span>}
               </td>
-              <td style={{ padding: '4px 5px', color: 'var(--text-secondary)', fontFamily: 'SF Mono, monospace', whiteSpace: 'nowrap' }}>{item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '—'}</td>
-              <td style={{ padding: '4px 5px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.reuseValueLevel || '—'}</td>
-              <td style={{ padding: '4px 5px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.regionCoefficient || '—'}</td>
+              <td style={{ padding: '4px 8px', color: 'var(--text-secondary)', fontFamily: 'SF Mono, monospace' }}>{item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '—'}</td>
+              <td style={{ padding: '4px 8px', color: 'var(--text-secondary)' }}>{item.reuseValueLevel || '—'}</td>
+              <td style={{ padding: '4px 8px', color: 'var(--text-secondary)' }}>{item.regionCoefficient || '—'}</td>
             </tr>
           ))}
         </tbody>
@@ -288,15 +288,45 @@ export default function WishPoolPage() {
   const [activeTab, setActiveTab] = useState('value');
   const [hoveredRow, setHoveredRow] = useState<WishItem | null>(null);
   const [listHover, setListHover] = useState<{ label: string; items: WishItem[]; x: number; y: number } | null>(null);
+  const detailTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const listTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // 悬浮处理
-  const handleRowEnter = (item: WishItem) => setHoveredRow(item);
-  const handleRowLeave = () => setHoveredRow(null);
-  const showListHover = (label: string, hoverItems: WishItem[]) => (e: React.MouseEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setListHover({ label, items: hoverItems, x: rect.left, y: rect.bottom + 6 });
+  // 悬浮处理 — 延迟隐藏 + 弹窗桥接（鼠标移到弹窗上时不消失）
+  const handleRowEnter = (item: WishItem) => {
+    clearTimeout(detailTimer.current);
+    setHoveredRow(item);
   };
-  const hideListHover = () => setListHover(null);
+  const handleRowLeave = () => {
+    detailTimer.current = setTimeout(() => setHoveredRow(null), 200);
+  };
+  const handleDetailEnter = () => {
+    clearTimeout(detailTimer.current);
+  };
+  const handleDetailLeave = () => {
+    setHoveredRow(null);
+  };
+  const showListHover = (label: string, hoverItems: WishItem[]) => (e: React.MouseEvent) => {
+    clearTimeout(listTimer.current);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const gap = 16;
+    const estimatedWidth = 520;
+    let x = rect.right + gap;
+    // 右侧空间不够时，往左移到不遮挡条形图的位置
+    if (x + estimatedWidth > window.innerWidth - 16) {
+      x = Math.max(rect.left - estimatedWidth - gap, 16);
+    }
+    const y = Math.min(rect.top, window.innerHeight - 420);
+    setListHover({ label, items: hoverItems, x, y });
+  };
+  const hideListHover = () => {
+    listTimer.current = setTimeout(() => setListHover(null), 200);
+  };
+  const handleListEnter = () => {
+    clearTimeout(listTimer.current);
+  };
+  const handleListLeave = () => {
+    setListHover(null);
+  };
 
   // 权限检查
   useEffect(() => {
@@ -685,14 +715,22 @@ export default function WishPoolPage() {
 
           {/* 排名表格悬浮详情弹窗 — 固定居中 */}
           {hoveredRow && (
-            <div style={{ position: 'fixed', top: '50%', left: '55%', transform: 'translate(-50%, -50%)', zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 14, padding: '16px 20px', boxShadow: '0 12px 48px rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.7)', maxWidth: 460 }}>
+            <div
+              style={{ position: 'fixed', top: '50%', left: '55%', transform: 'translate(-50%, -50%)', zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 14, padding: '16px 20px', boxShadow: '0 12px 48px rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.7)', maxWidth: 460 }}
+              onMouseEnter={handleDetailEnter}
+              onMouseLeave={handleDetailLeave}
+            >
               <SceneDetailPopup item={hoveredRow} />
             </div>
           )}
 
-          {/* 图表/卡片悬浮明细列表 — 跟随鼠标位置 */}
+          {/* 图表/卡片悬浮明细列表 — 跟随触发位置 */}
           {listHover && (
-            <div style={{ position: 'fixed', left: Math.min(listHover.x, window.innerWidth - 420), top: listHover.y, zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid rgba(255,255,255,0.6)' }} onMouseEnter={() => setListHover(prev => prev)} onMouseLeave={hideListHover}>
+            <div
+              style={{ position: 'fixed', left: Math.min(listHover.x, window.innerWidth - 600), top: Math.min(listHover.y, window.innerHeight - 420), zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid rgba(255,255,255,0.6)' }}
+              onMouseEnter={handleListEnter}
+              onMouseLeave={handleListLeave}
+            >
               <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3a8a', marginBottom: 6 }}>{listHover.label} · {listHover.items.length} 个场景</div>
               <SceneHoverList items={listHover.items} />
             </div>
