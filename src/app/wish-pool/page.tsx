@@ -745,8 +745,22 @@ export default function WishPoolPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr>
-                        {['排名', '场景', '分类', '提报团队', '落地进展', '排期计划', '价值分', '月节省'].map((h, i) => (
-                          <th key={h} className={`py-2 px-3 text-xs font-medium ${i >= 6 ? 'text-right' : 'text-left'}`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.3)' }}>{h}</th>
+                        {[
+                          { h: '排名', align: 'left' },
+                          { h: '场景', align: 'left' },
+                          { h: '分类', align: 'left' },
+                          { h: '提报团队', align: 'left' },
+                          { h: '落地进展', align: 'left' },
+                          { h: '排期计划', align: 'left' },
+                          { h: '月节省', align: 'right' },
+                          { h: '提效比例', align: 'right' },
+                          { h: '降本折算', align: 'right' },
+                          { h: '节省总工时', align: 'right' },
+                          { h: '复用系数', align: 'center' },
+                          { h: '地区系数', align: 'center' },
+                          { h: '价值分', align: 'right' },
+                        ].map(({ h, align }) => (
+                          <th key={h} className={`py-2 px-3 text-xs font-medium ${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'}`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -790,11 +804,40 @@ export default function WishPoolPage() {
                               item.fullLaunchDate && `全面 ${item.fullLaunchDate.slice(0, 7)}`,
                             ].filter(Boolean).join(' · ') || '—'}
                           </td>
-                          <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            {item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-'}
+                          {/* 月节省 — 绿色 */}
+                          <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: (item.monthlySavedHours || 0) > 0 ? '#16a34a' : 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)', fontWeight: 600 }}>
+                            {item.monthlySavedHours ? `${Math.round(item.monthlySavedHours)}h` : '—'}
                           </td>
-                          <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            {item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '-'}
+                          {/* 提效比例 — 绿色百分比 */}
+                          <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: (item.totalEfficiencyRate || 0) > 0 ? '#16a34a' : 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            {item.totalEfficiencyRate != null ? `${Math.round(item.totalEfficiencyRate * 100)}%` : '—'}
+                          </td>
+                          {/* 降本折算工时 — 琥珀色 */}
+                          <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: (item.costSavedHours || 0) > 0 ? '#d97706' : 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            {item.costSavedHours ? `${Math.round(item.costSavedHours)}h` : '—'}
+                          </td>
+                          {/* 节省总工时 — 绿色加粗 */}
+                          <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: (item.totalSavedHours || 0) > 0 ? '#16a34a' : 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)', fontWeight: 700 }}>
+                            {item.totalSavedHours ? `${Math.round(item.totalSavedHours)}h` : '—'}
+                          </td>
+                          {/* 复用价值系数 — 等级颜色标签 */}
+                          <td className="py-2 px-3 text-center text-xs" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap' }}>
+                            {item.reuseValue ? (
+                              <span style={{
+                                display: 'inline-block', borderRadius: 4, padding: '1px 6px', fontSize: 11, fontWeight: 600,
+                                background: item.reuseValueLevel === '极高价值' ? 'rgba(234,88,12,0.15)' : item.reuseValueLevel === '高价值' ? 'rgba(245,158,11,0.12)' : item.reuseValueLevel === '中价值' ? 'rgba(20,184,166,0.1)' : 'rgba(34,197,94,0.08)',
+                                color: item.reuseValueLevel === '极高价值' ? '#c2410c' : item.reuseValueLevel === '高价值' ? '#d97706' : item.reuseValueLevel === '中价值' ? '#0d9488' : '#16a34a',
+                                border: `1px solid ${item.reuseValueLevel === '极高价值' ? 'rgba(234,88,12,0.35)' : item.reuseValueLevel === '高价值' ? 'rgba(245,158,11,0.3)' : item.reuseValueLevel === '中价值' ? 'rgba(20,184,166,0.25)' : 'rgba(34,197,94,0.2)'}`,
+                              }}>{item.reuseValue}</span>
+                            ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                          </td>
+                          {/* 地区系数 — 文本 */}
+                          <td className="py-2 px-3 text-center text-xs" style={{ color: item.regionCoefficient ? 'var(--foreground)' : 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap' }}>
+                            {item.regionCoefficient || '—'}
+                          </td>
+                          {/* 最终价值计分 — 紫色 */}
+                          <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: (item.finalValueScore || 0) > 0 ? '#7c3aed' : 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)', fontWeight: 700 }}>
+                            {item.finalValueScore ? Math.round(item.finalValueScore) : '—'}
                           </td>
                         </tr>
                       ))}

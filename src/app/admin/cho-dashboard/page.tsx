@@ -16,6 +16,7 @@ import {
   DownloadOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
+import HighlightSweep from '@/components/HighlightSweep';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -706,7 +707,7 @@ export default function ChoDashboardPage() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8" id="cho-dashboard-content">
         {/* 操作栏 */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>AI大赛成效看板</h1>
+          <HighlightSweep text="AI大赛成效看板" className="text-2xl font-bold" gradient="linear-gradient(135deg, #16a34a 0%, #0891b2 50%, #7c3aed 100%)" />
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportImage}
