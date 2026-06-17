@@ -707,23 +707,26 @@ export default function ChoDashboardPage() {
 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8" id="cho-dashboard-content">
         {/* 操作栏 */}
-        <div className="flex items-center justify-end mb-4 gap-2">
-          <button
-            onClick={handleExportImage}
-            disabled={exporting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-            style={{ background: '#7c3aed', boxShadow: '0 4px 15px rgba(124,58,237,0.25)' }}
-          >
-            <DownloadOutlined spin={exporting} /> 导出图片
-          </button>
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-            style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
-          >
-            <SyncOutlined spin={syncing} /> 从飞书同步
-          </button>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>AI大赛成效看板</h1>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportImage}
+              disabled={exporting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
+              style={{ background: '#7c3aed', boxShadow: '0 4px 15px rgba(124,58,237,0.25)' }}
+            >
+              <DownloadOutlined spin={exporting} /> 导出图片
+            </button>
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
+              style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
+            >
+              <SyncOutlined spin={syncing} /> 从飞书同步
+            </button>
+          </div>
         </div>
 
         {/* 顶部统计 */}
