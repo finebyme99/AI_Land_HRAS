@@ -258,8 +258,9 @@ export default function ChoDashboardPage() {
             // 移除 glass 效果中的 backdrop-filter（html2canvas 不支持）
             const glasses = clonedEl.querySelectorAll('.glass');
             glasses.forEach((g) => {
-              (g as HTMLElement).style.backdropFilter = 'none';
-              (g as HTMLElement).style.webkitBackdropFilter = 'none';
+              const el = g as HTMLElement;
+              el.style.backdropFilter = 'none';
+              el.style.setProperty('-webkit-backdrop-filter', 'none');
             });
           }
         },
