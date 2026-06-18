@@ -11,7 +11,7 @@ HRAS AI Land 是 HR AI 社区平台，基于 Next.js 16 + Supabase + 飞书 OAut
 ### 开发工作流
 
 ```bash
-cd /Users/apple/Q/AI/26AI落地/AILand
+cd /Users/zt26278/Q/AI/26AI落地/AILand
 # 直接在 main 上开发
 git add -A && git commit -m "xxx" && git push origin main
 # Vercel GitHub webhook 未连接，需手动部署：

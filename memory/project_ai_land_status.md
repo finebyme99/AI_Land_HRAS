@@ -6,7 +6,7 @@ type: project
 
 **项目名**：HRAS AI岛（英文名：HRAS AI Land）
 **仓库**：https://github.com/finebyme99/AI_Land_HRAS
-**本地路径**：/Users/apple/Q/AI/26AI落地/AILand
+**本地路径**：/Users/zt26278/Q/AI/26AI落地/AILand
 **生产地址**：https://hras-ai-land.vercel.app
 
 ## 技术栈

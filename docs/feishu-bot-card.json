@@ -1,0 +1,179 @@
+{
+    "schema": "2.0",
+    "config": {
+        "update_multi": true,
+        "style": {
+            "text_size": {
+                "normal_v2": {
+                    "default": "normal",
+                    "pc": "normal",
+                    "mobile": "heading"
+                }
+            }
+        }
+    },
+    "body": {
+        "direction": "vertical",
+        "horizontal_spacing": "8px",
+        "vertical_spacing": "0px",
+        "horizontal_align": "left",
+        "vertical_align": "top",
+        "padding": "0px 0px 0px 0px",
+        "elements": [
+            {
+                "tag": "column_set",
+                "background_style": "grey-50",
+                "horizontal_spacing": "8px",
+                "horizontal_align": "left",
+                "columns": [
+                    {
+                        "tag": "column",
+                        "width": "weighted",
+                        "elements": [
+                            {
+                                "tag": "markdown",
+                                "content": "**①本期内容：**[课程描述]\n**②本期讲师：**[讲师姓名]\n**③录屏时长：**[课程时长]",
+                                "text_align": "left",
+                                "text_size": "normal_v2",
+                                "margin": "4px 4px 4px 4px"
+                            },
+                            {
+                                "tag": "hr",
+                                "margin": "0px 0px 0px 0px"
+                            },
+                            {
+                                "tag": "div",
+                                "text": {
+                                    "tag": "plain_text",
+                                    "content": "[发布日期]",
+                                    "text_size": "notation",
+                                    "text_align": "left",
+                                    "text_color": "default"
+                                },
+                                "margin": "4px 4px 4px 4px"
+                            }
+                        ],
+                        "vertical_align": "top",
+                        "weight": 1
+                    }
+                ],
+                "margin": "12px 12px 12px 12px"
+            },
+            {
+                "tag": "column_set",
+                "horizontal_spacing": "8px",
+                "horizontal_align": "left",
+                "columns": [
+                    {
+                        "tag": "column",
+                        "width": "weighted",
+                        "elements": [
+                            {
+                                "tag": "button",
+                                "text": {
+                                    "tag": "plain_text",
+                                    "content": "查看录屏"
+                                },
+                                "type": "primary_filled",
+                                "width": "fill",
+                                "size": "medium",
+                                "icon": {
+                                    "tag": "standard_icon",
+                                    "token": "share-computer-audio_outlined"
+                                },
+                                "margin": "0px 0px 0px 0px"
+                            }
+                        ],
+                        "vertical_spacing": "8px",
+                        "horizontal_align": "left",
+                        "vertical_align": "top",
+                        "weight": 1
+                    },
+                    {
+                        "tag": "column",
+                        "width": "weighted",
+                        "elements": [
+                            {
+                                "tag": "button",
+                                "text": {
+                                    "tag": "plain_text",
+                                    "content": "查看课件"
+                                },
+                                "type": "primary",
+                                "width": "fill",
+                                "size": "medium",
+                                "icon": {
+                                    "tag": "standard_icon",
+                                    "token": "describe_outlined"
+                                },
+                                "margin": "0px 0px 0px 0px"
+                            }
+                        ],
+                        "vertical_spacing": "8px",
+                        "horizontal_align": "left",
+                        "vertical_align": "top",
+                        "weight": 1
+                    },
+                    {
+                        "tag": "column",
+                        "width": "weighted",
+                        "elements": [
+                            {
+                                "tag": "button",
+                                "text": {
+                                    "tag": "plain_text",
+                                    "content": "查看往期"
+                                },
+                                "type": "default",
+                                "width": "fill",
+                                "size": "medium",
+                                "icon": {
+                                    "tag": "standard_icon",
+                                    "token": "history-search_outlined"
+                                },
+                                "margin": "0px 0px 0px 0px"
+                            }
+                        ],
+                        "vertical_align": "top",
+                        "weight": 1
+                    }
+                ],
+                "margin": "8px 20px 12px 20px"
+            }
+        ]
+    },
+    "header": {
+        "title": {
+            "tag": "plain_text",
+            "content": "[课程标题]"
+        },
+        "subtitle": {
+            "tag": "plain_text",
+            "content": "HRAS AI公开课，体系化带你从AI工具上手到落地"
+        },
+        "text_tag_list": [
+            {
+                "tag": "text_tag",
+                "text": {
+                    "tag": "plain_text",
+                    "content": "上新"
+                },
+                "color": "red"
+            },
+            {
+                "tag": "text_tag",
+                "text": {
+                    "tag": "plain_text",
+                    "content": "学习资源"
+                },
+                "color": "blue"
+            }
+        ],
+        "template": "turquoise",
+        "icon": {
+            "tag": "standard_icon",
+            "token": "collection_outlined"
+        },
+        "padding": "12px 8px 12px 8px"
+    }
+}
