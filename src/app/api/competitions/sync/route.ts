@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantAccessToken } from '@/lib/feishu';
 import { getSupabaseAdmin, ensureBucket, uploadToStorage } from '@/lib/supabase-admin';
+import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
+import { FALLBACK_FIELD_MAP, type FieldMapEntry } from '@/lib/bitable/field-map';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
@@ -35,58 +37,35 @@ const FEISHU_STATUS_MAP: Record<string, string> = {
   'optcp8dDAi': '并入其他方案',
 };
 
-// 飞书字段名 → 前端字段名映射（新表 tbl9WJyxl9bbtYjb · AI 大赛项目管理）
-const FIELD_NAME_MAP: Record<string, string> = {
-  '场景名称': 'title',
-  '提报人': 'submitter',
-  '提报团队': 'team',
-  '场景分类': 'sceneCategory',
-  'AI工具': 'aiTools',
-  '月均提效节省工时': 'monthlySavedHours',
-  '月均Token费用': 'aiCost',
-  '原业务场景及流程': 'beforeProcess',
-  '原核心痛点': 'painPoints',
-  '新业务流程': 'afterProcess',
-  '原操作人数': 'beforePeopleCount',
-  '新操作人数': 'afterPeopleCount',
-  '原操作次数': 'oldOperationCount',
-  '新操作次数': 'newOperationCount',
-  '原人均单次操作耗时': 'oldHoursPerTask',
-  '新人均单次操作耗时': 'newDuration',
-  '原操作频率': 'oldFrequency',
-  '新操作频率': 'newFrequency',
-  '推广复用价值系数': 'reuseValue',
-  '推广复用价值等级': 'reuseValueLevel',
-  '月均降本费用（不含人力成本）': 'monthlySavedCost',
-  '降本费用说明': 'costReductionNote',
-  'AI实现效果': 'implementationLink',
-  '场景编号': 'proposalNo',
-  '提报组队类型': 'teamType',
-  '组队成员': 'teamMembers',
-  '核心价值': 'extraValue',
-  'AI实现过程简述': 'implementation',
-  '评审周期': 'period',
-  '大赛进展': 'status',
-  '最终价值计分': 'finalValueScore',
-  '一句话简介': 'briefIntro',
-  // ── 飞书公式字段（直接同步，不再客户端计算） ──
-  '原操作频次': 'beforeFreq',
-  '新操作频次': 'afterFreq',
-  '原月均耗时': 'beforeMonthlyHours',
-  '新月均耗时': 'afterMonthlyHours',
-  '场景归属地区系数值': 'sceneRegionCoefficientValue',
-  '月均降本折算工时': 'monthlyCostSavingHours',
-  '月均节省总工时': 'totalMonthlySavedHours',
-  '推广复用价值系数值': 'reuseValueCoefficient',
-  '总降本提效比例': 'efficiencyRate',
-  '场景归属地区系数': 'regionCoefficient',
-  '场景来源': 'sceneSource',
-  '落地进展': 'landingProgress',
-  // 暂不映射：业务负责人 / AI负责人 / 进展记录&链接 / 计划启动日期 / 试点上线日期 / 推广上线日期 / 全面上线日期 / 价值排名 / 原月均执行次数 / 新月均执行次数 / 新月均耗时 / 【参考】原人均月耗时
+/**
+ * 统一前端 key → sync 内部 key（sync 内部仍用 `oldOperationCount` 等历史命名，
+ * 因为这些名字已经写到 DB 列名上，不能轻易改）。
+ * 未列出的 key 直接用 key 自己（绝大多数情况）。
+ */
+const SYNC_KEY_ALIAS: Record<string, string> = {
+  competitionProgress: 'status',           // → status（DB 列）
+  reviewPeriod: 'period',                  // → period
+  coreValue: 'extraValue',                 // → extraValue（DB 列）
+  beforeOperationCount: 'oldOperationCount',
+  afterOperationCount: 'newOperationCount',
+  beforeHoursPerTask: 'oldHoursPerTask',
+  afterHoursPerTask: 'newDuration',
+  beforeFrequency: 'oldFrequency',
+  afterFrequency: 'newFrequency',
+  costSavedHours: 'monthlyCostSavingHours',
+  totalSavedHours: 'totalMonthlySavedHours',
+  totalEfficiencyRate: 'efficiencyRate',
+  regionCoefficientValue: 'sceneRegionCoefficientValue',
+  reuseValueNumber: 'reuseValueCoefficient',
 };
 
+/** 把统一 key 转成 sync 内部 key（用于 mapped.xxx 读取） */
+function toSyncKey(unifiedKey: string): string {
+  return SYNC_KEY_ALIAS[unifiedKey] ?? unifiedKey;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapRecord(record: any): Record<string, unknown> {
+function mapRecord(record: any, map: Record<string, FieldMapEntry>): Record<string, unknown> {
   // 优先用"关联参赛项目"指向旧表 tbl12tkH7lOR9rrq 的 record_id 当主 id
   // — 保证 13 条记录 upsert 到原来的 13 条上（不出现 13+13 双份）
   const linkedLegacy = (record.fields?.['关联参赛项目'] as Array<{ record_ids?: string[] }> | undefined)?.[0]?.record_ids?.[0];
@@ -96,42 +75,44 @@ function mapRecord(record: any): Record<string, unknown> {
     legacy_submission_id: record.record_id,  // 保留新表 record_id 供 cross-ref
   };
   for (const [fieldName, value] of Object.entries(record.fields ?? {})) {
-    const key = FIELD_NAME_MAP[fieldName];
-    if (!key) continue;
+    const entry = map[fieldName];
+    if (!entry) continue;
+    const syncKey = toSyncKey(entry.key);
     if (value == null) continue;
 
-    // status 字段特殊处理：飞书 opt ID 数组 → 汉字字符串；单选字符串直接用
-    if (key === 'status') {
+    // 大赛进展（统一 key = competitionProgress, sync 内部 key = status）特殊处理：
+    // 飞书 opt ID 数组 → 汉字字符串；单选字符串直接用
+    if (syncKey === 'status') {
       if (Array.isArray(value) && value.length > 0) {
         const optId = String(value[0]);
-        mapped[key] = FEISHU_STATUS_MAP[optId] ?? optId;
+        mapped[syncKey] = FEISHU_STATUS_MAP[optId] ?? optId;
       } else if (typeof value === 'string') {
-        mapped[key] = value;
+        mapped[syncKey] = value;
       }
       continue;
     }
     // attachment field: [{file_token, name, type, url}] → 保留原对象
     else if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && ('file_token' in value[0] || ('url' in value[0] && 'type' in value[0]))) {
-      mapped[key] = value;
+      mapped[syncKey] = value;
     }
     // link field: {link: "url", text: "display"} → 提取 link URL
     else if (typeof value === 'object' && value !== null && 'link' in value) {
-      mapped[key] = (value as { link?: string }).link ?? '';
+      mapped[syncKey] = (value as { link?: string }).link ?? '';
     }
     else if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && 'text' in value[0]) {
-      mapped[key] = value.map((v: { text?: string }) => v.text ?? '').join('');
+      mapped[syncKey] = value.map((v: { text?: string }) => v.text ?? '').join('');
     }
     else if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && 'name' in value[0]) {
-      mapped[key] = value.map((v: { name?: string }) => v.name ?? '');
+      mapped[syncKey] = value.map((v: { name?: string }) => v.name ?? '');
     }
     else if (typeof value === 'object' && value !== null && 'name' in value) {
-      mapped[key] = [(value as { name?: string }).name ?? ''];
+      mapped[syncKey] = [(value as { name?: string }).name ?? ''];
     }
     else if (Array.isArray(value)) {
-      mapped[key] = value;
+      mapped[syncKey] = value;
     }
     else {
-      mapped[key] = value;
+      mapped[syncKey] = value;
     }
   }
   // status 默认"评审中"（6 月期方案状态字段尚未填写时补默认）
@@ -142,7 +123,7 @@ function mapRecord(record: any): Record<string, unknown> {
 }
 
 // GET: 从 Supabase 读取已同步的数据
-// ?discover=fields → 返回飞书多维表格实际字段名 vs FIELD_NAME_MAP 对比
+// ?discover=fields → 返回飞书多维表格实际字段名 vs FALLBACK_FIELD_MAP 对比
 // ?peek=records     → 临时：拉新表前 N 条 records 看数据形态（不写 DB）
 export async function GET(request: NextRequest) {
   const period = request.nextUrl.searchParams.get('period') ?? '2605';
@@ -185,7 +166,7 @@ export async function GET(request: NextRequest) {
       // 返回每个字段的完整对象（含 group_id / group_name 等元信息）
       const fieldsAll = (json.data?.items ?? []) as Array<Record<string, unknown>>;
       const feishuFields: string[] = fieldsAll.map((f) => (f.field_name as string) ?? '');
-      const mappedNames = new Set(Object.keys(FIELD_NAME_MAP));
+      const mappedNames = new Set(Object.keys(FALLBACK_FIELD_MAP));
       const matched = feishuFields.filter((n) => mappedNames.has(n));
       const unmatchedFeishu = feishuFields.filter((n) => !mappedNames.has(n));
       const unmatchedCode = [...mappedNames].filter((n) => !feishuFields.includes(n));
@@ -369,8 +350,11 @@ export async function POST(request: NextRequest) {
     let downloadedAttachments = 0;
     let replacedAttachments = 0;
 
+    // 加载字段映射（DB 优先，fallback 硬编码）
+    const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'sync');
+
     for (const record of periodRecords) {
-      const mapped = mapRecord(record);
+      const mapped = mapRecord(record, fieldMap);
       const attachments = Array.isArray(mapped.attachments) ? mapped.attachments : [];
 
       // 筛选出需要下载的附件
