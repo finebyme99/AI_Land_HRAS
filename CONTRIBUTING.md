@@ -66,6 +66,13 @@ src/
 │       │   ├── route.ts   # POST 创建 / PATCH 审核
 │       │   ├── admin/     # GET/PUT 管理员操作
 │       │   └── [id]/      # GET 单案例详情
+│       ├── competitions/  # AI 大赛 API
+│       │   ├── sync/          # GET Supabase 读 / POST 飞书→Supabase 同步
+│       │   ├── progress/      # GET 飞书直读参赛数据（赛事进展仪表盘）
+│       │   └── reviews/       # GET/POST/DELETE 评审评分 + CSV 导出
+│       ├── admin/
+│       │   ├── competitions/overview/  # 成效看板聚合 API
+│       │   ├── reviews/       # 评审清理/同步
 │       ├── auth/          # 认证
 │       │   ├── feishu/        # GET 发起 OAuth（多租户）
 │       │   ├── feishu/callback/  # GET OAuth 回调（联合主键 upsert）

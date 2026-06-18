@@ -29,7 +29,7 @@ type: project
 - [x] 案例库 — 列表/详情/创建
 - [x] 公开课 — 列表/详情/创建
 - [x] 应用推荐 — 列表/详情
-- [x] AI大赛 — 参赛方案卡片（飞书 Base 同步）+ hras-2026 iframe
+- [x] AI大赛 — 赛事进展仪表盘（飞书直读，指标卡+时间线+图表+排名表）+ 方案评审卡片（Supabase 同步）
 - [x] 个人中心 — 个人资料/收藏/贡献/通知/设置
 - [x] 登录 — 飞书 OAuth 流程
 - [x] 管理员 — 用户管理（/admin/users）+ 平台设置（/admin/settings）
@@ -52,6 +52,7 @@ type: project
 | `/api/admin/users` | 用户管理（GET 列表/PATCH 改角色）|
 | `/api/admin/settings` | 平台设置（GET/PUT）|
 | `/api/competitions/sync` | 飞书 Base 赛事方案同步（服务端过滤 + 附件去重） |
+| `/api/competitions/progress` | 飞书直读参赛数据（赛事进展仪表盘，按评审周期分组） |
 | `/api/competitions/reviews` | 评审评分（GET 查询 / POST 提交，8维加权） |
 | `/api/competitions/reviews/export` | 评审数据 CSV 导出（管理员） |
 | `/api/admin/competitions/overview` | 成效看板数据（CHO 复审，含飞书公式字段直同步） |
@@ -71,10 +72,13 @@ type: project
 - 话题/回答创建 API
 - AI大赛评审系统（8维加权评分，三类评委角色，Popconfirm 提交）
 - AI大赛评审一览页（CHO 复审）
-- 成效看板（/admin/cho-dashboard）— 飞书公式字段直同步 + CompareCell 上下堆叠对比 + 公式提示横幅 + 表头 Tooltip + 排序/筛选
+- AI大赛赛事进展仪表盘（飞书直读，指标卡+时间线+分类/团队图表+排名表+公式参考）
+- 成效看板（嵌入 /competitions 第二 tab · 仅 admin）— 原 /admin/cho-dashboard 路由已删；admin 通过「AI 大赛」页 → 「成效看板」tab 进入。飞书公式字段直同步 + CompareCell + 公式提示横幅 + 表头 Tooltip + 排序/筛选
+- 场景池（/wish-pool）— 管理员场景价值看板，2个Tab(场景价值明细+数据质量)，悬浮卡片(breatheGlow+抬升)、鼠标跟随列表弹窗(200ms桥接)、标题列hover详情、点击下钻全字段模态、13列排名表(与CHO看板字段映射/配色对齐)
 - 飞书同步优化（服务端过滤 + 附件去重 + 并行下载）
 - 飞书 cron（课程同步 / 智能提醒 / 多租户应用连通性）
 - 硬编码白名单清理（HARDCODED_REVIEWER_NAMES 已删，改 sync 回填）
+- **字段映射重构（2026-06）**：抽 `src/lib/bitable/field-map.ts` 单一源 FALLBACK_FIELD_MAP + `field-map-reader.ts` DB 优先 reader（带 5 分钟 cache）。sync / progress / wish-pool 三个 API 共享同一份字段定义。新增 admin UI `字段映射配置`（/admin/bitable-field-map）：列表 + 编辑 + 从飞书拉取新字段 + diff 显示（synced/new/orphan/inactive）+ 字段预览样例
 
 ## 待完成
 
