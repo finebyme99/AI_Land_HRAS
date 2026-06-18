@@ -18,11 +18,12 @@ import {
   StarOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
+import { PAGE_LABELS } from '@/lib/bitable/page-usage';
 
 const navItems = [
   { key: '/', label: '首页', icon: <HomeOutlined /> },
   { key: '/cases', label: 'HRAS案例库', icon: <BookOutlined /> },
-  { key: '/wish-pool', label: '场景池', icon: <StarOutlined />, adminOnly: true },
+  { key: '/wish-pool', label: PAGE_LABELS.wishPool, icon: <StarOutlined />, adminOnly: true },
   { key: '/competitions', label: 'AI大赛', icon: <TrophyOutlined /> },
   { key: '/courses', label: '公开课', icon: <ReadOutlined /> },
   { key: '/apps', label: '工具推荐', icon: <AppstoreOutlined /> },
@@ -128,11 +129,12 @@ export default function Navigation() {
                         icon: <TeamOutlined />,
                         children: [
                           ...(isReviewer ? [{ key: '/admin/reviews', label: <Link href="/admin/reviews">评审管理</Link> }] : []),
-                          ...(isAdmin ? [{ key: '/admin/reviews-overview', label: <Link href="/admin/reviews-overview">评审一览</Link> }] : []),
-                          ...(isAdmin ? [{ key: '/admin/cho-dashboard', label: <Link href="/admin/cho-dashboard">成效看板</Link> }] : []),
-                          ...(isAdmin ? [
+...(isAdmin ? [{ key: '/admin/reviews-overview', label: <Link href="/admin/reviews-overview">评审一览</Link> }] : []),
+                        ...(isAdmin ? [
                             { key: '/admin/review', label: <Link href="/admin/review">内容审核</Link> },
                             { key: '/admin/users', label: <Link href="/admin/users">用户管理</Link> },
+                            { key: '/admin/bitable-field-map', label: <Link href="/admin/bitable-field-map">字段映射配置</Link> },
+                            { key: '/admin/layouts/competitions-entry-card', label: <Link href="/admin/layouts/competitions-entry-card">方案卡片布局</Link> },
                             { key: '/admin/reminders', label: <Link href="/admin/reminders">提醒管理</Link> },
                             { key: '/admin/push', label: <Link href="/admin/push">飞书推送</Link> },
                             { key: '/admin/feishu-apps', label: <Link href="/admin/feishu-apps">飞书应用配置</Link> },
@@ -239,11 +241,12 @@ export default function Navigation() {
                       icon: <TeamOutlined />,
                       children: [
                         ...(isReviewer ? [{ key: '/admin/reviews', label: <Link href="/admin/reviews" onClick={() => setDrawerOpen(false)}>评审管理</Link> }] : []),
-                        ...(isAdmin ? [{ key: '/admin/reviews-overview', label: <Link href="/admin/reviews-overview" onClick={() => setDrawerOpen(false)}>评审一览</Link> }] : []),
-                        ...(isAdmin ? [{ key: '/admin/cho-dashboard', label: <Link href="/admin/cho-dashboard" onClick={() => setDrawerOpen(false)}>成效看板</Link> }] : []),
+...(isAdmin ? [{ key: '/admin/reviews-overview', label: <Link href="/admin/reviews-overview" onClick={() => setDrawerOpen(false)}>评审一览</Link> }] : []),
                         ...(isAdmin ? [
-                          { key: '/admin/review', label: <Link href="/admin/review" onClick={() => setDrawerOpen(false)}>内容审核</Link> },
-                          { key: '/admin/users', label: <Link href="/admin/users" onClick={() => setDrawerOpen(false)}>用户管理</Link> },
+                            { key: '/admin/review', label: <Link href="/admin/review" onClick={() => setDrawerOpen(false)}>内容审核</Link> },
+                            { key: '/admin/users', label: <Link href="/admin/users" onClick={() => setDrawerOpen(false)}>用户管理</Link> },
+                            { key: '/admin/bitable-field-map', label: <Link href="/admin/bitable-field-map" onClick={() => setDrawerOpen(false)}>字段映射配置</Link> },
+                          { key: '/admin/layouts/competitions-entry-card', label: <Link href="/admin/layouts/competitions-entry-card" onClick={() => setDrawerOpen(false)}>方案卡片布局</Link> },
                           { key: '/admin/reminders', label: <Link href="/admin/reminders" onClick={() => setDrawerOpen(false)}>提醒管理</Link> },
                           { key: '/admin/push', label: <Link href="/admin/push" onClick={() => setDrawerOpen(false)}>飞书推送</Link> },
                           { key: '/admin/feishu-apps', label: <Link href="/admin/feishu-apps" onClick={() => setDrawerOpen(false)}>飞书应用配置</Link> },

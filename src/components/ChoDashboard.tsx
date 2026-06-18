@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { Spin, App, Select, Table, Modal, Tag, Tooltip, type TableColumnsType } from 'antd';
 import {
   BarChartOutlined,
@@ -16,7 +15,6 @@ import {
   DownloadOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
-import HighlightSweep from '@/components/HighlightSweep';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -194,10 +192,9 @@ function FmtHeader({ label, tip }: { label: string; tip: string }) {
 
 // ─── Component ───────────────────────────────────────────────────
 
-export default function ChoDashboardPage() {
-  const router = useRouter();
+export default function ChoDashboard() {
   const { message } = App.useApp();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin } = useAuth();
   const [period, setPeriod] = useState('2605');
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -211,10 +208,6 @@ export default function ChoDashboardPage() {
   const [sortBy, setSortBy] = useState('finalValueScore');
   const [titleWidth, setTitleWidth] = useState(300);
   const [detailRecord, setDetailRecord] = useState<typeof enriched[number] | null>(null);
-
-  useEffect(() => {
-    if (!authLoading && !isAdmin) router.replace('/');
-  }, [authLoading, isAdmin, router]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -237,37 +230,85 @@ export default function ChoDashboardPage() {
     setExporting(true);
     try {
       const html2canvas = (await import('html2canvas-pro')).default;
-      const element = document.getElementById('cho-dashboard-content');
+      // 只导出"指标卡片 + 核心公式 + 参赛项目数据明细"，不包含筛选/排序/操作栏
+      const element = document.getElementById('cho-dashboard-export');
       if (!element) return;
-      // 临时展开筛选面板以导出完整内容
-      const wasExpanded = filterExpanded;
-      if (!wasExpanded) setFilterExpanded(true);
       await new Promise((r) => setTimeout(r, 100));
+      // 取真实表格所需宽度：scrollWidth 取所有列自然撑开的最大宽度
+      const realTable = element.querySelector('.ant-table table') as HTMLElement | null;
+      const realTableContent = element.querySelector('.ant-table-content') as HTMLElement | null;
+      const tableNeededWidth = Math.max(
+        realTable?.scrollWidth ?? 0,
+        realTableContent?.scrollWidth ?? 0,
+        element.scrollWidth,
+      );
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#f8fafc',
         logging: false,
-        windowWidth: element.scrollWidth,
+        windowWidth: tableNeededWidth,
         windowHeight: element.scrollHeight,
         onclone: (clonedDoc) => {
-          const clonedEl = clonedDoc.getElementById('cho-dashboard-content');
-          if (clonedEl) {
-            // 确保克隆元素完整显示
-            clonedEl.style.width = `${element.scrollWidth}px`;
-            clonedEl.style.maxWidth = 'none';
-            // 移除 glass 效果中的 backdrop-filter（html2canvas 不支持）
-            const glasses = clonedEl.querySelectorAll('.glass');
-            glasses.forEach((g) => {
-              const el = g as HTMLElement;
-              el.style.backdropFilter = 'none';
-              el.style.setProperty('-webkit-backdrop-filter', 'none');
-            });
+          const clonedEl = clonedDoc.getElementById('cho-dashboard-export');
+          if (!clonedEl) return;
+          // 1. 用真实表格所需宽度撑开 export 容器（关键：解决"复用价值列被截断"）
+          clonedEl.style.width = `${tableNeededWidth}px`;
+          clonedEl.style.maxWidth = 'none';
+          clonedEl.style.overflow = 'visible';
+          // 2. 取消 antd Table 的横向滚动限制（content/body/wrap 三层都要打开）
+          clonedEl.querySelectorAll('.ant-table-content, .ant-table-body, .ant-table-body-inner, .ant-table').forEach((c) => {
+            const el = c as HTMLElement;
+            el.style.overflow = 'visible';
+            el.style.overflowX = 'visible';
+            el.style.overflowY = 'visible';
+          });
+          // 表格外层 wrap 也别裁剪
+          clonedEl.querySelectorAll('.cho-table-wrap').forEach((c) => {
+            const el = c as HTMLElement;
+            el.style.overflow = 'visible';
+          });
+          // 3. 给 .glass 加导出专用卡片样式：去掉半透明毛玻璃，换成可渲染的"白底+深边+阴影"
+          clonedEl.querySelectorAll('.glass').forEach((g) => {
+            const el = g as HTMLElement;
+            el.style.backdropFilter = 'none';
+            el.style.setProperty('-webkit-backdrop-filter', 'none');
+            el.style.background = '#ffffff';
+            el.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04)';
+            el.style.setProperty('border-color', 'rgba(0, 0, 0, 0.08)', 'important');
+          });
+          // 4. 三大顶层 block（指标卡片外层 / 核心公式 / 数据表格容器）额外加大阴影，让分层更明显
+          Array.from(clonedEl.children).forEach((block) => {
+            const el = block as HTMLElement;
+            el.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)';
+            el.style.setProperty('border-color', 'rgba(0, 0, 0, 0.1)', 'important');
+          });
+          // 5. 核心公式块：保留红色调（inline background 不能被 .glass 全局覆盖，所以单独再覆盖一次）
+          const formulaBlock = clonedEl.querySelector('[data-export-block="formula"]') as HTMLElement | null;
+          if (formulaBlock) {
+            formulaBlock.style.background = 'rgba(254, 242, 242, 1)';
+            formulaBlock.style.setProperty('border-color', 'rgba(220, 38, 38, 0.25)', 'important');
+            // 给公式块再加一圈内外边距阴影，导出时上下间距更明显
+            formulaBlock.style.boxShadow = '0 8px 24px rgba(220, 38, 38, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)';
           }
+          // 6. 去掉列拖拽手柄（html2canvas 把它截成黑条）
+          clonedEl.querySelectorAll('.react-resizable-handle').forEach((h) => {
+            (h as HTMLElement).style.display = 'none';
+          });
+          // 7. 取消 sticky/freeze 列（html2canvas 渲染冻结列经常出现错位/黑底）
+          clonedEl.querySelectorAll('.cho-frozen-rank').forEach((c) => {
+            const el = c as HTMLElement;
+            el.style.position = 'static';
+            el.style.left = 'auto';
+            el.style.zIndex = 'auto';
+          });
+          // 8. 关闭 antd Table 的 fixed 列容器阴影/伪元素
+          clonedEl.querySelectorAll('.ant-table-cell-fix-left, .ant-table-cell-fix-right').forEach((c) => {
+            const el = c as HTMLElement;
+            el.style.boxShadow = 'none';
+          });
         },
       });
-      // 恢复筛选面板状态
-      if (!wasExpanded) setFilterExpanded(false);
       const link = document.createElement('a');
       link.download = `成效看板_${period}_${new Date().toISOString().slice(0, 10)}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -621,7 +662,6 @@ export default function ChoDashboardPage() {
   ];
 
   // ── Guard ──
-  if (authLoading) return <div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>;
   if (!isAdmin) return null;
 
   return (
@@ -704,42 +744,28 @@ export default function ChoDashboardPage() {
         }
       `}</style>
 
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8" id="cho-dashboard-content">
-        {/* 操作栏 */}
-        <div className="flex items-center justify-between mb-4">
-          <HighlightSweep text="AI大赛成效看板" className="text-2xl font-bold" gradient="linear-gradient(135deg, #16a34a 0%, #0891b2 50%, #7c3aed 100%)" />
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleExportImage}
-              disabled={exporting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-              style={{ background: '#7c3aed', boxShadow: '0 4px 15px rgba(124,58,237,0.25)' }}
-            >
-              <DownloadOutlined spin={exporting} /> 导出图片
-            </button>
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-              style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}
-            >
-              <SyncOutlined spin={syncing} /> 从飞书同步
-            </button>
-          </div>
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* 操作栏（按钮放左侧，无标题） */}
+        <div className="glass rounded-xl px-4 py-3 mb-4 flex items-center gap-2" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #d46b08, #f27f22)', boxShadow: '0 4px 15px rgba(242,127,34,0.3)' }}
+          >
+            <SyncOutlined spin={syncing} /> 从飞书同步
+          </button>
+          <button
+            onClick={handleExportImage}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
+            style={{ background: 'rgba(255,255,255,0.7)', color: '#b3540e', border: '1px solid rgba(242,127,34,0.3)' }}
+          >
+            <DownloadOutlined spin={exporting} /> 导出图片
+          </button>
         </div>
 
-        {/* 顶部统计 */}
-        <div className="glass rounded-2xl p-5 mb-5" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <StatCard icon={<BarChartOutlined />} label="参赛方案数" value={String(summary.count)} color="var(--primary)" />
-            <StatCard icon={<TeamOutlined />} label="覆盖人数" value={summary.totalPeople > 0 ? `${summary.totalPeople}` : '—'} sub="执行人数合计" color="#0891b2" />
-            <StatCard icon={<ClockCircleOutlined />} label="原总工时" value={summary.totalBefore > 0 ? `${summary.totalBefore}h` : '—'} sub="月均合计" color="#d97706" />
-            <StatCard icon={<ThunderboltOutlined />} label="AI 后工时" value={summary.totalAfter > 0 ? `${summary.totalAfter}h` : '—'} sub="月均合计" color="#7c3aed" />
-            <StatCard icon={<RiseOutlined />} label="节省工时" value={summary.totalSaved > 0 ? `${summary.totalSaved}h` : '—'} sub={summary.avgEfficiency != null ? `平均提效 ${summary.avgEfficiency.toFixed(1)}%` : '月均合计'} color="#16a34a" highlight />
-          </div>
-        </div>
-
-        {/* 筛选 + 排序 */}
+        {/* 筛选 + 排序（不参与导出） */}
         <div className="glass rounded-xl px-4 py-3 mb-4" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap items-center gap-2">
@@ -783,67 +809,71 @@ export default function ChoDashboardPage() {
           )}
         </div>
 
-        {/* 核心公式（筛选条件下方，分行展示） */}
-        <div
-          className="glass rounded-lg px-5 py-3 mb-4"
-          style={{ borderColor: 'rgba(220, 38, 38, 0.15)', background: 'rgba(254, 242, 242, 0.6)' }}
-        >
-          <div className="text-[11px] font-bold mb-2" style={{ color: '#dc2626' }}>核心公式</div>
-          <div className="space-y-1.5">
-            <div className="flex items-baseline gap-2">
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>1</span>
-              <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>月均提效节省工时</span>
-              <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>= 月均操作频次 × 单次操作耗时 × 操作人数</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>2</span>
-              <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>月均降本折算工时</span>
-              <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>= 月均降本费用 / (50 × 场景归属地区系数值)</span>
-              <span className="text-[10px]" style={{ color: '#9ca3af' }}>定义：按 [全球HR时薪均值] 折算为工时数</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>3</span>
-              <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>月节省总工时</span>
-              <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>= 月均提效节省工时 + 月均降本折算工时</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed' }}>4</span>
-              <span className="text-[11px] font-semibold" style={{ color: '#5b21b6' }}>最终价值计分</span>
-              <span className="text-[11px] font-mono" style={{ color: '#6d28d9' }}>= 月均节省总工时 × 归属地区人力成本系数 × 复用价值系数</span>
+        {/* 导出范围：指标卡片 + 核心公式 + 数据表格 */}
+        <div id="cho-dashboard-export">
+          {/* 顶部统计 */}
+          <div className="glass rounded-2xl p-5 mb-5" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <StatCard icon={<BarChartOutlined />} label="参赛方案数" value={String(summary.count)} color="var(--primary)" />
+              <StatCard icon={<TeamOutlined />} label="覆盖人数" value={summary.totalPeople > 0 ? `${summary.totalPeople}` : '—'} sub="执行人数合计" color="#0891b2" />
+              <StatCard icon={<ClockCircleOutlined />} label="原总工时" value={summary.totalBefore > 0 ? `${summary.totalBefore}h` : '—'} sub="月均合计" color="#d97706" />
+              <StatCard icon={<ThunderboltOutlined />} label="AI 后工时" value={summary.totalAfter > 0 ? `${summary.totalAfter}h` : '—'} sub="月均合计" color="#7c3aed" />
+              <StatCard icon={<RiseOutlined />} label="节省工时" value={summary.totalSaved > 0 ? `${summary.totalSaved}h` : '—'} sub={summary.avgEfficiency != null ? `平均提效 ${summary.avgEfficiency.toFixed(1)}%` : '月均合计'} color="#16a34a" highlight />
             </div>
           </div>
-        </div>
 
-        {/* 数据表格 */}
-        {loading ? (
-          <div className="flex justify-center py-16"><Spin size="large" /></div>
-        ) : tableData.length === 0 ? (
-          <div className="text-center py-16 glass rounded-2xl" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>该期暂无方案</p>
+          {/* 核心公式 */}
+          <div
+            data-export-block="formula"
+            className="glass rounded-lg px-5 py-4 my-5"
+            style={{ borderColor: 'rgba(220, 38, 38, 0.15)', background: 'rgba(254, 242, 242, 0.6)' }}
+          >
+            <div className="text-[11px] font-bold mb-2" style={{ color: '#dc2626' }}>核心公式</div>
+            <div className="space-y-1.5">
+              <div className="flex items-baseline gap-2">
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>1</span>
+                <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>月均提效节省工时</span>
+                <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>= 月均操作频次 × 单次操作耗时 × 操作人数</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>2</span>
+                <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>月均降本折算工时</span>
+                <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>= 月均降本费用 / (50 × 场景归属地区系数值)</span>
+                <span className="text-[10px]" style={{ color: '#9ca3af' }}>定义：按 [全球HR时薪均值] 折算为工时数</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>3</span>
+                <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>月节省总工时</span>
+                <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>= 月均提效节省工时 + 月均降本折算工时</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed' }}>4</span>
+                <span className="text-[11px] font-semibold" style={{ color: '#5b21b6' }}>最终价值计分</span>
+                <span className="text-[11px] font-mono" style={{ color: '#6d28d9' }}>= 月均节省总工时 × 归属地区人力成本系数 × 复用价值系数</span>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="glass rounded-2xl overflow-hidden cho-table-wrap" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-            <Table
-              dataSource={tableData}
-              columns={columns}
-              rowKey="id"
-              pagination={false}
-              size="small"
-              scroll={{ x: 1600 }}
-              rowClassName={() => 'cho-table-row'}
-            />
-          </div>
-        )}
 
-        {/* 底部说明 */}
-        <div className="mt-4 text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          <span className="font-semibold">① 月均提效节省工时</span> = 频次 × 耗时 × 人数 ·
-          <span className="font-semibold"> ② 月均降本折算工时</span> = 降本费用 / (50 × 地区系数) ·
-          <span className="font-semibold"> ③ 月节省总工时</span> = ① + ② ·
-          <span className="font-semibold"> ④ 最终价值计分</span> = ③ × 地区人力成本系数 × 复用系数 ·
-          <span className="font-semibold"> 绿色</span> = 改善 ·
-          <span className="font-semibold"> 红色</span> = 需关注 ·
-          悬停表头 <span className="font-semibold">ⓘ</span> 查看公式说明
+          {/* 数据表格（参赛项目数据明细） */}
+          {loading ? (
+            <div className="flex justify-center py-16"><Spin size="large" /></div>
+          ) : tableData.length === 0 ? (
+            <div className="text-center py-16 glass rounded-2xl" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>该期暂无方案</p>
+            </div>
+          ) : (
+            <div className="glass rounded-2xl overflow-hidden cho-table-wrap" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+              <Table
+                dataSource={tableData}
+                columns={columns}
+                rowKey="id"
+                pagination={false}
+                size="small"
+                scroll={{ x: 1600 }}
+                rowClassName={() => 'cho-table-row'}
+              />
+            </div>
+          )}
         </div>
 
         {/* 方案详情弹窗 */}

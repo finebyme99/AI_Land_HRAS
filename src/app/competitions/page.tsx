@@ -1,14 +1,29 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Spin, App, Switch, Tabs, Tag } from 'antd';
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import ChoDashboard from '@/components/ChoDashboard';import { Spin, App, Switch, Tabs, Tag } from 'antd';
 import { SyncOutlined, TrophyOutlined, UserOutlined, BankOutlined, CodeOutlined, BookOutlined, CheckCircleOutlined, LockOutlined, AuditOutlined, RightOutlined, RocketOutlined, FireOutlined, BarChartOutlined, StarOutlined, TeamOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import { HARDCODED_REVIEWER_PROPOSALS } from '@/lib/constants';
 import CompetitionCard from '@/components/CompetitionCard';
 import HighlightSweep from '@/components/HighlightSweep';
+import { PAGE_LABELS } from '@/lib/bitable/page-usage';
 import type { Submission } from '@/components/CompetitionCard';
 import type { CompetitionReview, ReviewScores, ReviewerRole } from '@/types';
+import {
+  DEFAULT_ENTRY_CARD_LAYOUT,
+  ENTRY_CARD_FIELD_POOL,
+  getFieldHeaderStyle,
+  getFieldSpan,
+  renderFieldValue,
+  type EntryCardLayout,
+} from '@/lib/entry-card-layout';
+import { renderHeaderField } from '@/components/EntryCard/renderHeaderField';
+import {
+  StaticFieldChip,
+  StaticGroupHeader,
+} from '@/components/EntryCard/EntryCardView';
 
 // ── 赛事进展数据类型 ──
 interface ProgressEntry {
@@ -165,61 +180,77 @@ function EntryHoverList({ items }: { items: ProgressEntry[] }) {
   );
 }
 
-function EntryDetailPopup({ item }: { item: ProgressEntry }) {
-  const labelStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 11, whiteSpace: 'nowrap' };
-  const valStyle: React.CSSProperties = { color: 'var(--foreground)', fontSize: 12, fontWeight: 500, textAlign: 'right' as const };
-  const sectionTitle = (text: string, color: string) => (
-    <div style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: `1px solid ${color}30`, paddingBottom: 4, marginBottom: 6, marginTop: 10 }}>{text}</div>
-  );
-  const row = (label: string, value: React.ReactNode, full?: boolean) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '3px 0', gridColumn: full ? '1 / -1' : undefined }}>
-      <span style={labelStyle}>{label}</span>
-      <span style={{ ...valStyle, maxWidth: full ? 260 : 120, wordBreak: 'break-word' }}>{value || '—'}</span>
-    </div>
-  );
-  const arr = (v: string[] | undefined) => v?.length ? v.join('、') : null;
+function EntryDetailPopup({ item, layout }: { item: ProgressEntry; layout: EntryCardLayout }) {
+  // 与设计器 1:1 — 头部用 renderHeaderField（按 headerStyle 自适应排版）+ 分组用 StaticFieldChip
+  const allFieldsInLayout = layout.groups.flatMap((g) => g.fields);
+  const showFinalScore = allFieldsInLayout.includes('finalValueScore');
+  const showRank = allFieldsInLayout.includes('valueRank');
 
   return (
-    <div style={{ width: 380, maxHeight: 440, overflowY: 'auto', padding: '2px 0' }}>
-      <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-          {item.proposalNo && <Tag style={{ fontSize: 10, margin: 0, background: 'rgba(26,58,138,0.1)', borderColor: 'rgba(26,58,138,0.2)', color: '#1a3a8a' }}>{item.proposalNo}</Tag>}
-          {item.sceneCategory && <Tag color={CATEGORY_COLORS[item.sceneCategory] || '#6b7280'} style={{ fontSize: 10, margin: 0 }}>{item.sceneCategory}</Tag>}
-          {item.competitionProgress && <Tag color={STATUS_LABELS[item.competitionProgress]?.color || '#6b7280'} style={{ fontSize: 10, margin: 0 }}>{item.competitionProgress}</Tag>}
-        </div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--foreground)', lineHeight: 1.3 }}>{item.title || '未命名方案'}</div>
-        {item.briefIntro && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{item.briefIntro}</div>}
+    <div style={{ width: 380, maxHeight: 440, overflowY: 'auto' }} className="entry-card-view">
+      {/* 头部（admin 可配置：拖字段进 header，每个字段按 headerStyle 自适应排版） */}
+      <div className="entry-card-view-header">
+        {layout.header.fields.map((fieldKey) => {
+          const def = ENTRY_CARD_FIELD_POOL.find((f) => f.key === fieldKey);
+          if (!def) return null;
+          // finalValueScore / valueRank 走底部高亮区，不在头部渲染
+          if ((showFinalScore && fieldKey === 'finalValueScore') ||
+              (showRank && fieldKey === 'valueRank')) return null;
+          return renderHeaderField(item, fieldKey, getFieldHeaderStyle(fieldKey), def.label);
+        })}
       </div>
 
-      {sectionTitle('参赛信息', '#1a3a8a')}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-        {row('提报团队', item.team)}
-        {row('组队类型', item.teamType)}
-        {row('提报人', arr(item.submitter))}
-        {row('组队成员', arr(item.teamMembers))}
-        {row('AI工具', arr(item.aiTools))}
-        {row('落地进展', item.landingProgress)}
-      </div>
+      {/* 按 layout 分组渲染（admin 配置驱动） */}
+      {layout.groups.map((g) => {
+        if (g.fields.length === 0) return null;
+        const fieldsToRender = g.fields.filter(
+          (k) => !(showFinalScore && k === 'finalValueScore') && !(showRank && k === 'valueRank'),
+        );
+        if (fieldsToRender.length === 0) return null;
+        return (
+          <div key={g.id} className="entry-card-view-section">
+            <StaticGroupHeader group={g} />
+            <div className="entry-card-view-grid">
+              {fieldsToRender.map((fieldKey) => {
+                const def = ENTRY_CARD_FIELD_POOL.find((f) => f.key === fieldKey);
+                if (!def) return null;
+                return (
+                  <StaticFieldChip
+                    key={fieldKey}
+                    fieldKey={fieldKey}
+                    groupId={g.id}
+                    span={getFieldSpan(g, fieldKey)}
+                    label={def.label}
+                    value={renderFieldValue(item, fieldKey)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
 
-      {sectionTitle('价值指标', '#F27F22')}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-        {row('月均提效节省', item.monthlySavedHours ? `${fmtF(Math.round(item.monthlySavedHours))}h` : null)}
-        {row('月均降本', item.monthlySavedCost ? `¥${fmtF(item.monthlySavedCost)}` : null)}
-        {row('月省总工时', item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : null)}
-        {row('总降本提效', item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : null)}
-        {row('复用价值', item.reuseValueLevel)}
-        {row('地区系数', item.regionCoefficient)}
-      </div>
-      <div style={{ display: 'flex', gap: 16, marginTop: 8, padding: '6px 10px', background: 'rgba(242,127,34,0.06)', borderRadius: 8, border: '1px solid rgba(242,127,34,0.15)' }}>
-        <div>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>最终价值计分</span>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#F27F22', fontFamily: 'SF Mono, monospace' }}>{item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-'}</div>
+      {/* 底部高亮区 */}
+      {(showFinalScore || showRank) && (
+        <div className="entry-card-view-highlights">
+          {showFinalScore && (
+            <div className="entry-card-view-highlights-cell">
+              <div className="entry-card-view-highlights-label">最终价值计分</div>
+              <div className="entry-card-view-highlights-value" style={{ color: '#F27F22' }}>
+                {item.finalValueScore ? Math.round(item.finalValueScore) : '-'}
+              </div>
+            </div>
+          )}
+          {showRank && (
+            <div className="entry-card-view-highlights-cell">
+              <div className="entry-card-view-highlights-label">价值排名</div>
+              <div className="entry-card-view-highlights-value" style={{ color: '#1a3a8a' }}>
+                {item.valueRank ? `#${item.valueRank}` : '-'}
+              </div>
+            </div>
+          )}
         </div>
-        <div>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>价值排名</span>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#1a3a8a', fontFamily: 'SF Mono, monospace' }}>{item.valueRank ? `#${item.valueRank}` : '-'}</div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -338,8 +369,20 @@ function EntryDrillDownModal({ item, onClose }: { item: ProgressEntry; onClose: 
 // 主页面
 // ══════════════════════════════════════════════
 export default function CompetitionsPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>}>
+      <CompetitionsPageInner />
+    </Suspense>
+  );
+}
+
+function CompetitionsPageInner() {
   const { user, isAdmin, isReviewer } = useAuth();
-  const [activeTab, setActiveTab] = useState('progress');
+  const searchParams = useSearchParams();
+  const initialTab = searchParams?.get('tab') ?? 'progress';
+  const [activeTab, setActiveTab] = useState(
+    ['progress', 'review', 'effect'].includes(initialTab) ? initialTab : 'progress'
+  );
 
   // ── 赛事进展 state ──
   const [progressItems, setProgressItems] = useState<ProgressEntry[]>([]);
@@ -351,6 +394,7 @@ export default function CompetitionsPage() {
   const [selectedEntry, setSelectedEntry] = useState<ProgressEntry | null>(null);
   const [hoveredEntry, setHoveredEntry] = useState<ProgressEntry | null>(null);
   const [listHover, setListHover] = useState<{ label: string; items: ProgressEntry[]; x: number; y: number } | null>(null);
+  const [entryCardLayout, setEntryCardLayout] = useState<EntryCardLayout>(DEFAULT_ENTRY_CARD_LAYOUT);
   const detailTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const listTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -387,6 +431,14 @@ export default function CompetitionsPage() {
   };
 
   useEffect(() => { fetchProgress(); }, []);
+
+  // 拉取 admin 配置的 hover 卡片布局（fallback = 默认布局）
+  useEffect(() => {
+    fetch('/api/layouts/competitions-entry-card')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.config) setEntryCardLayout(d.config); })
+      .catch(() => {});
+  }, []);
 
   // 切换期数时重新过滤
   useEffect(() => {
@@ -552,12 +604,6 @@ export default function CompetitionsPage() {
             </span>
             <HighlightSweep text="HRAS AI 应用大赛" className="text-2xl font-bold" gradient="linear-gradient(135deg, #d46b08 0%, #f27f22 50%, #fa8c16 100%)" />
           </div>
-          {isAdmin && (
-            <a href="/admin/cho-dashboard" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105"
-              style={{ background: 'linear-gradient(135deg, #16a34a, #0891b2)', boxShadow: '0 4px 15px rgba(22,163,74,0.25)' }}>
-              <BarChartOutlined /> 成效看板
-            </a>
-          )}
         </div>
 
         <Tabs defaultActiveKey="progress" activeKey={activeTab} onChange={setActiveTab} items={[
@@ -911,7 +957,16 @@ export default function CompetitionsPage() {
               </>
             ),
           },
-        ].filter((tab) => tab.key !== 'review' || isAdmin || isReviewer)} />
+          {
+            key: 'effect',
+            label: <span className="flex items-center gap-1.5 text-sm font-semibold px-1"><BarChartOutlined />{PAGE_LABELS.choDashboard}</span>,
+            children: <ChoDashboard />,
+          },
+        ].filter((tab) => {
+          if (tab.key === 'review') return isAdmin || isReviewer;
+          if (tab.key === 'effect') return isAdmin;
+          return true;
+        })} />
       </div>
 
       {/* 动画 + Tabs 样式 */}
@@ -935,7 +990,7 @@ export default function CompetitionsPage() {
       {hoveredEntry && (
         <div style={{ position: 'fixed', top: '50%', left: '55%', transform: 'translate(-50%, -50%)', zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 14, padding: '16px 20px', boxShadow: '0 12px 48px rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.7)', maxWidth: 440 }}
           onMouseEnter={() => clearTimeout(detailTimer.current)} onMouseLeave={handleRowLeave}>
-          <EntryDetailPopup item={hoveredEntry} />
+          <EntryDetailPopup item={hoveredEntry} layout={entryCardLayout} />
         </div>
       )}
 
