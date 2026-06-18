@@ -363,7 +363,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="max-w-[1100px] mx-auto px-6">
+    <div className="px-[100px]">
 
       {/* Hero Section — Two Column */}
       <section className="pt-10 pb-8 animate-fade-up">

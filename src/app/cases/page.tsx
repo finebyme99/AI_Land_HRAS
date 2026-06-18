@@ -163,17 +163,9 @@ export default function CasesPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div className="px-[100px] py-6 sm:py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0F2057, #1a3a8a)', color: '#fff' }}>
-              <BookOutlined />
-            </span>
-            <HighlightSweep text="来自 HRAS AI 先行探索者们的已落地案例" className="text-2xl font-bold" gradient="linear-gradient(135deg, #0F2057 0%, #1a3a8a 50%, #2d5aa0 100%)" />
-          </div>
-        </div>
         {user && (
           <Link href="/cases/create">
             <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"

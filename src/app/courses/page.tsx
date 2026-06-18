@@ -175,17 +175,9 @@ export default function CoursesPage() {
     : courses;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div className="px-[100px] py-6 sm:py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0F2057, #1a3a8a)', color: '#fff' }}>
-              <ReadOutlined />
-            </span>
-            <HighlightSweep text="系统化学习 AI 知识与技能" className="text-2xl font-bold" gradient="linear-gradient(135deg, #0F2057 0%, #1a3a8a 50%, #2d5aa0 100%)" />
-          </div>
-        </div>
+      <div className="flex items-center justify-end mb-6">
         {canManageCourses && (
           <div className="flex items-center gap-2">
             <button

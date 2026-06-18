@@ -64,7 +64,7 @@ export default function Navigation() {
           borderBottom: '1px solid rgba(255, 255, 255, 0.7)',
         }}
       >
-        <div className="max-w-[1100px] mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="px-[100px] h-14 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 group">
             <img src="/hras-logo.png" alt="HRAS" className="h-5 w-auto object-contain" />

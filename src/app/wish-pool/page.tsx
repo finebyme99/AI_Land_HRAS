@@ -564,11 +564,10 @@ export default function WishPoolPage() {
   if (!isAdmin) return null;
 
   return (
-    <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div className="px-[100px] py-6 sm:py-8">
       {/* Header */}
       <div className="glass rounded-2xl p-6 mb-6" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold">HR AI 场景价值看板</h1>
+        <div className="flex items-center justify-end mb-4">
           <Button
             icon={<SyncOutlined spin={syncing} />}
             onClick={handleRefresh}

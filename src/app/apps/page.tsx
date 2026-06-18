@@ -211,18 +211,9 @@ export default function AppsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div className="px-[100px] py-6 sm:py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #d46b08, #f27f22)', color: '#fff' }}>
-              <AppstoreOutlined />
-            </span>
-            <HighlightSweep text="发现好用的 AI 工具与 Skills" className="text-2xl font-bold" gradient="linear-gradient(135deg, #d46b08 0%, #f27f22 50%, #fa8c16 100%)" />
-          </div>
-        </div>
+      <div className="flex items-center justify-end mb-6">
         <Link href="/apps/create">
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
             style={{ color: 'var(--primary)', border: '1px solid var(--primary)' }}>

@@ -206,7 +206,7 @@ export default function ChoDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [filterExpanded, setFilterExpanded] = useState(false);
   const [sortBy, setSortBy] = useState('finalValueScore');
-  const [titleWidth, setTitleWidth] = useState(300);
+  const [titleWidth, setTitleWidth] = useState(260);
   const [detailRecord, setDetailRecord] = useState<typeof enriched[number] | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -263,46 +263,28 @@ export default function ChoDashboard() {
             el.style.overflowX = 'visible';
             el.style.overflowY = 'visible';
           });
-          // 表格外层 wrap 也别裁剪
           clonedEl.querySelectorAll('.cho-table-wrap').forEach((c) => {
             const el = c as HTMLElement;
             el.style.overflow = 'visible';
           });
-          // 3. 给 .glass 加导出专用卡片样式：去掉半透明毛玻璃，换成可渲染的"白底+深边+阴影"
+          // 3. .glass 的 backdrop-filter 在 html2canvas 下无法渲染，需替换为可渲染样式
           clonedEl.querySelectorAll('.glass').forEach((g) => {
             const el = g as HTMLElement;
             el.style.backdropFilter = 'none';
             el.style.setProperty('-webkit-backdrop-filter', 'none');
-            el.style.background = '#ffffff';
-            el.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04)';
-            el.style.setProperty('border-color', 'rgba(0, 0, 0, 0.08)', 'important');
           });
-          // 4. 三大顶层 block（指标卡片外层 / 核心公式 / 数据表格容器）额外加大阴影，让分层更明显
-          Array.from(clonedEl.children).forEach((block) => {
-            const el = block as HTMLElement;
-            el.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)';
-            el.style.setProperty('border-color', 'rgba(0, 0, 0, 0.1)', 'important');
-          });
-          // 5. 核心公式块：保留红色调（inline background 不能被 .glass 全局覆盖，所以单独再覆盖一次）
-          const formulaBlock = clonedEl.querySelector('[data-export-block="formula"]') as HTMLElement | null;
-          if (formulaBlock) {
-            formulaBlock.style.background = 'rgba(254, 242, 242, 1)';
-            formulaBlock.style.setProperty('border-color', 'rgba(220, 38, 38, 0.25)', 'important');
-            // 给公式块再加一圈内外边距阴影，导出时上下间距更明显
-            formulaBlock.style.boxShadow = '0 8px 24px rgba(220, 38, 38, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)';
-          }
-          // 6. 去掉列拖拽手柄（html2canvas 把它截成黑条）
+          // 4. 去掉列拖拽手柄（html2canvas 把它截成黑条）
           clonedEl.querySelectorAll('.react-resizable-handle').forEach((h) => {
             (h as HTMLElement).style.display = 'none';
           });
-          // 7. 取消 sticky/freeze 列（html2canvas 渲染冻结列经常出现错位/黑底）
+          // 5. 取消 sticky/freeze 列（html2canvas 渲染冻结列经常出现错位/黑底）
           clonedEl.querySelectorAll('.cho-frozen-rank').forEach((c) => {
             const el = c as HTMLElement;
             el.style.position = 'static';
             el.style.left = 'auto';
             el.style.zIndex = 'auto';
           });
-          // 8. 关闭 antd Table 的 fixed 列容器阴影/伪元素
+          // 6. 关闭 antd Table 的 fixed 列容器阴影/伪元素
           clonedEl.querySelectorAll('.ant-table-cell-fix-left, .ant-table-cell-fix-right').forEach((c) => {
             const el = c as HTMLElement;
             el.style.boxShadow = 'none';
@@ -411,20 +393,25 @@ export default function ChoDashboard() {
   // ── Summary（基于筛选后的数据）──
   const summary = useMemo(() => {
     const totalPeople = tableData.reduce((sum, s) => sum + (s.beforePeopleCount ?? 0), 0);
-    const totalBefore = tableData.reduce((sum, s) => sum + (s.beforeHours ?? 0), 0);
-    const totalAfter = tableData.reduce((sum, s) => sum + (s.afterHours ?? 0), 0);
     const totalSaved = tableData.reduce((sum, s) => sum + (s.savedHours ?? 0), 0);
-    const withEff = tableData.filter((s) => s.efficiencyRate != null);
-    const avgEff = withEff.length > 0
-      ? withEff.reduce((sum, s) => sum + (s.efficiencyRate ?? 0), 0) / withEff.length
-      : null;
+    // 月均提效节省工时（飞书公式字段 monthlySavedHours 求和）
+    const totalSavedEfficiency = Math.round(tableData.reduce((sum, s) => sum + (s.savedHours ?? 0), 0) * 10) / 10;
+    // 月均降本费用（monthlySavedCost 是 string 如"¥3000"或"3000"，解析数值求和）
+    const totalMonthlySavedCost = tableData.reduce((sum, s) => {
+      if (!s.monthlySavedCost) return sum;
+      const num = parseFloat(String(s.monthlySavedCost).replace(/[^0-9.\-]/g, ''));
+      return sum + (num > 0 ? num : 0);
+    }, 0);
+    const totalMonthlySavedCostDisplay = totalMonthlySavedCost > 0 ? `¥${Math.round(totalMonthlySavedCost)}` : '—';
+    // 月均节省总工时（飞书公式字段 totalMonthlySavedHours 求和）
+    const totalMonthlySavedHoursSum = Math.round(tableData.reduce((sum, s) => sum + (s.totalMonthlySavedHours ?? 0), 0) * 10) / 10;
     return {
       count: tableData.length,
       totalPeople,
-      totalBefore: Math.round(totalBefore * 10) / 10,
-      totalAfter: Math.round(totalAfter * 10) / 10,
       totalSaved: Math.round(totalSaved * 10) / 10,
-      avgEfficiency: avgEff != null ? Math.round(avgEff * 1000) / 10 : null,
+      totalSavedEfficiency,
+      totalMonthlySavedCostDisplay,
+      totalMonthlySavedHoursSum,
     };
   }, [tableData]);
 
@@ -435,7 +422,7 @@ export default function ChoDashboard() {
       title: '序号',
       dataIndex: 'seq',
       key: 'seq',
-      width: 48,
+      width: 50,
       align: 'center',
       fixed: 'left',
       className: 'cho-frozen-rank',
@@ -496,7 +483,7 @@ export default function ChoDashboard() {
       title: <FmtHeader label="改造前后对比" tip="月工时=频次×耗时×人数，每行显示改造前/后的全部指标" />,
       key: 'compare-group',
       className: 'cho-group-compare',
-      width: 280,
+      width: 320,
       align: 'center' as const,
      
       render: (_: unknown, r: typeof tableData[number]) => {
@@ -542,7 +529,7 @@ export default function ChoDashboard() {
       children: [
         {
           title: <FmtHeader label="月节省工时" tip="= 原月均耗时 − 新月均耗时" />,
-          dataIndex: 'savedHours', key: 'sh', width: 95, align: 'center' as const, className: 'cho-col-result',
+          dataIndex: 'savedHours', key: 'sh', width: 110, align: 'center' as const, className: 'cho-col-result',
           render: (v: number | null, record: any) => {
             const dir = changeDir(record.beforeMonthlyHours, record.afterMonthlyHours);
             return (
@@ -555,12 +542,12 @@ export default function ChoDashboard() {
         },
         {
           title: <FmtHeader label="提效比例" tip="总降本提效比例（飞书公式字段）" />,
-          dataIndex: 'efficiencyRate', key: 'eff', width: 80, align: 'center' as const, className: 'cho-col-result',
+          dataIndex: 'efficiencyRate', key: 'eff', width: 100, align: 'center' as const, className: 'cho-col-result',
           render: (v: number | null) => <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{fmtPct(v)}</span>,
         },
         {
           title: <FmtHeader label="降本折算工时" tip="= 月均降本费用 / (50 × 地区系数)" />,
-          dataIndex: 'monthlyCostSavingHours', key: 'mcsh', width: 95, align: 'center' as const, className: 'cho-col-result',
+          dataIndex: 'monthlyCostSavingHours', key: 'mcsh', width: 110, align: 'center' as const, className: 'cho-col-result',
           render: (v: number | null, record: any) => {
             const cost = record.monthlySavedCost;
             const note = record.costReductionNote;
@@ -589,7 +576,7 @@ export default function ChoDashboard() {
         },
         {
           title: <FmtHeader label="节省总工时" tip="= 月均提效节省工时 + 月均降本折算工时" />,
-          dataIndex: 'totalMonthlySavedHours', key: 'tmsh', width: 95, align: 'center' as const, className: 'cho-col-result',
+          dataIndex: 'totalMonthlySavedHours', key: 'tmsh', width: 110, align: 'center' as const, className: 'cho-col-result',
           render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>,
         },
       ],
@@ -603,7 +590,7 @@ export default function ChoDashboard() {
       children: [
         {
           title: <FmtHeader label="复用价值系数" tip="跨团队/BU 复用范围" />,
-          dataIndex: 'reuseValue', key: 'rm', width: 180, align: 'center' as const, className: 'cho-col-reuse',
+          dataIndex: 'reuseValue', key: 'rm', width: 200, align: 'center' as const, className: 'cho-col-reuse',
           render: (v: string | null, record: any) => {
             if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
             const level = record.reuseValueLevel;
@@ -623,7 +610,7 @@ export default function ChoDashboard() {
         },
         {
           title: <FmtHeader label="地区系数" tip="场景归属地区系数" />,
-          dataIndex: 'regionCoefficient', key: 'rc', width: 110, align: 'center' as const, className: 'cho-col-reuse',
+          dataIndex: 'regionCoefficient', key: 'rc', width: 120, align: 'center' as const, className: 'cho-col-reuse',
           render: (v: string | null) => <span className="text-xs font-medium" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{v || '—'}</span>,
         },
       ],
@@ -634,7 +621,7 @@ export default function ChoDashboard() {
       title: <FmtHeader label="最终价值计分" tip="= 月均节省总工时 × 归属地区人力成本系数 × 复用价值系数" />,
       dataIndex: 'finalValueScore',
       key: 'fvs',
-      width: 90,
+      width: 110,
       align: 'center' as const,
      
       render: (v: number | null) => (
@@ -649,7 +636,7 @@ export default function ChoDashboard() {
       title: '一句话简介',
       dataIndex: 'briefIntro',
       key: 'briefIntro',
-      width: 200,
+      width: 250,
       align: 'center' as const,
       ellipsis: true,
      
@@ -667,9 +654,8 @@ export default function ChoDashboard() {
   return (
     <>
       <style jsx global>{`
-        /* ── 表格容器：右侧留白 ── */
+        /* ── 表格容器 ── */
         .cho-table-wrap .ant-table {
-          margin-right: 8px;
         }
         /* ── 列拖拽拉宽 ── */
         .cho-table-wrap .react-resizable {
@@ -744,9 +730,9 @@ export default function ChoDashboard() {
         }
       `}</style>
 
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="py-2 sm:py-3">
         {/* 操作栏（按钮放左侧，无标题） */}
-        <div className="glass rounded-xl px-4 py-3 mb-4 flex items-center gap-2" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+        <div className="glass rounded-xl px-4 py-3 mb-2 flex items-center gap-2" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <button
             onClick={handleSync}
             disabled={syncing}
@@ -766,7 +752,7 @@ export default function ChoDashboard() {
         </div>
 
         {/* 筛选 + 排序（不参与导出） */}
-        <div className="glass rounded-xl px-4 py-3 mb-4" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+        <div className="glass rounded-xl px-4 py-3 mb-2" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>排序</span>
@@ -812,20 +798,20 @@ export default function ChoDashboard() {
         {/* 导出范围：指标卡片 + 核心公式 + 数据表格 */}
         <div id="cho-dashboard-export">
           {/* 顶部统计 */}
-          <div className="glass rounded-2xl p-5 mb-5" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          <div className="glass rounded-2xl p-5 mb-2" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               <StatCard icon={<BarChartOutlined />} label="参赛方案数" value={String(summary.count)} color="var(--primary)" />
               <StatCard icon={<TeamOutlined />} label="覆盖人数" value={summary.totalPeople > 0 ? `${summary.totalPeople}` : '—'} sub="执行人数合计" color="#0891b2" />
-              <StatCard icon={<ClockCircleOutlined />} label="原总工时" value={summary.totalBefore > 0 ? `${summary.totalBefore}h` : '—'} sub="月均合计" color="#d97706" />
-              <StatCard icon={<ThunderboltOutlined />} label="AI 后工时" value={summary.totalAfter > 0 ? `${summary.totalAfter}h` : '—'} sub="月均合计" color="#7c3aed" />
-              <StatCard icon={<RiseOutlined />} label="节省工时" value={summary.totalSaved > 0 ? `${summary.totalSaved}h` : '—'} sub={summary.avgEfficiency != null ? `平均提效 ${summary.avgEfficiency.toFixed(1)}%` : '月均合计'} color="#16a34a" highlight />
+              <StatCard icon={<RiseOutlined />} label="月均提效节省工时" value={summary.totalSavedEfficiency > 0 ? `${summary.totalSavedEfficiency}h` : '—'} sub="= 原月均 - 新月均" color="#16a34a" />
+              <StatCard icon={<ThunderboltOutlined />} label="月均降本费用" value={summary.totalMonthlySavedCostDisplay} sub="不含内部人力成本" color="#d97706" />
+              <StatCard icon={<ClockCircleOutlined />} label="月均节省总工时" value={summary.totalMonthlySavedHoursSum > 0 ? `${summary.totalMonthlySavedHoursSum}h` : '—'} sub="提效 + 降本折算" color="#7c3aed" highlight />
             </div>
           </div>
 
           {/* 核心公式 */}
           <div
             data-export-block="formula"
-            className="glass rounded-lg px-5 py-4 my-5"
+            className="glass rounded-lg px-5 py-4 my-2"
             style={{ borderColor: 'rgba(220, 38, 38, 0.15)', background: 'rgba(254, 242, 242, 0.6)' }}
           >
             <div className="text-[11px] font-bold mb-2" style={{ color: '#dc2626' }}>核心公式</div>
@@ -869,7 +855,7 @@ export default function ChoDashboard() {
                 rowKey="id"
                 pagination={false}
                 size="small"
-                scroll={{ x: 1600 }}
+                scroll={{ x: 'max-content' }}
                 rowClassName={() => 'cho-table-row'}
               />
             </div>

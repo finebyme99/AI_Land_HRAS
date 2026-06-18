@@ -595,17 +595,7 @@ function CompetitionsPageInner() {
 
   return (
     <>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* 页面标题 */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #d46b08, #f27f22)', color: '#fff' }}>
-              <TrophyOutlined />
-            </span>
-            <HighlightSweep text="HRAS AI 应用大赛" className="text-2xl font-bold" gradient="linear-gradient(135deg, #d46b08 0%, #f27f22 50%, #fa8c16 100%)" />
-          </div>
-        </div>
-
+      <div className="px-[100px] py-6 sm:py-8">
         <Tabs defaultActiveKey="progress" activeKey={activeTab} onChange={setActiveTab} items={[
           {
             key: 'progress',
