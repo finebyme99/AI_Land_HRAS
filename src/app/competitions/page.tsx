@@ -2,28 +2,22 @@
 
 import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import ChoDashboard from '@/components/ChoDashboard';import { Spin, App, Switch, Tabs, Tag } from 'antd';
-import { SyncOutlined, TrophyOutlined, UserOutlined, BankOutlined, CodeOutlined, BookOutlined, CheckCircleOutlined, LockOutlined, AuditOutlined, RightOutlined, RocketOutlined, FireOutlined, BarChartOutlined, StarOutlined, TeamOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import ChoDashboard from '@/components/ChoDashboard';
+import { Spin, App, Tabs, Tag } from 'antd';
+import {
+  TrophyOutlined,
+  TeamOutlined,
+  StarOutlined,
+  ClockCircleOutlined,
+  FireOutlined,
+  BarChartOutlined,
+  RiseOutlined,
+  BulbOutlined,
+  CheckCircleOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
-import { HARDCODED_REVIEWER_PROPOSALS } from '@/lib/constants';
-import CompetitionCard from '@/components/CompetitionCard';
 import HighlightSweep from '@/components/HighlightSweep';
 import { PAGE_LABELS } from '@/lib/bitable/page-usage';
-import type { Submission } from '@/components/CompetitionCard';
-import type { CompetitionReview, ReviewScores, ReviewerRole } from '@/types';
-import {
-  DEFAULT_ENTRY_CARD_LAYOUT,
-  ENTRY_CARD_FIELD_POOL,
-  getFieldHeaderStyle,
-  getFieldSpan,
-  renderFieldValue,
-  type EntryCardLayout,
-} from '@/lib/entry-card-layout';
-import { renderHeaderField } from '@/components/EntryCard/renderHeaderField';
-import {
-  StaticFieldChip,
-  StaticGroupHeader,
-} from '@/components/EntryCard/EntryCardView';
 
 // ── 赛事进展数据类型 ──
 interface ProgressEntry {
@@ -90,9 +84,13 @@ const CATEGORY_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   终审通过: { label: '已结项', color: '#16a34a' },
   评审中: { label: '评审中', color: '#1a3a8a' },
-  待提交人补充方案: { label: '待补充', color: '#F27F22' },
-  待提交人调整方案: { label: '待调整', color: '#F27F22' },
-  并入其他方案: { label: '已合并', color: '#94a3b8' },
+};
+
+const CATEGORY_ICONS: Record<string, string> = {
+  数据分析: '📊', 招聘管理: '👥', 薪酬绩效: '💰',
+  培训管理: '🎓', 组织与人才发展: '🌱', 文化氛围: '🎉',
+  核算与报账: '🧾', 基础人事支持: '🛠', 行政管理: '📋',
+  日常工作: '🔄', 考勤管理: '⏰',
 };
 
 function fmt(n: number): string {
@@ -111,150 +109,7 @@ function periodLabel(p: string): string {
   return p;
 }
 
-// ── 子组件 ──
-function MetricCard({ label, value, sub, color, icon, glow, onMouseEnter, onMouseLeave }: {
-  label: string; value: string; sub?: string; color: string; icon: React.ReactNode; glow?: boolean;
-  onMouseEnter?: (e: React.MouseEvent) => void; onMouseLeave?: () => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <div className="rounded-xl p-5" style={{
-      border: '1px solid rgba(255,255,255,0.6)', cursor: 'pointer',
-      background: hovered ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.3)',
-      backdropFilter: 'blur(12px)',
-      transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
-      boxShadow: hovered ? '0 12px 28px rgba(26,58,138,0.12), 0 4px 12px rgba(0,0,0,0.06)' : '0 2px 8px rgba(0,0,0,0.04)',
-      transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.3s ease',
-      animation: glow && !hovered ? 'breatheGlow 3s ease-in-out infinite' : 'none',
-    }} onMouseEnter={(e) => { setHovered(true); onMouseEnter?.(e); }} onMouseLeave={() => { setHovered(false); onMouseLeave?.(); }}>
-      <div className="flex items-center justify-between mb-2">
-        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</span>
-        <span style={{ color, fontSize: 14, opacity: 0.5 }}>{icon}</span>
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1, color }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{sub}</div>}
-    </div>
-  );
-}
-
-function HBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  const pct = max > 0 ? (value / max) * 100 : 0;
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
-      <span style={{ width: 100, textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>{label}</span>
-      <div style={{ flex: 1, height: 18, background: 'rgba(255,255,255,0.3)', borderRadius: 9, overflow: 'hidden' }}>
-        <div style={{ height: '100%', borderRadius: 9, width: `${Math.max(pct, 1)}%`, background: `linear-gradient(90deg, ${color}, ${color}88)`, transition: 'width 0.6s ease' }} />
-      </div>
-      <span style={{ width: 40, fontSize: 11, fontFamily: 'SF Mono, monospace', color: 'var(--text-secondary)', flexShrink: 0 }}>{value}</span>
-    </div>
-  );
-}
-
-function EntryHoverList({ items }: { items: ProgressEntry[] }) {
-  return (
-    <div style={{ maxHeight: 320, overflowY: 'auto', overflowX: 'auto' }}>
-      <table style={{ fontSize: 11, borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
-        <thead>
-          <tr>
-            {['方案', '团队', '状态', '月省工时'].map((h) => (
-              <th key={h} style={{ padding: '4px 8px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.3)', textAlign: 'left' }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-              <td style={{ padding: '4px 8px', color: 'var(--foreground)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title || '-'}</td>
-              <td style={{ padding: '4px 8px', color: 'var(--text-secondary)' }}>{item.team || '—'}</td>
-              <td style={{ padding: '4px 8px' }}>
-                {item.competitionProgress ? <Tag color={STATUS_LABELS[item.competitionProgress]?.color || '#6b7280'} style={{ fontSize: 10, margin: 0, lineHeight: '16px' }}>{item.competitionProgress}</Tag> : <span style={{ color: '#cbd5e1' }}>—</span>}
-              </td>
-              <td style={{ padding: '4px 8px', color: 'var(--text-secondary)', fontFamily: 'SF Mono, monospace' }}>
-                {item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '—'}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function EntryDetailPopup({ item, layout }: { item: ProgressEntry; layout: EntryCardLayout }) {
-  // 与设计器 1:1 — 头部用 renderHeaderField（按 headerStyle 自适应排版）+ 分组用 StaticFieldChip
-  const allFieldsInLayout = layout.groups.flatMap((g) => g.fields);
-  const showFinalScore = allFieldsInLayout.includes('finalValueScore');
-  const showRank = allFieldsInLayout.includes('valueRank');
-
-  return (
-    <div style={{ width: 380, maxHeight: 440, overflowY: 'auto' }} className="entry-card-view">
-      {/* 头部（admin 可配置：拖字段进 header，每个字段按 headerStyle 自适应排版） */}
-      <div className="entry-card-view-header">
-        {layout.header.fields.map((fieldKey) => {
-          const def = ENTRY_CARD_FIELD_POOL.find((f) => f.key === fieldKey);
-          if (!def) return null;
-          // finalValueScore / valueRank 走底部高亮区，不在头部渲染
-          if ((showFinalScore && fieldKey === 'finalValueScore') ||
-              (showRank && fieldKey === 'valueRank')) return null;
-          return renderHeaderField(item, fieldKey, getFieldHeaderStyle(fieldKey), def.label);
-        })}
-      </div>
-
-      {/* 按 layout 分组渲染（admin 配置驱动） */}
-      {layout.groups.map((g) => {
-        if (g.fields.length === 0) return null;
-        const fieldsToRender = g.fields.filter(
-          (k) => !(showFinalScore && k === 'finalValueScore') && !(showRank && k === 'valueRank'),
-        );
-        if (fieldsToRender.length === 0) return null;
-        return (
-          <div key={g.id} className="entry-card-view-section">
-            <StaticGroupHeader group={g} />
-            <div className="entry-card-view-grid">
-              {fieldsToRender.map((fieldKey) => {
-                const def = ENTRY_CARD_FIELD_POOL.find((f) => f.key === fieldKey);
-                if (!def) return null;
-                return (
-                  <StaticFieldChip
-                    key={fieldKey}
-                    fieldKey={fieldKey}
-                    groupId={g.id}
-                    span={getFieldSpan(g, fieldKey)}
-                    label={def.label}
-                    value={renderFieldValue(item, fieldKey)}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-
-      {/* 底部高亮区 */}
-      {(showFinalScore || showRank) && (
-        <div className="entry-card-view-highlights">
-          {showFinalScore && (
-            <div className="entry-card-view-highlights-cell">
-              <div className="entry-card-view-highlights-label">最终价值计分</div>
-              <div className="entry-card-view-highlights-value" style={{ color: '#F27F22' }}>
-                {item.finalValueScore ? Math.round(item.finalValueScore) : '-'}
-              </div>
-            </div>
-          )}
-          {showRank && (
-            <div className="entry-card-view-highlights-cell">
-              <div className="entry-card-view-highlights-label">价值排名</div>
-              <div className="entry-card-view-highlights-value" style={{ color: '#1a3a8a' }}>
-                {item.valueRank ? `#${item.valueRank}` : '-'}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
+// ── 方案详情弹窗 ──
 function EntryDrillDownModal({ item, onClose }: { item: ProgressEntry; onClose: () => void }) {
   const sectionTitle = (text: string, color: string) => (
     <div style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: `2px solid ${color}30`, paddingBottom: 6, marginBottom: 12, marginTop: 20 }}>{text}</div>
@@ -275,10 +130,9 @@ function EntryDrillDownModal({ item, onClose }: { item: ProgressEntry; onClose: 
         {/* Header */}
         <div style={{ background: 'linear-gradient(135deg, #0F2057 0%, #1a3a8a 40%, #F27F22 100%)', padding: '20px 24px', color: 'white', position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-            {item.proposalNo && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>{item.proposalNo}</Tag>}
-            {item.sceneCategory && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>{item.sceneCategory}</Tag>}
-            {item.competitionProgress && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>{item.competitionProgress}</Tag>}
-            {item.reuseValueLevel && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(242,127,34,0.3)', borderColor: 'rgba(242,127,34,0.5)', color: 'white' }}>{item.reuseValueLevel}</Tag>}
+            {item.proposalNo && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>#{item.proposalNo}</Tag>}
+            {item.sceneCategory && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>{CATEGORY_ICONS[item.sceneCategory] || ''} {item.sceneCategory}</Tag>}
+            {item.competitionProgress && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>{STATUS_LABELS[item.competitionProgress]?.label || item.competitionProgress}</Tag>}
           </div>
           <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{item.title || '未命名方案'}</div>
           {item.briefIntro && <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>{item.briefIntro}</div>}
@@ -290,14 +144,13 @@ function EntryDrillDownModal({ item, onClose }: { item: ProgressEntry; onClose: 
           {/* Score highlight */}
           <div style={{ display: 'flex', gap: 24, padding: '16px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
             {[
-              { label: '价值排名', value: item.valueRank ? `#${item.valueRank}` : '-', color: '#1a3a8a' },
-              { label: '最终价值计分', value: item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-', color: '#F27F22' },
-              { label: '月均节省总工时', value: item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : '-', color: '#2d5bc7' },
-              { label: '总降本提效', value: item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : '-', color: '#4a7de0' },
+              { label: '月均节省总工时', value: item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : '-', color: '#16a34a' },
+              { label: '总降本提效', value: item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : '-', color: '#1a3a8a' },
+              { label: '复用价值等级', value: item.reuseValueLevel || '-', color: '#F27F22' },
             ].map((m) => (
-              <div key={m.label} style={{ textAlign: 'center' }}>
+              <div key={m.label} style={{ textAlign: 'center', flex: 1 }}>
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>{m.label}</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: m.color, fontFamily: 'SF Mono, monospace' }}>{m.value}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: m.color }}>{m.value}</div>
               </div>
             ))}
           </div>
@@ -305,46 +158,26 @@ function EntryDrillDownModal({ item, onClose }: { item: ProgressEntry; onClose: 
           {sectionTitle('参赛信息', '#1a3a8a')}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
             {row('核心价值', item.coreValue)}
-            {row('场景来源', item.sceneSource)}
             {row('提报团队', item.team)}
             {row('组队类型', item.teamType)}
-            {row('提报人', arr(item.submitter))}
-            {row('组队成员', arr(item.teamMembers))}
             {row('AI工具', arr(item.aiTools))}
             {row('落地进展', item.landingProgress)}
           </div>
 
-          {sectionTitle('AI前指标', '#1a3a8a')}
-          {item.beforeProcess && row('原业务流程', item.beforeProcess, true)}
+          {sectionTitle('改造前后对比', '#2d5bc7')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
+            <div style={{ textAlign: 'center', padding: '12px 0' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>改造前 · 月均耗时</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#b45309' }}>{item.beforeMonthlyHours ? `${fmtF(Math.round(item.beforeMonthlyHours))}h` : '-'}</div>
+              {item.beforePeopleCount && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.beforePeopleCount}人参与</div>}
+            </div>
+            <div style={{ textAlign: 'center', padding: '12px 0' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>改造后 · 月均耗时</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#16a34a' }}>{item.afterMonthlyHours ? `${fmtF(Math.round(item.afterMonthlyHours))}h` : '-'}</div>
+              {item.afterPeopleCount && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.afterPeopleCount}人参与</div>}
+            </div>
+          </div>
           {item.painPoints && item.painPoints.length > 0 && row('原核心痛点', item.painPoints.join('、'), true)}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
-            {row('原操作频次', item.beforeFreq ? `${item.beforeFreq}次/月` : null)}
-            {row('原操作人数', item.beforePeopleCount ? `${item.beforePeopleCount}人` : null)}
-            {row('单次耗时', item.beforeHoursPerTask ? `${item.beforeHoursPerTask}h` : null)}
-            {row('原月均耗时', item.beforeMonthlyHours ? `${fmtF(Math.round(item.beforeMonthlyHours))}h` : null)}
-          </div>
-
-          {sectionTitle('AI后指标', '#1a3a8a')}
-          {item.afterProcess && row('新业务流程', item.afterProcess, true)}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
-            {row('新操作频次', item.afterFreq ? `${item.afterFreq}次/月` : null)}
-            {row('新操作人数', item.afterPeopleCount ? `${item.afterPeopleCount}人` : null)}
-            {row('单次耗时', item.afterHoursPerTask ? `${item.afterHoursPerTask}h` : null)}
-            {row('新月均耗时', item.afterMonthlyHours ? `${fmtF(Math.round(item.afterMonthlyHours))}h` : null)}
-            {row('月均Token', item.aiCost ? `¥${fmtF(item.aiCost)}` : null)}
-          </div>
-
-          {sectionTitle('价值计分', '#F27F22')}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
-            {row('月均提效节省', item.monthlySavedHours ? `${fmtF(Math.round(item.monthlySavedHours))}h` : null)}
-            {row('月均降本费用', item.monthlySavedCost ? `¥${fmtF(item.monthlySavedCost)}` : null)}
-            {row('降本折算工时', item.costSavedHours ? `${fmtF(Math.round(item.costSavedHours))}h` : null)}
-            {row('月均节省总工时', item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : null)}
-            {row('总降本提效', item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : null)}
-            {row('复用价值系数', item.reuseValue)}
-            {row('复用价值等级', item.reuseValueLevel)}
-            {row('地区系数', item.regionCoefficient)}
-          </div>
 
           {(item.implementation || item.implementationLink) && (
             <>
@@ -365,6 +198,152 @@ function EntryDrillDownModal({ item, onClose }: { item: ProgressEntry; onClose: 
   );
 }
 
+// ── 亮点方案卡片 ──
+function SpotlightCard({ item, rank, onClick }: { item: ProgressEntry; rank: number; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false);
+  const catColor = CATEGORY_COLORS[item.sceneCategory || ''] || '#6b7280';
+  const catIcon = CATEGORY_ICONS[item.sceneCategory || ''] || '';
+
+  const rankBg = rank === 1 ? 'linear-gradient(135deg, #F27F22, #d46b08)' : rank === 2 ? 'linear-gradient(135deg, #1a3a8a, #2d5bc7)' : 'linear-gradient(135deg, #2d5bc7, #4a7de0)';
+  const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
+
+  return (
+    <div
+      className="rounded-xl cursor-pointer"
+      style={{
+        border: '1px solid rgba(255,255,255,0.6)',
+        background: hovered ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.3)',
+        backdropFilter: 'blur(12px)',
+        transform: hovered ? 'translateY(-6px)' : 'translateY(0)',
+        boxShadow: hovered ? `0 16px 40px rgba(26,58,138,0.15), 0 6px 16px rgba(0,0,0,0.08)` : '0 2px 8px rgba(0,0,0,0.04)',
+        transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.3s ease',
+        overflow: 'hidden',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
+    >
+      {/* 排名 + 场景标签 */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+        <div className="flex items-center gap-2">
+          <span style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: rankBg, color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: `0 4px 12px ${rank === 1 ? 'rgba(242,127,34,0.3)' : 'rgba(26,58,138,0.25)'}` }}>{rankEmoji}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Top {rank}</span>
+        </div>
+        <Tag style={{ fontSize: 11, margin: 0, background: `${catColor}15`, borderColor: `${catColor}30`, color: catColor }}>{catIcon} {item.sceneCategory || '未分类'}</Tag>
+      </div>
+
+      {/* 方案标题 + 简介 */}
+      <div className="px-5 py-4">
+        <h4 style={{ fontSize: 15, fontWeight: 700, color: 'var(--foreground)', lineHeight: 1.4, marginBottom: 6 }}>{item.title || '未命名方案'}</h4>
+        {item.briefIntro && <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 0 }}>{item.briefIntro.length > 60 ? item.briefIntro.slice(0, 60) + '…' : item.briefIntro}</p>}
+      </div>
+
+      {/* 关键数据 */}
+      <div className="flex items-center justify-between px-5 pb-4 gap-4">
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>月省总工时</div>
+          <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'SF Mono, monospace', color: '#16a34a' }}>
+            {item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '-'}
+          </div>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>降本提效</div>
+          <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'SF Mono, monospace', color: '#1a3a8a' }}>
+            {item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(0)}%` : '-'}
+          </div>
+        </div>
+        <div style={{ flex: 1, textAlign: 'right' }}>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>提报团队</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)' }}>{item.team || '—'}</div>
+        </div>
+      </div>
+
+      {/* AI 工具 + 复用价值 */}
+      <div className="flex items-center justify-between px-5 pb-4 pt-0" style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+        <div className="flex items-center gap-1">
+          {item.aiTools && item.aiTools.slice(0, 3).map((t) => (
+            <Tag key={t} style={{ fontSize: 10, margin: 0, background: 'rgba(26,58,138,0.06)', borderColor: 'rgba(26,58,138,0.12)', color: '#1a3a8a' }}>{t}</Tag>
+          ))}
+        </div>
+        {item.reuseValueLevel && (
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#F27F22' }}>
+            {item.reuseValueLevel}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── 场景分类卡片 ──
+function CategoryCard({ category, count, maxCount, items, onClick }: { category: string; count: number; maxCount: number; items: ProgressEntry[]; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false);
+  const color = CATEGORY_COLORS[category] || '#6b7280';
+  const icon = CATEGORY_ICONS[category] || '📌';
+  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+
+  // 计算该分类的总省工时
+  const savedHours = items.reduce((s, d) => s + (d.totalSavedHours || d.monthlySavedHours || 0), 0);
+
+  return (
+    <div
+      className="rounded-xl cursor-pointer"
+      style={{
+        border: `1px solid ${color}30`,
+        background: hovered ? `${color}15` : `${color}08`,
+        backdropFilter: 'blur(8px)',
+        transition: 'all 0.25s ease',
+        overflow: 'hidden',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
+    >
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between mb-2">
+          <span style={{ fontSize: 14, fontWeight: 700, color }}>{icon} {category}</span>
+          <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'SF Mono, monospace', color }}>{count}</span>
+        </div>
+        {/* 进度条 */}
+        <div style={{ height: 4, background: `${color}20`, borderRadius: 2, marginBottom: 8 }}>
+          <div style={{ height: '100%', borderRadius: 2, width: `${Math.max(pct, 2)}%`, background: `linear-gradient(90deg, ${color}, ${color}88)`, transition: 'width 0.6s ease' }} />
+        </div>
+        <div className="flex items-center justify-between">
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>个方案</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
+            {savedHours > 0 ? `月省 ${fmt(savedHours)}h` : ''}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── 指标卡 ──
+function MetricCard({ label, value, sub, color, icon, glow }: {
+  label: string; value: string; sub?: string; color: string; icon: React.ReactNode; glow?: boolean;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div className="rounded-xl p-5" style={{
+      border: '1px solid rgba(255,255,255,0.6)',
+      background: hovered ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.3)',
+      backdropFilter: 'blur(12px)',
+      transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
+      boxShadow: hovered ? '0 12px 28px rgba(26,58,138,0.12), 0 4px 12px rgba(0,0,0,0.06)' : '0 2px 8px rgba(0,0,0,0.04)',
+      transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.3s ease',
+      animation: glow && !hovered ? 'breatheGlow 3s ease-in-out infinite' : 'none',
+    }} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+      <div className="flex items-center justify-between mb-2">
+        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</span>
+        <span style={{ color, fontSize: 14, opacity: 0.5 }}>{icon}</span>
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1, color }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{sub}</div>}
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════
 // 主页面
 // ══════════════════════════════════════════════
@@ -377,11 +356,11 @@ export default function CompetitionsPage() {
 }
 
 function CompetitionsPageInner() {
-  const { user, isAdmin, isReviewer } = useAuth();
+  const { isAdmin } = useAuth();
   const searchParams = useSearchParams();
   const initialTab = searchParams?.get('tab') ?? 'progress';
   const [activeTab, setActiveTab] = useState(
-    ['progress', 'review', 'effect'].includes(initialTab) ? initialTab : 'progress'
+    ['progress', 'effect'].includes(initialTab) ? initialTab : 'progress'
   );
 
   // ── 赛事进展 state ──
@@ -392,26 +371,10 @@ function CompetitionsPageInner() {
   const [progressStats, setProgressStats] = useState<ProgressStats | null>(null);
   const [progressLoading, setProgressLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<ProgressEntry | null>(null);
-  const [hoveredEntry, setHoveredEntry] = useState<ProgressEntry | null>(null);
-  const [listHover, setListHover] = useState<{ label: string; items: ProgressEntry[]; x: number; y: number } | null>(null);
-  const [entryCardLayout, setEntryCardLayout] = useState<EntryCardLayout>(DEFAULT_ENTRY_CARD_LAYOUT);
-  const detailTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const listTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  // ── 方案评审 state（原样保留）──
-  const [items, setItems] = useState<Submission[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [period] = useState('2605');
-  const [reviews, setReviews] = useState<Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }>>({});
-  const [reviewerRole, setReviewerRole] = useState<ReviewerRole | null>(null);
-  const [roleLocked, setRoleLocked] = useState(false);
-  const [finalized, setFinalized] = useState(false);
-  const [onlyPending, setOnlyPending] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { message } = App.useApp();
 
-  // ── 赛事进展：获取数据 ──
+  // ── 获取数据 ──
   const fetchProgress = async () => {
     setProgressLoading(true);
     try {
@@ -431,14 +394,6 @@ function CompetitionsPageInner() {
   };
 
   useEffect(() => { fetchProgress(); }, []);
-
-  // 拉取 admin 配置的 hover 卡片布局（fallback = 默认布局）
-  useEffect(() => {
-    fetch('/api/layouts/competitions-entry-card')
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.config) setEntryCardLayout(d.config); })
-      .catch(() => {});
-  }, []);
 
   // 切换期数时重新过滤
   useEffect(() => {
@@ -465,7 +420,7 @@ function CompetitionsPageInner() {
     } : prev);
   }, [selectedPeriod, progressAllItems]);
 
-  // 排名排序
+  // 排名排序（Top 亮点 + 全量列表）
   const rankedEntries = useMemo(() => {
     return [...progressItems].sort((a, b) => {
       const sa = a.finalValueScore ?? a.totalSavedHours ?? a.monthlySavedHours ?? 0;
@@ -474,128 +429,23 @@ function CompetitionsPageInner() {
     });
   }, [progressItems]);
 
+  const spotlightEntries = useMemo(() => rankedEntries.slice(0, 3), [rankedEntries]);
+
   const maxCat = useMemo(() => progressStats ? Math.max(...Object.values(progressStats.categoryMap), 1) : 1, [progressStats]);
-  const maxTeam = useMemo(() => progressStats ? Math.max(...Object.values(progressStats.teamMap), 1) : 1, [progressStats]);
 
-  // hover handlers
-  const handleRowEnter = (item: ProgressEntry) => { clearTimeout(detailTimer.current); setHoveredEntry(item); };
-  const handleRowLeave = () => { detailTimer.current = setTimeout(() => setHoveredEntry(null), 200); };
-  const showListHover = (label: string, hoverItems: ProgressEntry[]) => (e: React.MouseEvent) => {
-    clearTimeout(listTimer.current);
-    let x = e.clientX + 15;
-    let y = e.clientY + 15;
-    if (x + 500 > window.innerWidth - 16) x = e.clientX - 500 - 15;
-    if (y + 360 > window.innerHeight - 16) y = window.innerHeight - 360 - 16;
-    setListHover({ label, items: hoverItems, x, y });
-  };
-  const hideListHover = () => { listTimer.current = setTimeout(() => setListHover(null), 200); };
-
-  // ── 方案评审：原样保留 ──
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/competitions/sync?period=${period}`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setItems((data.items ?? [])
-        .filter((i: Submission) => i.status === '评审中')
-        .sort((a: Submission, b: Submission) => (a.sceneCategory ?? '').localeCompare(b.sceneCategory ?? '', 'zh-CN')),
-      );
-      setLoaded(true);
-    } catch (err) {
-      message.error(err instanceof Error ? err.message : '加载失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSync = async () => {
-    setSyncing(true);
-    message.loading({ content: '正在从飞书同步，附件较多时可能需要几分钟…', key: 'sync', duration: 0 });
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5 * 60 * 1000);
-      const res = await fetch(`/api/competitions/sync?period=${period}`, { method: 'POST', signal: controller.signal });
-      clearTimeout(timer);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      const attMsg = data.attachments ? `（附件：${data.attachments.downloaded} 新下载，${data.attachments.skipped} 已跳过）` : '';
-      message.success({ content: `已同步 ${data.synced} 条方案${attMsg}`, key: 'sync' });
-      await fetchData();
-    } catch (err) {
-      const msg = err instanceof DOMException && err.name === 'AbortError' ? '同步超时，请稍后重试' : err instanceof Error ? err.message : '同步失败';
-      message.error({ content: msg, key: 'sync' });
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  useEffect(() => { fetchData(); }, [period]);
-
-  useEffect(() => {
-    if (isReviewer) {
-      fetch('/api/competitions/reviews?mine=true')
-        .then(async (r) => {
-          const data = await r.json();
-          if (!r.ok) throw new Error(data.error || '加载评审记录失败');
-          return data;
-        })
-        .then((data) => {
-          const reviewsList: CompetitionReview[] = data.reviews ?? [];
-          const LEGACY_MAP: Record<string, keyof ReviewScores> = { scenario: 'productEffectiveness', painPoint: 'dataConsistency', effectiveness: 'productUsability' };
-          const map: Record<string, { decision: string; scores?: ReviewScores; reason: string; reviewer_role?: ReviewerRole | null }> = {};
-          reviewsList.forEach((r) => {
-            let scores = r.scores;
-            if (scores) {
-              const migrated: ReviewScores = {};
-              for (const [k, v] of Object.entries(scores)) { migrated[LEGACY_MAP[k] ?? (k as keyof ReviewScores)] = v as number; }
-              scores = migrated;
-            }
-            map[r.submission_id] = { decision: r.decision, scores, reason: r.reason, reviewer_role: r.reviewer_role };
-          });
-          setReviews(map);
-          const reviewed = reviewsList.filter((r) => r.decision === 'reviewed' && r.reviewer_role);
-          if (reviewed.length > 0) { setReviewerRole(reviewed[0].reviewer_role!); setRoleLocked(true); }
-          else {
-            const assignedRoles = user?.reviewer_roles || [];
-            if (assignedRoles.length === 1) { setReviewerRole(assignedRoles[0] as ReviewerRole); setRoleLocked(true); }
-            else if (assignedRoles.length > 1) { setReviewerRole(assignedRoles[0] as ReviewerRole); setRoleLocked(false); }
-          }
-        })
-        .catch((err) => { console.error('[评审加载失败]', err); message.error(err.message || '加载评审记录失败'); });
-    }
-  }, [isReviewer, user]);
-
-  const handleReview = async (submissionId: string, scores: ReviewScores, reviewerRole: ReviewerRole, reason?: string) => {
-    try {
-      const item = items.find((i) => i.id === submissionId);
-      const res = await fetch('/api/competitions/reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ submission_id: submissionId, scores, reviewer_role: reviewerRole, reason, proposal_no: item?.proposalNo ?? null, title: item?.title ?? '' }),
-      });
-      if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
-      const data = await res.json();
-      setReviews((prev) => ({ ...prev, [submissionId]: { decision: data.review.decision, scores: data.review.scores, reason: data.review.reason, reviewer_role: data.review.reviewer_role } }));
-      setRoleLocked(true);
-      message.success('评分已保存');
-    } catch (err) {
-      message.error(err instanceof Error ? err.message : '评审失败');
-    }
-  };
-
-  const userName = user?.name ?? '';
-  const hardcodedTitles = HARDCODED_REVIEWER_PROPOSALS[userName] ?? [];
-  const roleFiltered = reviewerRole === 'user'
-    ? items.filter((i) => (userName && i.reviewers?.some((r: string) => r.includes(userName) || userName.includes(r))) || hardcodedTitles.some((t) => i.title?.includes(t)))
-    : items;
-  const reviewsLoaded = Object.keys(reviews).length > 0;
-  const pendingCount = roleFiltered.filter((i) => reviews[i.id]?.decision !== 'reviewed').length;
-  const displayItems = onlyPending && reviewsLoaded && pendingCount > 0 ? roleFiltered.filter((i) => reviews[i.id]?.decision !== 'reviewed') : roleFiltered;
+  // 状态统计（简化版，给参赛者看）
+  const statusSummary = useMemo(() => {
+    if (!progressStats || !selectedPeriod) return null;
+    const p = progressStats.periodMap[selectedPeriod];
+    if (!p) return null;
+    const done = p.byStatus['终审通过'] || 0;
+    const reviewing = p.byStatus['评审中'] || 0;
+    return { total: p.total, done, reviewing };
+  }, [progressStats, selectedPeriod]);
 
   return (
     <>
-      <div className="px-[100px] py-6 sm:py-8">
+      <div className="px-[100px]" style={{ paddingTop: 20 }}>
         <Tabs defaultActiveKey="progress" activeKey={activeTab} onChange={setActiveTab} items={[
           {
             key: 'progress',
@@ -605,49 +455,86 @@ function CompetitionsPageInner() {
                 {progressLoading ? (
                   <div className="flex justify-center py-16"><Spin size="large" /></div>
                 ) : progressStats ? (<>
-                  {/* 精简横幅 */}
-                  <div className="relative overflow-hidden rounded-xl px-5 py-4 sm:px-6 sm:py-5 flex items-center justify-between gap-4"
-                    style={{ background: 'linear-gradient(135deg, #0F2057 0%, #1a3a8a 40%, #F27F22 100%)', boxShadow: '0 6px 30px rgba(26, 58, 138, 0.2)' }}>
-                    <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full" style={{ background: 'rgba(255,255,255,0.05)', filter: 'blur(2px)' }} />
-                    <div className="relative z-10 flex items-center gap-3">
-                      <span className="text-2xl shrink-0" style={{ filter: 'drop-shadow(0 2px 8px rgba(242, 127, 34, 0.4))' }}>🏆</span>
-                      <div>
-                        <h3 className="text-base font-bold" style={{ color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
-                          AI大赛 · 数据概览
-                          {selectedPeriod && <span className="ml-2 text-xs font-normal" style={{ color: 'rgba(255,255,255,0.7)' }}>{periodLabel(selectedPeriod)}</span>}
-                        </h3>
-                        <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                          {progressStats.total} 个参赛方案 · {progressStats.teamCount} 个团队
-                        </p>
+                  {/* 大赛横幅 */}
+                  <div className="competition-banner">
+                    {/* 网格纹理背景 */}
+                    <div className="competition-banner-grid" />
+                    {/* 渐变光晕 */}
+                    <div className="competition-banner-glow" />
+
+                    <div className="competition-banner-inner">
+                      {/* 左栏 */}
+                      <div className="competition-banner-left">
+                        {/* Badge */}
+                        <div className="competition-banner-badge">
+                          <span className="competition-banner-badge-dot" />
+                          <span>HRAS · AI"智"造赛</span>
+                        </div>
+
+                        {/* 主标题 */}
+                        <div className="competition-banner-title">
+                          <div className="competition-banner-title-line1">AI 重构效率</div>
+                          <div className="competition-banner-title-line2">创意定义价值</div>
+                        </div>
+
+                        {/* 副标题 */}
+                        <div className="competition-banner-subtitle">
+                          AI 浪潮势不可挡，HRAS 全员乘势而上
+                        </div>
+
+                        {/* 流程示意条 */}
+                        <div className="competition-banner-flow">
+                          <span className="competition-banner-flow-node-light">我来执行</span>
+                          <span className="competition-banner-flow-arrow">→</span>
+                          <span className="competition-banner-flow-node-accent">我创造 + AI 执行</span>
+                        </div>
+
+                        {/* 操作按钮行 */}
+                        <div className="competition-banner-actions">
+                          <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer" className="competition-banner-btn-primary">
+                            立即提报 →
+                          </a>
+                          <a href="https://ztn.feishu.cn/share/base/form/shrcnPYqHe7ySrBxA9DbXijzhUb" target="_blank" rel="noopener noreferrer" className="competition-banner-btn-secondary">
+                            AI许愿
+                          </a>
+                        </div>
                       </div>
-                    </div>
-                    <div className="relative z-10 flex items-center gap-2 shrink-0">
-                      <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold"
-                        style={{ background: '#fff', color: '#1a3a8a', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
-                        <RocketOutlined />提报入口
-                      </a>
-                      <a href="https://finebyme99.github.io/hras-2026/" target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium"
-                        style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-                        大赛主页 <RightOutlined style={{ fontSize: 10 }} />
-                      </a>
+
+                      {/* 右栏 */}
+                      <div className="competition-banner-right">
+                        <div className="competition-banner-card competition-banner-card-1">
+                          <div className="competition-banner-card-label">赛事目标</div>
+                          <div className="competition-banner-card-main">鼓励全员 AI 落地实际工作场景</div>
+                          <div className="competition-banner-card-sub">实现 提效降本 · 创新破局 · 共创共享</div>
+                        </div>
+                        <div className="competition-banner-card competition-banner-card-2">
+                          <div className="competition-banner-card-label">覆盖人群</div>
+                          <div className="competition-banner-card-main"><b>HRAS 全体</b>（ZT + GF + WX）</div>
+                        </div>
+                        <div className="competition-banner-card competition-banner-card-3">
+                          <div className="competition-banner-card-label">提报时间</div>
+                          <div className="competition-banner-card-main">全时段不限</div>
+                          <div className="competition-banner-card-sub">随时提报，不限月份</div>
+                        </div>
+                        <div className="competition-banner-card competition-banner-card-4">
+                          <div className="competition-banner-card-label">评审时间</div>
+                          <div className="competition-banner-card-main">每月26日-月底</div>
+                          <div className="competition-banner-card-sub">评审当月1-25日参赛项目，次月1日公示结果</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   {/* 4 指标卡 */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <MetricCard label="参赛方案" value={String(progressStats.currentPeriodCount)} sub={progressStats.total !== progressStats.currentPeriodCount ? `总计 ${progressStats.total} 个` : undefined} color="#1a3a8a" icon={<StarOutlined />}
-                      onMouseEnter={showListHover('参赛方案', progressItems)} onMouseLeave={hideListHover} />
+                    <MetricCard label="参赛方案" value={String(progressStats.currentPeriodCount)} sub={progressStats.total !== progressStats.currentPeriodCount ? `累计 ${progressStats.total} 个` : undefined} color="#1a3a8a" icon={<StarOutlined />} />
                     <MetricCard label="参赛团队" value={String(progressStats.teamCount)} sub="当期去重团队数" color="#F27F22" icon={<TeamOutlined />} />
-                    <MetricCard label="预估月省工时" value={progressStats.totalSavedHours > 0 ? `${fmt(progressStats.totalSavedHours)}h` : '-'} sub="当期方案月均节省总工时" color="#2d5bc7" icon={<TrophyOutlined />} glow
-                      onMouseEnter={showListHover('月省工时', progressItems.filter((d) => d.totalSavedHours || d.monthlySavedHours))} onMouseLeave={hideListHover} />
-                    <MetricCard label="评审进度" value={(() => {
-                      const p = progressStats.periodMap[selectedPeriod];
-                      if (!p) return '-';
-                      const done = p.byStatus['终审通过'] || 0;
-                      return `${done}/${p.total}`;
-                    })()} sub="终审通过 / 当期总数" color="#1a3a8a" icon={<ClockCircleOutlined />} />
+                    <MetricCard label="预估月省工时" value={progressStats.totalSavedHours > 0 ? `${fmt(progressStats.totalSavedHours)}h` : '-'} sub="当期方案月均节省总工时" color="#16a34a" icon={<RiseOutlined />} glow />
+                    <MetricCard label="评审完成率" value={(() => {
+                      if (!statusSummary) return '-';
+                      const pct = statusSummary.total > 0 ? Math.round((statusSummary.done / statusSummary.total) * 100) : 0;
+                      return `${pct}%`;
+                    })()} sub={statusSummary ? `${statusSummary.done} 已结项 / ${statusSummary.total} 总数` : undefined} color="#1a3a8a" icon={<CheckCircleOutlined />} />
                   </div>
 
                   {/* 赛事时间线 */}
@@ -655,7 +542,6 @@ function CompetitionsPageInner() {
                     <div className="glass rounded-xl p-5" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
                       <h3 className="text-xs font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--text-muted)' }}>赛事时间线</h3>
                       <div className="flex items-center gap-0 relative">
-                        {/* 连接线 */}
                         <div className="absolute left-0 right-0 top-5 h-0.5" style={{ background: 'rgba(26,58,138,0.12)' }} />
                         {progressPeriods.map((p, i) => {
                           const info = progressStats.periodMap[p];
@@ -663,8 +549,8 @@ function CompetitionsPageInner() {
                           const isLast = i === progressPeriods.length - 1;
                           const done = info?.byStatus['终审通过'] || 0;
                           const reviewing = info?.byStatus['评审中'] || 0;
-                          const statusLabel = done === (info?.total || 0) ? '已结项' : reviewing > 0 ? '评审中' : done > 0 ? '部分结项' : '进行中';
-                          const statusColor = done === (info?.total || 0) ? '#16a34a' : reviewing > 0 ? '#1a3a8a' : '#F27F22';
+                          const statusLabel = done === (info?.total || 0) ? '已结项' : '评审中';
+                          const statusColor = done === (info?.total || 0) ? '#16a34a' : '#1a3a8a';
                           return (
                             <div key={p} className="flex-1 flex flex-col items-center cursor-pointer relative z-10" onClick={() => setSelectedPeriod(p)}>
                               <div style={{
@@ -690,66 +576,85 @@ function CompetitionsPageInner() {
                     </div>
                   )}
 
-                  {/* 图表区：2 列 */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* 场景分类分布 */}
-                    <div className="glass rounded-xl overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                      <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.3)' }}>
-                        <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>场景分类分布</h3>
-                        <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>当期各职能领域的参赛分布</p>
+                  {/* 亮点方案 - Top 3 */}
+                  {spotlightEntries.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <BulbOutlined style={{ color: '#F27F22' }} />
+                        <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>亮点方案</h3>
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>当期价值排名 Top 3</span>
                       </div>
-                      <div className="p-5">
-                        {Object.entries(progressStats.categoryMap).sort((a, b) => b[1] - a[1]).map(([cat, count]) => (
-                          <div key={cat} onMouseEnter={showListHover(cat, progressItems.filter((d) => d.sceneCategory === cat))} onMouseLeave={hideListHover} style={{ cursor: 'pointer' }}>
-                            <HBar label={cat} value={count} max={maxCat} color={CATEGORY_COLORS[cat] || '#6b7280'} />
-                          </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {spotlightEntries.map((item, idx) => (
+                          <SpotlightCard key={item.id} item={item} rank={idx + 1} onClick={() => setSelectedEntry(item)} />
                         ))}
                       </div>
                     </div>
+                  )}
 
-                    {/* 团队参赛分布 */}
-                    <div className="glass rounded-xl overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                      <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.3)' }}>
-                        <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>团队参赛分布</h3>
-                        <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>当期各团队的方案提交情况</p>
+                  {/* 场景分类分布 - 卡片式 */}
+                  {progressStats && Object.keys(progressStats.categoryMap).length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <BarChartOutlined style={{ color: '#1a3a8a' }} />
+                        <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>场景分类</h3>
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>各职能领域的参赛分布</span>
                       </div>
-                      <div className="p-5">
-                        {Object.entries(progressStats.teamMap).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([team, count]) => (
-                          <div key={team} onMouseEnter={showListHover(team, progressItems.filter((d) => d.team === team))} onMouseLeave={hideListHover} style={{ cursor: 'pointer' }}>
-                            <HBar label={team} value={count} max={maxTeam} color="#1a3a8a" />
-                          </div>
-                        ))}
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        {Object.entries(progressStats.categoryMap).sort((a, b) => b[1] - a[1]).map(([cat, count]) => {
+                          const catItems = progressItems.filter((d) => d.sceneCategory === cat);
+                          return (
+                            <CategoryCard
+                              key={cat}
+                              category={cat}
+                              count={count}
+                              maxCount={maxCat}
+                              items={catItems}
+                              onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+                            />
+                          );
+                        })}
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* 当期方案排名表 */}
+                  {/* 方案一览 - 精简表格 */}
                   <div className="glass rounded-xl overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
                     <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.3)' }}>
-                      <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>当期方案一览</h3>
-                      <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>按价值计分排名 · {rankedEntries.length} 个方案</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>方案一览</h3>
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {selectedCategory ? `${selectedCategory} · ${rankedEntries.filter((d) => d.sceneCategory === selectedCategory).length} 个` : `${rankedEntries.length} 个方案`}
+                          </span>
+                        </div>
+                        {selectedCategory && (
+                          <button onClick={() => setSelectedCategory(null)} className="text-xs font-medium px-2 py-1 rounded-md" style={{ color: 'var(--primary)', background: 'rgba(26,58,138,0.06)' }}>
+                            清除筛选
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="p-5 overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr>
-                            {['排名', '方案', '分类', '团队', '状态', '价值分', '月省工时'].map((h, i) => (
+                            {['排名', '方案', '场景', '团队', '状态', '月省工时', '降本提效'].map((h, i) => (
                               <th key={h} className={`py-2 px-3 text-xs font-medium ${i >= 5 ? 'text-right' : 'text-left'}`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.3)' }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
-                          {rankedEntries.map((item, idx) => (
+                          {(selectedCategory ? rankedEntries.filter((d) => d.sceneCategory === selectedCategory) : rankedEntries).map((item, idx) => (
                             <tr key={item.id} className="hover:bg-white/20 transition-colors" style={{ cursor: 'pointer' }} onClick={() => setSelectedEntry(item)}>
                               <td className="py-2 px-3 font-mono text-xs" style={{
                                 color: idx < 3 ? '#F27F22' : 'var(--text-muted)',
                                 fontWeight: idx < 3 ? 700 : 400,
                                 borderBottom: '1px solid rgba(255,255,255,0.1)',
                               }}>{idx + 1}</td>
-                              <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}
-                                onMouseEnter={() => handleRowEnter(item)} onMouseLeave={handleRowLeave}>
+                              <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                                 <span className="hover:underline" style={{ color: 'var(--foreground)', cursor: 'pointer' }}>
-                                  {(item.title || '-').length > 24 ? (item.title || '-').slice(0, 24) + '…' : (item.title || '-')}
+                                  {(item.title || '-').length > 28 ? (item.title || '-').slice(0, 28) + '…' : (item.title || '-')}
                                 </span>
                               </td>
                               <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
@@ -757,13 +662,13 @@ function CompetitionsPageInner() {
                               </td>
                               <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{item.team || '—'}</td>
                               <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                {item.competitionProgress ? <Tag color={STATUS_LABELS[item.competitionProgress]?.color || '#6b7280'} className="text-[11px]">{item.competitionProgress}</Tag> : <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>}
+                                {item.competitionProgress ? <Tag color={STATUS_LABELS[item.competitionProgress]?.color || '#6b7280'} className="text-[11px]">{STATUS_LABELS[item.competitionProgress]?.label || item.competitionProgress}</Tag> : <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>}
                               </td>
-                              <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                {item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-'}
-                              </td>
-                              <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                              <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: '#16a34a', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                                 {item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '-'}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: '#1a3a8a', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                                {item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(0)}%` : '-'}
                               </td>
                             </tr>
                           ))}
@@ -772,19 +677,35 @@ function CompetitionsPageInner() {
                     </div>
                   </div>
 
-                  {/* 价值计分公式 */}
-                  <div className="glass rounded-xl overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                    <div className="px-5 py-4">
-                      <h3 className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--text-muted)' }}>价值计分公式</h3>
-                      <div className="space-y-2 text-xs" style={{ fontFamily: 'SF Mono, monospace' }}>
-                        <p><span style={{ color: '#1a3a8a', fontWeight: 600 }}>最终价值计分</span> <span style={{ color: 'var(--text-muted)' }}>=</span> <span style={{ color: 'var(--foreground)' }}>月均节省总工时 × 地区系数 × 复用系数</span></p>
-                        <p><span style={{ color: '#1a3a8a', fontWeight: 600 }}>月均节省总工时</span> <span style={{ color: 'var(--text-muted)' }}>=</span> <span style={{ color: 'var(--foreground)' }}>月均提效节省工时 + 月均降本折算工时</span></p>
-                        <p><span style={{ color: '#1a3a8a', fontWeight: 600 }}>月均降本折算工时</span> <span style={{ color: 'var(--text-muted)' }}>=</span> <span style={{ color: 'var(--foreground)' }}>月均降本费用 ÷ (50 × 地区系数)</span></p>
-                        <p><span style={{ color: '#F27F22', fontWeight: 600 }}>地区系数</span> <span style={{ color: 'var(--text-muted)' }}>=</span> <span style={{ color: 'var(--foreground)' }}>国内 ×1 · 海外 ×2 · 全球 ×1.5</span></p>
-                        <p><span style={{ color: '#F27F22', fontWeight: 600 }}>复用系数</span> <span style={{ color: 'var(--text-muted)' }}>=</span> <span style={{ color: 'var(--foreground)' }}>个人 ×1 · BU内 ×2 · 跨BU ×3 · 全集团 ×4</span></p>
+                  {/* 状态分布概览（给参赛者看的进度条） */}
+                  {statusSummary && (
+                    <div className="glass rounded-xl p-5" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--text-muted)' }}>评审进度</h3>
+                      <div style={{ height: 20, borderRadius: 10, background: 'rgba(255,255,255,0.3)', overflow: 'hidden', display: 'flex' }}>
+                        {statusSummary.done > 0 && (
+                          <div style={{ width: `${(statusSummary.done / statusSummary.total) * 100}%`, background: 'linear-gradient(90deg, #16a34a, #22c55e)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 600, minWidth: 20 }}>
+                            {statusSummary.done}
+                          </div>
+                        )}
+                        {statusSummary.reviewing > 0 && (
+                          <div style={{ width: `${(statusSummary.reviewing / statusSummary.total) * 100}%`, background: 'linear-gradient(90deg, #1a3a8a, #2d5bc7)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 600, minWidth: 20 }}>
+                            {statusSummary.reviewing}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 mt-3">
+                        <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          <span style={{ width: 12, height: 12, borderRadius: 4, background: '#16a34a', display: 'inline-block' }} />
+                          已结项 {statusSummary.done}
+                        </span>
+                        <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          <span style={{ width: 12, height: 12, borderRadius: 4, background: '#1a3a8a', display: 'inline-block' }} />
+                          评审中 {statusSummary.reviewing}
+                        </span>
+                        <span className="text-xs ml-auto" style={{ color: 'var(--text-muted)' }}>共 {statusSummary.total} 个方案</span>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </>) : (
                   <div className="text-center py-12 glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
                     <p className="text-sm" style={{ color: 'var(--text-muted)' }}>暂无参赛数据</p>
@@ -793,173 +714,15 @@ function CompetitionsPageInner() {
               </div>
             ),
           },
-          {
-            key: 'review',
-            label: <span className="flex items-center gap-1.5 text-sm font-semibold px-1"><AuditOutlined />方案评审</span>,
-            children: (
-              <>
-                {/* 工具栏 */}
-                <div className="flex items-center justify-between mb-6 mt-1">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <h3 className="text-base font-bold flex items-center gap-2.5" style={{ color: 'var(--foreground)' }}>
-                        5月参赛方案
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                          style={{ background: 'rgba(242, 127, 34, 0.1)', color: '#b3540e' }}>
-                          {period}
-                        </span>
-                      </h3>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                        {loaded ? `${displayItems.length} 条方案` : '加载中...'}
-                        {loaded && displayItems.length > 0 && (
-                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
-                            style={{ background: 'rgba(242, 127, 34, 0.08)', color: '#b3540e' }}>
-                            按场景分类排列
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
-                      style={{ background: 'var(--accent)', color: '#fff' }}>
-                      参与提报
-                    </a>
-                    <a href="https://ztn.feishu.cn/share/base/form/shrcnzQxxexe7eyuztTiCydTdz7" target="_blank" rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
-                      style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', color: 'var(--primary)', border: '1px solid rgba(26,58,138,0.15)' }}>
-                      参与许愿
-                    </a>
-                    {isAdmin && (
-                      <button onClick={handleSync} disabled={syncing}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-                        style={{ background: 'var(--primary)', boxShadow: '0 4px 15px rgba(26,58,138,0.25)' }}>
-                        <SyncOutlined spin={syncing} /> 从飞书同步
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* 评委角色 + 评审进度 */}
-                {isReviewer && loaded && items.length > 0 && (
-                  <div className="mb-5">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-xl mb-3"
-                      style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.08)' }}>
-                      <span className="text-xs font-semibold" style={{ color: 'var(--primary)' }}>我的角色</span>
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          const assignedRoles = user?.reviewer_roles || [];
-                          const roleButtons = [
-                            { key: 'user' as ReviewerRole, label: '用户评委', icon: <UserOutlined /> },
-                            { key: 'business' as ReviewerRole, label: '业务评委', icon: <BankOutlined /> },
-                            { key: 'tech' as ReviewerRole, label: '技术评委', icon: <CodeOutlined /> },
-                          ];
-                          if (assignedRoles.length === 0 && !isAdmin) return null;
-                          const availableRoles = isAdmin ? roleButtons : roleButtons.filter((r) => assignedRoles.includes(r.key));
-                          return availableRoles.map((r) => (
-                            <button key={r.key} onClick={() => !roleLocked && setReviewerRole(r.key)} disabled={roleLocked}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                              style={{
-                                background: reviewerRole === r.key ? 'var(--primary)' : 'rgba(255,255,255,0.6)',
-                                color: reviewerRole === r.key ? '#fff' : 'var(--text-secondary)',
-                                border: reviewerRole === r.key ? 'none' : '1px solid rgba(26,58,138,0.12)',
-                                boxShadow: reviewerRole === r.key ? '0 4px 12px rgba(26,58,138,0.25)' : 'none',
-                              }}>
-                              {r.icon} {r.label}
-                            </button>
-                          ));
-                        })()}
-                        {roleLocked && <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{user?.reviewer_roles?.length === 1 ? '角色已由管理员指定' : '角色已锁定'}</span>}
-                        {!reviewerRole && (user?.reviewer_roles?.length ?? 0) === 0 && !isAdmin && (
-                          <span className="text-[11px]" style={{ color: '#b3540e' }}>暂未分配评委角色，请联系管理员</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center px-4 py-2 rounded-xl text-xs"
-                      style={{ background: 'rgba(26,58,138,0.015)', border: '1px solid rgba(26,58,138,0.04)' }}>
-                      <a href="https://ztn.feishu.cn/docx/NvPAdv4MhojKAxxMHAlctD9knhc" target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 hover:opacity-70 transition-opacity" style={{ color: 'var(--primary)' }}>
-                        <BookOutlined /> 点击查看评审指南
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {/* 评审进度条 */}
-                {activeTab === 'review' && isReviewer && loaded && displayItems.length > 0 && (() => {
-                  const reviewedCount = roleFiltered.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
-                  const pending = roleFiltered.length - reviewedCount;
-                  return (
-                    <div className="fixed left-0 right-0 z-40 flex justify-center pointer-events-none" style={{ top: '56px' }}>
-                      <div className="flex items-center gap-4 px-5 py-2 rounded-full text-xs pointer-events-auto max-w-3xl mx-4"
-                        style={{ background: 'rgba(245,240,235,0.9)', backdropFilter: 'blur(16px)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(255,255,255,0.6)' }}>
-                        <span className="font-semibold" style={{ color: 'var(--primary)' }}>评审进度</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>待审 <b style={{ color: 'var(--foreground)' }}>{pending}</b></span>
-                        <span style={{ color: '#16a34a' }}>已评 <b>{reviewedCount}</b></span>
-                        <span style={{ color: 'var(--text-muted)' }}>共 {displayItems.length}</span>
-                        <span className="flex items-center gap-1.5 border-l pl-3" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
-                          <Switch size="small" checked={onlyPending} onChange={setOnlyPending} />
-                          <span style={{ color: 'var(--text-secondary)' }}>未评审</span>
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {loading && <div className="flex justify-center py-12"><Spin size="large" /></div>}
-
-                {!loading && loaded && displayItems.length === 0 && (
-                  <div className="text-center py-12 glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                      {reviewerRole === 'user' ? '暂无分配给您的评审方案，请联系管理员分配' : '暂无参赛方案，点击「从飞书同步」导入数据'}
-                    </p>
-                  </div>
-                )}
-
-                {displayItems.length > 0 && (
-                  <div className="flex flex-col gap-4">
-                    {displayItems.map((item) => (
-                      <CompetitionCard key={item.id} data={item} isReviewer={isReviewer} reviewerRole={reviewerRole} existingReview={reviews[item.id] || null} onReview={handleReview} />
-                    ))}
-                    {isReviewer && reviewerRole && (() => {
-                      const reviewedCount = displayItems.filter((i) => reviews[i.id]?.decision === 'reviewed').length;
-                      const allDone = reviewedCount === displayItems.length;
-                      const canFinalize = allDone && !finalized;
-                      return (
-                        <div className="flex items-center justify-center gap-3 pt-2 pb-1">
-                          <button disabled={!canFinalize}
-                            onClick={() => { setFinalized(true); setRoleLocked(true); message.success('评分已定稿，角色已锁定'); }}
-                            className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:hover:scale-100 disabled:cursor-not-allowed"
-                            style={{
-                              background: finalized ? 'rgba(22,163,74,0.1)' : canFinalize ? 'var(--primary)' : 'rgba(0,0,0,0.06)',
-                              color: finalized ? '#16a34a' : canFinalize ? '#fff' : 'var(--text-muted)',
-                              boxShadow: canFinalize ? '0 4px 16px rgba(26,58,138,0.3)' : 'none',
-                              border: finalized ? '1px solid rgba(22,163,74,0.2)' : 'none',
-                            }}>
-                            {finalized ? <><CheckCircleOutlined className="mr-1.5" />已定稿</> : allDone ? <><LockOutlined className="mr-1.5" />提交定稿</> : `待评审完成 (${reviewedCount}/${displayItems.length})`}
-                          </button>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-              </>
-            ),
-          },
-          {
+          ...(isAdmin ? [{
             key: 'effect',
             label: <span className="flex items-center gap-1.5 text-sm font-semibold px-1"><BarChartOutlined />{PAGE_LABELS.choDashboard}</span>,
             children: <ChoDashboard />,
-          },
-        ].filter((tab) => {
-          if (tab.key === 'review') return isAdmin || isReviewer;
-          if (tab.key === 'effect') return isAdmin;
-          return true;
-        })} />
+          }] : []),
+        ]} />
       </div>
 
-      {/* 动画 + Tabs 样式 */}
+      {/* 动画 + Tabs 样式 + Banner 样式 */}
       <style jsx global>{`
         @keyframes breatheGlow {
           0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 0 0 0 rgba(242,127,34,0); }
@@ -969,28 +732,251 @@ function CompetitionsPageInner() {
           from { transform: translateY(24px); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
         }
+
+        /* ── Banner 入场动画 ── */
+        @keyframes bannerLeftIn {
+          from { transform: translateX(-16px); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes bannerCardIn {
+          from { transform: translateY(10px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* ── Banner 容器（glassmorphism + AI岛风格） ── */
+        .competition-banner {
+          position: relative;
+          overflow: hidden;
+          border-radius: 20px;
+          background: var(--glass-bg);
+          backdrop-filter: blur(var(--glass-blur));
+          -webkit-backdrop-filter: blur(var(--glass-blur));
+          border: 1px solid var(--glass-border);
+          box-shadow: var(--shadow-md);
+        }
+        .competition-banner-grid {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background-image:
+            linear-gradient(rgba(26,58,138,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(26,58,138,0.03) 1px, transparent 1px);
+          background-size: 60px 60px;
+          z-index: 0;
+        }
+        .competition-banner-glow {
+          position: absolute;
+          right: -40px;
+          top: -40px;
+          width: 220px;
+          height: 220px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(242,127,34,0.12) 0%, rgba(26,58,138,0.06) 40%, transparent 70%);
+          pointer-events: none;
+          z-index: 0;
+        }
+        .competition-banner-inner {
+          position: relative;
+          z-index: 1;
+          max-width: 1200px;
+          margin: 0 auto;
+          display: flex;
+          align-items: center;
+          gap: 36px;
+          padding: 32px 36px;
+          font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        /* ── 左栏 ── */
+        .competition-banner-left {
+          flex: 55;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          animation: bannerLeftIn 0.5s ease both;
+        }
+        .competition-banner-right {
+          flex: 45;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        /* ── Badge ── */
+        .competition-banner-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 5px 12px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.5);
+          border: 1px solid var(--glass-border);
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--text-secondary);
+          backdrop-filter: blur(10px);
+        }
+        .competition-banner-badge-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #16a34a;
+          display: inline-block;
+        }
+
+        /* ── 标题 ── */
+        .competition-banner-title {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .competition-banner-title-line1 {
+          font-size: 40px;
+          font-weight: 900;
+          line-height: 1.15;
+          color: var(--foreground);
+        }
+        .competition-banner-title-line2 {
+          font-size: 40px;
+          font-weight: 900;
+          line-height: 1.15;
+          background: linear-gradient(135deg, var(--primary), var(--accent));
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        /* ── 副标题 ── */
+        .competition-banner-subtitle {
+          font-size: 15px;
+          font-weight: 400;
+          color: var(--text-secondary);
+          line-height: 1.4;
+        }
+
+        /* ── 流程示意条 ── */
+        .competition-banner-flow {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .competition-banner-flow-node-light {
+          padding: 5px 14px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.45);
+          border: 1px solid var(--glass-border);
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--text-muted);
+          backdrop-filter: blur(8px);
+        }
+        .competition-banner-flow-arrow {
+          font-size: 14px;
+          color: var(--accent);
+          font-weight: 600;
+        }
+        .competition-banner-flow-node-accent {
+          padding: 5px 14px;
+          border-radius: 999px;
+          background: var(--gradient-primary);
+          font-size: 12px;
+          font-weight: 600;
+          color: #fff;
+          box-shadow: 0 3px 10px rgba(26,58,138,0.2);
+        }
+
+        /* ── 操作按钮 ── */
+        .competition-banner-actions {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-top: 2px;
+        }
+        .competition-banner-btn-primary {
+          display: inline-flex;
+          align-items: center;
+          padding: 11px 26px;
+          border-radius: 999px;
+          background: var(--gradient-primary);
+          color: #fff;
+          font-size: 14px;
+          font-weight: 600;
+          text-decoration: none;
+          box-shadow: 0 4px 16px rgba(26,58,138,0.25);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .competition-banner-btn-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(26,58,138,0.3);
+        }
+        .competition-banner-btn-secondary {
+          display: inline-flex;
+          align-items: center;
+          padding: 11px 26px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.5);
+          border: 1.5px solid var(--primary);
+          color: var(--primary);
+          font-size: 14px;
+          font-weight: 600;
+          text-decoration: none;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+          transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .competition-banner-btn-secondary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(26,58,138,0.12);
+          background: rgba(255,255,255,0.65);
+        }
+
+        /* ── 信息卡片 ── */
+        .competition-banner-card {
+          border-radius: 14px;
+          background: rgba(255,255,255,0.45);
+          border: 1px solid var(--glass-border);
+          backdrop-filter: blur(10px);
+          padding: 14px 20px;
+          transition: transform 0.25s ease, box-shadow 0.25s ease;
+          animation: bannerCardIn 0.5s ease both;
+        }
+        .competition-banner-card:hover {
+          transform: translateY(-3px);
+          box-shadow: var(--shadow-md);
+        }
+        .competition-banner-card-1 { animation-delay: 0.0s; }
+        .competition-banner-card-2 { animation-delay: 0.1s; }
+        .competition-banner-card-3 { animation-delay: 0.2s; }
+        .competition-banner-card-4 { animation-delay: 0.3s; }
+        .competition-banner-card-label {
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--text-muted);
+          margin-bottom: 3px;
+        }
+        .competition-banner-card-main {
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--foreground);
+          line-height: 1.35;
+        }
+        .competition-banner-card-main b {
+          font-weight: 700;
+        }
+        .competition-banner-card-sub {
+          font-size: 12px;
+          font-weight: 400;
+          color: var(--text-muted);
+          margin-top: 2px;
+          line-height: 1.3;
+        }
+
+        /* ── Tabs 样式 ── */
         .ant-tabs-ink-bar { background: var(--primary) !important; }
         .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn { color: var(--primary) !important; }
         .ant-tabs-tab:not(.ant-tabs-tab-active) .ant-tabs-tab-btn { color: var(--text-secondary) !important; }
         .ant-tabs-tab:not(.ant-tabs-tab-active):hover .ant-tabs-tab-btn { color: var(--primary) !important; }
         .ant-tabs-nav::before { border-bottom-color: rgba(26, 58, 138, 0.08) !important; }
       `}</style>
-
-      {/* 方案排名表悬浮详情弹窗 */}
-      {hoveredEntry && (
-        <div style={{ position: 'fixed', top: '50%', left: '55%', transform: 'translate(-50%, -50%)', zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 14, padding: '16px 20px', boxShadow: '0 12px 48px rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.7)', maxWidth: 440 }}
-          onMouseEnter={() => clearTimeout(detailTimer.current)} onMouseLeave={handleRowLeave}>
-          <EntryDetailPopup item={hoveredEntry} layout={entryCardLayout} />
-        </div>
-      )}
-
-      {/* 图表/卡片悬浮明细列表 */}
-      {listHover && (
-        <div style={{ position: 'fixed', left: listHover.x, top: listHover.y, zIndex: 1050, pointerEvents: 'none', background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid rgba(255,255,255,0.6)', maxWidth: 520 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3a8a', marginBottom: 6 }}>{listHover.label} · {listHover.items.length} 个方案</div>
-          <EntryHoverList items={listHover.items} />
-        </div>
-      )}
 
       {/* 点击下钻详情弹窗 */}
       {selectedEntry && <EntryDrillDownModal item={selectedEntry} onClose={() => setSelectedEntry(null)} />}

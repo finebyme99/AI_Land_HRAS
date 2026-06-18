@@ -67,12 +67,12 @@ export async function GET() {
     // 加载字段映射（DB 优先，fallback 硬编码）
     const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'progress');
 
-    // 映射字段 + 过滤参赛方案（大赛进展 ≠ 未参赛 且 评审周期非空）
+    // 映射字段 + 过滤参赛方案（只上岛：评审中 + 终审通过）
     const allMapped = allRecords.map((r) => mapRecord(r, fieldMap));
     const items = allMapped.filter((d) => {
       const status = d.competitionProgress as string;
       const period = d.reviewPeriod as string;
-      return status && status !== '未参赛' && period;
+      return (status === '评审中' || status === '终审通过') && period;
     });
 
     // 提取所有评审周期（去重 + 排序）

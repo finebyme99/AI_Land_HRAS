@@ -211,7 +211,7 @@ export default function AppsPage() {
   };
 
   return (
-    <div className="px-[100px] py-6 sm:py-8">
+    <div className="px-[100px]" style={{ paddingTop: 20 }}>
       {/* Header */}
       <div className="flex items-center justify-end mb-6">
         <Link href="/apps/create">

@@ -175,7 +175,7 @@ export default function CoursesPage() {
     : courses;
 
   return (
-    <div className="px-[100px] py-6 sm:py-8">
+    <div className="px-[100px]" style={{ paddingTop: 20 }}>
       {/* Header */}
       <div className="flex items-center justify-end mb-6">
         {canManageCourses && (
