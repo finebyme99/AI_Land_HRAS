@@ -413,3 +413,638 @@ a {
 .search-input-override .ant-input-clear-icon {
   margin-right: 4px;
 }
+
+/* ── 方案卡片编辑器样式（admin/layouts/competitions-entry-card）── */
+.entry-card-editor {
+  background: rgba(255,255,255,0.97);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  backdrop-filter: blur(20px);
+  padding: 12px;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.entry-card-editor-header {
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  margin-bottom: 10px;
+}
+
+.entry-card-editor-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.entry-card-tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.entry-card-editor-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--foreground);
+}
+
+.entry-card-editor-brief {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.entry-card-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--primary);
+  background: rgba(0,0,0,0.02);
+  border-radius: 6px 6px 0 0;
+  margin-bottom: -1px;
+}
+
+.entry-card-group-drag {
+  font-size: 14px;
+  cursor: grab;
+  opacity: 0.6;
+  padding: 0 4px;
+}
+
+.entry-card-group-drag:hover {
+  opacity: 1;
+}
+
+.entry-card-group-title {
+  flex: 1;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+}
+
+.entry-card-group-body {
+  border: 1px dashed transparent;
+  border-left: 3px solid var(--primary);
+  border-radius: 0 0 6px 6px;
+  padding: 8px;
+  min-height: 50px;
+  transition: all 0.15s;
+}
+
+.entry-card-group-body[data-over='true'] {
+  border-color: var(--primary);
+  background: rgba(26, 58, 138, 0.04);
+}
+
+.entry-card-group-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.entry-card-group-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 8px;
+  text-align: center;
+}
+
+.entry-card-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid rgba(26,58,138,0.2);
+  font-size: 11px;
+  cursor: grab;
+  user-select: none;
+  position: relative;
+  max-width: 220px;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.entry-card-chip:hover {
+  border-color: rgba(26,58,138,0.45);
+  box-shadow: 0 2px 8px rgba(26,58,138,0.08);
+}
+
+.entry-card-chip[data-overlay='true'] {
+  background: rgba(26,58,138,0.95);
+  color: white;
+  border-color: rgba(26,58,138,1);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+.entry-card-chip-drag {
+  font-size: 10px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.entry-card-chip-label {
+  font-weight: 600;
+  color: #1a3a8a;
+  white-space: nowrap;
+}
+
+.entry-card-chip[data-overlay='true'] .entry-card-chip-label {
+  color: white;
+}
+
+.entry-card-chip-value {
+  color: var(--text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+.entry-card-chip-remove {
+  margin-left: 2px;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+  background: rgba(0,0,0,0.06);
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.entry-card-chip:hover .entry-card-chip-remove {
+  opacity: 0.8;
+}
+
+.entry-card-chip-remove:hover {
+  opacity: 1 !important;
+  background: rgba(242,127,34,0.2);
+  color: #F27F22;
+}
+
+.entry-card-editor-highlights {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(242,127,34,0.06);
+  border-radius: 8px;
+  border: 1px solid rgba(242,127,34,0.15);
+}
+
+.entry-card-editor-highlights-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.entry-card-editor-highlights-value {
+  font-size: 18px;
+  font-weight: 800;
+  font-family: 'SF Mono', monospace;
+}
+
+.entry-card-editor-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  padding: 16px 0 8px;
+  border-top: 1px dashed rgba(0,0,0,0.08);
+  margin-top: 12px;
+}
+
+/* ── EntryCardView 样式（设计器 + 实际渲染共用）── */
+.entry-card-view {
+  background: rgba(255,255,255,0.97);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  backdrop-filter: blur(20px);
+  padding: 12px;
+  border: 1px solid rgba(0,0,0,0.05);
+  font-family: var(--font-sans);
+}
+
+.entry-card-view-header {
+  padding: 4px 8px 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  margin-bottom: 10px;
+}
+
+.entry-card-view-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.entry-card-view-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--foreground);
+}
+
+.entry-card-view-brief {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.entry-card-view-section {
+  padding: 6px 4px 8px;
+}
+
+.entry-card-static-group-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid;
+  border-left: 3px solid;
+  padding-left: 6px;
+  margin-bottom: 8px;
+  border-bottom-color: currentColor;
+  border-bottom-color: color-mix(in srgb, currentColor 18%, transparent);
+  border-left-color: currentColor;
+}
+
+.entry-card-view-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+
+.entry-card-static-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  min-width: 0;
+}
+
+.entry-card-static-chip-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.entry-card-static-chip-value {
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.entry-card-static-chip[data-span='2'] {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 6px 8px;
+  background: rgba(0,0,0,0.02);
+  border-radius: 6px;
+}
+
+.entry-card-static-chip[data-span='2'] .entry-card-static-chip-value {
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.entry-card-view-highlights {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(242,127,34,0.06);
+  border-radius: 8px;
+  border: 1px solid rgba(242,127,34,0.15);
+}
+
+.entry-card-view-highlights-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.entry-card-view-highlights-value {
+  font-size: 18px;
+  font-weight: 800;
+  font-family: 'SF Mono', monospace;
+}
+
+/* ── 方案卡片编辑器（设计器）样式 ── */
+.entry-card-editor-page {
+  padding: 20px 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.entry-card-editor-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.entry-card-editor-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.entry-card-editor-page-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.entry-card-editor-topbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.entry-card-editor-main {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+/* ── 字段库 ── */
+.entry-card-field-library {
+  background: rgba(255,255,255,0.6);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(0,0,0,0.05);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
+.entry-card-field-library-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-bottom: 2px;
+}
+
+.entry-card-field-library-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.entry-card-field-library-select {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(0,0,0,0.08);
+}
+
+.entry-card-field-library-group {
+  margin-bottom: 12px;
+}
+
+.entry-card-field-library-group-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.entry-card-field-library-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.entry-card-field-library-item {
+  justify-content: flex-start !important;
+  text-align: left;
+  font-size: 11px !important;
+  height: 28px !important;
+  padding: 0 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px;
+}
+
+.entry-card-field-library-item[data-used='true'] {
+  opacity: 0.45;
+  color: var(--text-muted);
+}
+
+.entry-card-field-library-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 编辑画布 ── */
+.entry-card-editor-canvas {
+  min-height: 400px;
+}
+
+.entry-card-editor-add-group {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(0,0,0,0.08);
+}
+
+/* ── 编辑模式的组 header（可拖整组） ── */
+.entry-card-edit-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: rgba(0,0,0,0.02);
+  border-radius: 6px 6px 0 0;
+  border-left: 3px solid;
+}
+
+.entry-card-edit-group-drag {
+  font-size: 14px;
+  cursor: grab;
+  opacity: 0.6;
+  padding: 0 4px;
+}
+
+.entry-card-edit-group-drag:hover {
+  opacity: 1;
+}
+
+.entry-card-edit-group-title {
+  flex: 1;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+}
+
+/* ── 编辑模式的组内容（双栏网格） ── */
+.entry-card-edit-group-body {
+  border: 1px dashed transparent;
+  border-left: 3px solid;
+  border-radius: 0 0 6px 6px;
+  padding: 8px;
+  min-height: 50px;
+  transition: all 0.15s;
+}
+
+.entry-card-edit-group-body[data-over='true'] {
+  border-color: var(--primary);
+  background: rgba(26, 58, 138, 0.04);
+}
+
+.entry-card-edit-section {
+  margin-bottom: 4px;
+}
+
+.entry-card-edit-group-empty {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 8px;
+  text-align: center;
+}
+
+/* ── 编辑模式字段 chip ── */
+.entry-card-edit-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px 5px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid rgba(26,58,138,0.2);
+  cursor: grab;
+  user-select: none;
+  min-height: 32px;
+  transition: box-shadow 0.15s, border-color 0.15s, background 0.15s;
+  position: relative;
+}
+
+.entry-card-edit-chip:hover {
+  border-color: rgba(26,58,138,0.45);
+  box-shadow: 0 2px 8px rgba(26,58,138,0.08);
+  background: rgba(255,255,255,1);
+}
+
+.entry-card-edit-chip[data-span='2'] {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.02);
+}
+
+.entry-card-edit-chip[data-span='2'] .entry-card-edit-chip-body {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.entry-card-edit-chip-drag {
+  font-size: 10px;
+  opacity: 0.5;
+  flex-shrink: 0;
+  color: #1a3a8a;
+}
+
+.entry-card-edit-chip-body {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.entry-card-edit-chip-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a3a8a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-card-edit-chip-value {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.entry-card-edit-chip[data-span='2'] .entry-card-edit-chip-value {
+  white-space: normal;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.entry-card-edit-chip-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.entry-card-edit-chip-action {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: transparent;
+  transition: all 0.15s;
+}
+
+.entry-card-edit-chip-action:hover {
+  background: rgba(26,58,138,0.1);
+  color: #1a3a8a;
+}
+
+.entry-card-edit-chip-action[data-active='true'] {
+  background: rgba(26,58,138,0.15);
+  color: #1a3a8a;
+  font-weight: 700;
+}
+
+.entry-card-edit-chip-remove:hover {
+  background: rgba(242,127,34,0.2) !important;
+  color: #F27F22 !important;
+}
