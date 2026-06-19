@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Spin, Tag, App, Table, Tabs, Tooltip, type TableColumnsType } from 'antd';
 import {
   SyncOutlined,
@@ -544,7 +544,8 @@ export default function WishPoolPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
   const [hoveredRow, setHoveredRow] = useState<WishItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<WishItem | null>(null);
   const [listHover, setListHover] = useState<{ label: string; items: WishItem[]; x: number; y: number } | null>(null);

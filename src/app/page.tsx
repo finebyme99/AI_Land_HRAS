@@ -13,6 +13,8 @@ import {
   LikeFilled,
   PlayCircleOutlined,
   TeamOutlined,
+  UserOutlined,
+  CalendarOutlined,
   ClockCircleOutlined,
   AppstoreOutlined,
   ApiOutlined,
@@ -20,7 +22,6 @@ import {
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
-import { COURSE_DIFFICULTY_COLORS } from '@/lib/constants';
 import type { Event, Course } from '@/types';
 
 /* ─── Animated Counter ─── */
@@ -225,24 +226,29 @@ export default function Home() {
       <section className="mb-8">
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           {[
-            { label: '月均节省总工时', value: dashboard.totalMonthlySavedHours, unit: 'h', icon: <ClockCircleOutlined />, color: '#1a3a8a' },
-            { label: '覆盖人数', value: dashboard.totalPeople, unit: '人', icon: <TeamOutlined />, color: '#2d5bc7' },
-            { label: '已落地场景数', value: dashboard.landedCount, unit: '个', icon: <StarOutlined />, color: '#22c55e' },
-            { label: '课程数', value: stats.courses, unit: '门', icon: <ReadOutlined />, color: '#e8650a' },
-            { label: '工具数', value: stats.apps, unit: '个', icon: <AppstoreOutlined />, color: '#7850a0' },
-          ].map((item) => (
-            <div key={item.label} className="glass rounded-[20px] p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2.5 text-lg"
-                style={{ background: `${item.color}15`, color: item.color }}>
-                {item.icon}
+            { label: '月均节省总工时', value: dashboard.totalMonthlySavedHours, unit: 'h', icon: <ClockCircleOutlined />, color: '#1a3a8a', href: '' },
+            { label: '覆盖人数', value: dashboard.totalPeople, unit: '人', icon: <TeamOutlined />, color: '#2d5bc7', href: '' },
+            { label: '已落地场景数', value: dashboard.landedCount, unit: '个', icon: <StarOutlined />, color: '#22c55e', href: '/wish-pool?tab=landed' },
+            { label: '课程数', value: stats.courses, unit: '门', icon: <ReadOutlined />, color: '#e8650a', href: '/resources?tab=courses' },
+            { label: '工具数', value: stats.apps, unit: '个', icon: <AppstoreOutlined />, color: '#7850a0', href: '/resources?tab=apps' },
+          ].map((item) => {
+            const card = (
+              <div key={item.label} className={`glass rounded-[20px] p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${item.href ? 'cursor-pointer' : 'cursor-default'}`}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2.5 text-lg"
+                  style={{ background: `${item.color}15`, color: item.color }}>
+                  {item.icon}
+                </div>
+                <div className="text-2xl font-bold mb-0.5" style={{ color: 'var(--foreground)' }}>
+                  <AnimatedCounter target={item.value} />
+                  <span className="text-sm font-normal ml-0.5" style={{ color: 'var(--text-muted)' }}>{item.unit}</span>
+                </div>
+                <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{item.label}</div>
               </div>
-              <div className="text-2xl font-bold mb-0.5" style={{ color: 'var(--foreground)' }}>
-                <AnimatedCounter target={item.value} />
-                <span className="text-sm font-normal ml-0.5" style={{ color: 'var(--text-muted)' }}>{item.unit}</span>
-              </div>
-              <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{item.label}</div>
-            </div>
-          ))}
+            );
+            return item.href
+              ? <Link key={item.label} href={item.href} className="block group">{card}</Link>
+              : <div key={item.label}>{card}</div>;
+          })}
         </div>
       </section>
 
@@ -279,61 +285,58 @@ export default function Home() {
           <SectionHeader icon={<ReadOutlined />} title="推荐课程" href="/resources?tab=courses" iconBg="rgba(232, 101, 10, 0.1)" iconColor="#e8650a" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {courses.map((course) => (
-              <div key={course.id} className="glass rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-md relative overflow-hidden">
+              <div key={course.id} className="glass relative overflow-hidden rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-md group"
+                style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+                <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ background: 'var(--gradient-primary)' }} />
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  {course.period && <Tag color="cyan">{course.period}</Tag>}
                   {(Array.isArray(course.content_type) ? course.content_type : [course.content_type]).map((ct) => (
                     <Tag key={ct} color={ct === 'video' ? 'red' : 'blue'}>
                       {ct === 'video' ? '视频' : '文档'}
                     </Tag>
                   ))}
-                  <Tag color={COURSE_DIFFICULTY_COLORS[course.difficulty]}>{course.difficulty}</Tag>
                   {course.is_featured && <Tag color="orange">精选</Tag>}
                 </div>
                 <h3 className="text-base font-semibold mb-2 line-clamp-2">
                   {course.title}
                 </h3>
-                <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{course.description}</p>
                 {(course.courseware_url || course.video_url) && (
-                  <div className="flex flex-wrap gap-2 mb-3">
+                  <div className="flex flex-wrap gap-2 mb-2">
                     {course.courseware_url && (
-                      <a
-                        href={course.courseware_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <a href={course.courseware_url} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
-                        style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 2px 8px rgba(26,58,138,0.25)' }}
-                      >
+                        style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 2px 8px rgba(26,58,138,0.25)' }}>
                         <BookOutlined /> 课件
                       </a>
                     )}
                     {course.video_url && (
-                      <a
-                        href={course.video_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <a href={course.video_url} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
-                        style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 2px 8px rgba(242,127,34,0.25)' }}
-                      >
+                        style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 2px 8px rgba(242,127,34,0.25)' }}>
                         <PlayCircleOutlined /> 视频
                       </a>
                     )}
                   </div>
                 )}
                 <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
-                  <span>{course.instructor} · {course.duration}</span>
                   <span className="flex items-center gap-3">
-                    <span
-                      className="flex items-center gap-1 cursor-pointer transition-colors hover:text-red-500"
+                    <span className="flex items-center gap-1">
+                      <UserOutlined /> {course.instructor}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <CalendarOutlined /> {new Date(course.created_at).toLocaleDateString('zh-CN')}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 cursor-pointer transition-colors hover:text-red-500"
                       style={{ color: courseInteractions[course.id]?.liked ? '#e74c3c' : undefined }}
-                      onClick={() => toggleCourseInteraction(course.id, 'like')}
-                    >
+                      onClick={() => toggleCourseInteraction(course.id, 'like')}>
                       {courseInteractions[course.id]?.liked ? <LikeFilled /> : <LikeOutlined />} {courseCounts[course.id]?.like_count ?? 0}
                     </span>
-                    <span
-                      className="flex items-center gap-1 cursor-pointer transition-colors hover:text-yellow-500"
+                    <span className="flex items-center gap-1 cursor-pointer transition-colors hover:text-yellow-500"
                       style={{ color: courseInteractions[course.id]?.bookmarked ? '#f59e0b' : undefined }}
-                      onClick={() => toggleCourseInteraction(course.id, 'bookmark')}
-                    >
+                      onClick={() => toggleCourseInteraction(course.id, 'bookmark')}>
                       {courseInteractions[course.id]?.bookmarked ? <BookFilled /> : <BookOutlined />} {courseCounts[course.id]?.bookmark_count ?? 0}
                     </span>
                   </span>
