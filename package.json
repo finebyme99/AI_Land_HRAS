@@ -19,7 +19,6 @@
     "antd": "^6.4.3",
     "bcryptjs": "^3.0.3",
     "html2canvas-pro": "^2.0.4",
-    "lightningcss-darwin-arm64": "^1.32.0",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
     "pinyin-pro": "^3.28.1",
