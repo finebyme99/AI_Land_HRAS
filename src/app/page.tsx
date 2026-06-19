@@ -9,14 +9,11 @@ import {
   TrophyOutlined,
   ReadOutlined,
   ArrowRightOutlined,
-  EyeOutlined,
   LikeOutlined,
   LikeFilled,
   PlayCircleOutlined,
   TeamOutlined,
-  PlusOutlined,
   ClockCircleOutlined,
-  RocketOutlined,
   AppstoreOutlined,
   ApiOutlined,
   StarOutlined,
@@ -60,145 +57,6 @@ function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: 
   return <span ref={ref}>{count.toLocaleString()}</span>;
 }
 
-/* ─── Floating Particle ─── */
-function FloatingParticle({ delay, x, size, color }: { delay: number; x: number; size: number; color?: string }) {
-  return (
-    <span
-      className="absolute rounded-full pointer-events-none"
-      style={{
-        width: size,
-        height: size,
-        left: `${x}%`,
-        bottom: '-10%',
-        background: color || 'rgba(26, 58, 138, 0.18)',
-        animation: `float-up 7s ${delay}s ease-in infinite`,
-      }}
-    />
-  );
-}
-
-/* ─── 3D Orb (shader gradient sphere) ─── */
-function Orb3D() {
-  return (
-    <div className="absolute -top-10 -right-10 w-40 h-40 pointer-events-none opacity-30"
-      style={{
-        background: 'radial-gradient(circle at 35% 35%, rgba(26,58,138,0.5), rgba(242,127,34,0.3) 50%, transparent 70%)',
-        borderRadius: '50%',
-        filter: 'blur(1px)',
-        animation: 'orb-float 8s ease-in-out infinite alternate',
-      }} />
-  );
-}
-
-/* ─── Data Dashboard Panel ─── */
-function DataDashboard({ totalMonthlySavedHours, totalPeople }: { totalMonthlySavedHours: number; totalPeople: number }) {
-  return (
-    <div className="relative group/dashboard">
-      {/* Breathing glow behind card */}
-      <div className="absolute -inset-8 rounded-3xl pointer-events-none"
-        style={{
-          background: 'linear-gradient(135deg, rgba(26,58,138,0.25), rgba(242,127,34,0.15))',
-          filter: 'blur(40px)',
-          animation: 'breath 4s ease-in-out infinite',
-        }} />
-
-      <div className="relative glass-strong rounded-2xl p-6 sm:p-7 border overflow-hidden transition-all duration-500 group-hover/dashboard:shadow-2xl"
-        style={{ borderColor: 'rgba(255,255,255,0.5)' }}>
-
-        {/* 3D Orb */}
-        <Orb3D />
-
-        {/* Floating particles */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <FloatingParticle delay={0} x={12} size={4} color="rgba(26,58,138,0.2)" />
-          <FloatingParticle delay={1.2} x={35} size={3} color="rgba(242,127,34,0.18)" />
-          <FloatingParticle delay={2.5} x={58} size={5} color="rgba(26,58,138,0.15)" />
-          <FloatingParticle delay={3.8} x={80} size={3} color="rgba(242,127,34,0.2)" />
-          <FloatingParticle delay={5} x={92} size={4} color="rgba(34,197,94,0.15)" />
-        </div>
-
-        {/* Header */}
-        <div className="flex items-center gap-2.5 mb-7 relative z-10">
-          <span className="w-8 h-8 rounded-lg flex items-center justify-center relative overflow-hidden"
-            style={{ background: 'var(--gradient-primary)' }}>
-            <RocketOutlined style={{ color: '#fff', fontSize: 14 }} />
-          </span>
-          <div>
-            <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>HRAS AI 提效总览</div>
-            <div className="text-[11px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-              <span className="w-1 h-1 rounded-full bg-green-500 inline-block" style={{ animation: 'pulse 2s infinite' }} />
-              实时数据
-            </div>
-          </div>
-        </div>
-
-        {/* Metrics — big number cards */}
-        <div className="space-y-5 relative z-10">
-          {/* Saved Hours */}
-          <div className="relative group rounded-xl p-5 transition-all duration-500 hover:scale-[1.03] hover:shadow-xl cursor-default"
-            style={{ background: 'linear-gradient(135deg, rgba(26,58,138,0.06), rgba(26,58,138,0.02))' }}>
-            {/* Hover gradient reveal */}
-            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ background: 'linear-gradient(135deg, rgba(26,58,138,0.08), transparent)' }} />
-            <div className="relative flex items-center gap-4">
-              <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3"
-                style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', color: '#fff', boxShadow: '0 4px 20px rgba(26,58,138,0.35)' }}>
-                <ClockCircleOutlined />
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>月均节省总工时</div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-[32px] font-extrabold tracking-tight leading-none" style={{ color: 'var(--foreground)' }}>
-                    <AnimatedCounter target={totalMonthlySavedHours} duration={2.5} />
-                  </span>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--primary)', opacity: 0.7 }}>h</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Participants — "参与人次" */}
-          <div className="relative group rounded-xl p-5 transition-all duration-500 hover:scale-[1.03] hover:shadow-xl cursor-default"
-            style={{ background: 'linear-gradient(135deg, rgba(242,127,34,0.06), rgba(242,127,34,0.02))' }}>
-            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ background: 'linear-gradient(135deg, rgba(242,127,34,0.08), transparent)' }} />
-            <div className="relative flex items-center gap-4">
-              <span className="w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-3"
-                style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 4px 20px rgba(242,127,34,0.35)' }}>
-                <TeamOutlined />
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>覆盖人数</div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-[32px] font-extrabold tracking-tight leading-none" style={{ color: 'var(--foreground)' }}>
-                    <AnimatedCounter target={totalPeople} duration={2.5} />
-                  </span>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--accent)', opacity: 0.7 }}>人</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Footer */}
-        <div className="mt-5 pt-4 flex items-center justify-between relative z-10"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.4)' }}>
-          <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
-            让 AI 在 HR 圈真正用起来
-          </span>
-          <div className="flex gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--primary)', opacity: 0.7 }} />
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent)', opacity: 0.7 }} />
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e', opacity: 0.7 }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
 
 function SectionHeader({ icon, title, href, iconBg, iconColor, linkText = '查看全部' }: { icon: React.ReactNode; title: string; href: string; iconBg?: string; iconColor?: string; linkText?: string }) {
   return (
@@ -216,11 +74,11 @@ function SectionHeader({ icon, title, href, iconBg, iconColor, linkText = '查�
 }
 
 export default function Home() {
-  const { isAdmin, user } = useAuth();
+  const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [stats, setStats] = useState({ users: 0, courses: 0, apps: 0 });
-  const [dashboard, setDashboard] = useState({ totalMonthlySavedHours: 0, totalPeople: 0 });
+  const [dashboard, setDashboard] = useState({ totalMonthlySavedHours: 0, totalPeople: 0, landedCount: 0 });
   const [loading, setLoading] = useState(true);
   const [courseInteractions, setCourseInteractions] = useState<Record<string, { liked: boolean; bookmarked: boolean }>>({});
   const [courseCounts, setCourseCounts] = useState<Record<string, { like_count: number; bookmark_count: number }>>({});
@@ -234,7 +92,7 @@ export default function Home() {
           getSupabase().from('users').select('id', { count: 'exact', head: true }),
           getSupabase().from('courses').select('id', { count: 'exact', head: true }),
           getSupabase().from('apps').select('id', { count: 'exact', head: true }).eq('status', 'published'),
-          fetch('/api/dashboard-summary').then(r => r.json()).catch(() => ({ totalMonthlySavedHours: 0, totalPeople: 0 })),
+          fetch('/api/dashboard-summary').then(r => r.json()).catch(() => ({ totalMonthlySavedHours: 0, totalPeople: 0, landedCount: 0 })),
         ]);
 
         setEvents((eventsRes.data ?? []) as Event[]);
@@ -248,6 +106,7 @@ export default function Home() {
         setDashboard({
           totalMonthlySavedHours: dashboardRes.totalMonthlySavedHours || 0,
           totalPeople: dashboardRes.totalPeople || 0,
+          landedCount: dashboardRes.landedCount || 0,
         });
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -324,79 +183,66 @@ export default function Home() {
     );
   }
 
-  const statItems = [
-    { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a', href: '/resources?tab=courses' },
-    { label: '工具总数', value: stats.apps, icon: <AppstoreOutlined />, iconBg: 'rgba(120, 80, 160, 0.12)', iconColor: '#7850a0', href: '/resources?tab=apps' },
-    { label: '注册用户', value: stats.users, icon: <TeamOutlined />, iconBg: 'rgba(34, 197, 94, 0.12)', iconColor: '#22c55e', href: isAdmin ? '/admin/users' : '' },
-  ];
-
   return (
     <div className="px-[100px]">
 
-      {/* Hero Section — Two Column */}
+      {/* Hero Section — Centered */}
       <section className="pt-10 pb-8 animate-fade-up">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-center">
-          {/* Left — Hero Text */}
-          <div>
-            <div className="glass inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-5"
-              style={{ color: 'var(--primary)' }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e', animation: 'pulse 2s infinite' }} />
-              HRAS AI Land
-            </div>
-            <h1 className="text-4xl sm:text-[52px] font-extrabold mb-4 leading-[1.15] tracking-tight">
-              让 AI 在 HR 圈<br />
-              <span className="shimmer-text">真正用起来</span>
-            </h1>
-            <p className="text-[17px] mb-8 max-w-md" style={{ color: 'var(--text-secondary)' }}>
-              案例沉淀、知识学习、活动运营，<br />HRAS 全员的 AI 园地
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <a href="https://ztn.feishu.cn/share/base/form/shrcnPYqHe7ySrBxA9DbXijzhUb" target="_blank" rel="noopener noreferrer">
-                <button className="btn-gradient">
-                  <StarOutlined /> AI许愿
-                </button>
-              </a>
-              <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer">
-                <button className="btn-gradient">
-                  <TrophyOutlined /> 参加大赛
-                </button>
-              </a>
-              <Link href="/resources/apps/create">
-                <button className="pill-btn">
-                  <ApiOutlined /> 分享工具
-                </button>
-              </Link>
-            </div>
+        <div className="text-center max-w-2xl mx-auto">
+          <div className="glass inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-5"
+            style={{ color: 'var(--primary)' }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e', animation: 'pulse 2s infinite' }} />
+            HRAS AI Land
           </div>
-
-          {/* Right — Data Dashboard */}
-          <div className="hidden lg:block">
-            <DataDashboard
-              totalMonthlySavedHours={dashboard.totalMonthlySavedHours}
-              totalPeople={dashboard.totalPeople}
-            />
+          <h1 className="text-4xl sm:text-[52px] font-extrabold mb-4 leading-[1.15] tracking-tight">
+            让 AI 在 HR 圈<br />
+            <span className="shimmer-text">真正用起来</span>
+          </h1>
+          <p className="text-[17px] mb-8" style={{ color: 'var(--text-secondary)' }}>
+            案例沉淀、知识学习、活动运营，<br />HRAS 全员的 AI 园地
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <a href="https://ztn.feishu.cn/share/base/form/shrcnPYqHe7ySrBxA9DbXijzhUb" target="_blank" rel="noopener noreferrer">
+              <button className="btn-gradient">
+                <StarOutlined /> AI许愿
+              </button>
+            </a>
+            <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer">
+              <button className="btn-gradient">
+                <TrophyOutlined /> 参加大赛
+              </button>
+            </a>
+            <Link href="/resources/apps/create">
+              <button className="pill-btn">
+                <ApiOutlined /> 分享工具
+              </button>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="mb-6 -mt-2">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {statItems.map((stat) => {
-            const card = (
-              <div className={`glass rounded-[20px] p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${stat.href ? 'cursor-pointer' : 'cursor-default'}`}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2.5 text-lg transition-transform duration-300 group-hover:scale-110"
-                  style={{ background: stat.iconBg, color: stat.iconColor }}>
-                  {stat.icon}
-                </div>
-                <div className="text-2xl font-bold mb-0.5" style={{ color: 'var(--foreground)' }}>{stat.value}</div>
-                <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{stat.label}</div>
+      {/* Metrics Strip */}
+      <section className="mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          {[
+            { label: '月均节省总工时', value: dashboard.totalMonthlySavedHours, unit: 'h', icon: <ClockCircleOutlined />, color: '#1a3a8a' },
+            { label: '覆盖人数', value: dashboard.totalPeople, unit: '人', icon: <TeamOutlined />, color: '#2d5bc7' },
+            { label: '已落地场景数', value: dashboard.landedCount, unit: '个', icon: <StarOutlined />, color: '#22c55e' },
+            { label: '课程数', value: stats.courses, unit: '门', icon: <ReadOutlined />, color: '#e8650a' },
+            { label: '工具数', value: stats.apps, unit: '个', icon: <AppstoreOutlined />, color: '#7850a0' },
+          ].map((item) => (
+            <div key={item.label} className="glass rounded-[20px] p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2.5 text-lg"
+                style={{ background: `${item.color}15`, color: item.color }}>
+                {item.icon}
               </div>
-            );
-            return stat.href
-              ? <Link key={stat.label} href={stat.href} className="block group">{card}</Link>
-              : <div key={stat.label}>{card}</div>;
-          })}
+              <div className="text-2xl font-bold mb-0.5" style={{ color: 'var(--foreground)' }}>
+                <AnimatedCounter target={item.value} />
+                <span className="text-sm font-normal ml-0.5" style={{ color: 'var(--text-muted)' }}>{item.unit}</span>
+              </div>
+              <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{item.label}</div>
+            </div>
+          ))}
         </div>
       </section>
 
