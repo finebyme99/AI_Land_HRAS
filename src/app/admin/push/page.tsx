@@ -37,14 +37,12 @@ interface PushLog {
 const CONTENT_TABS = [
   { key: 'course', label: '🎓 公开课', type: 'course' as const },
   { key: 'resource', label: '🛠️ 工具', type: 'resource' as const },
-  { key: 'case', label: '📚 案例', type: 'case' as const },
   { key: 'submission', label: '📋 大赛方案', type: 'submission' as const },
 ];
 
 const TYPE_LABELS: Record<string, string> = {
   course: '公开课',
   resource: '工具',
-  case: '案例',
   submission: '大赛方案',
 };
 
@@ -122,12 +120,6 @@ export default function AdminPushPage() {
         const data = await res.json();
         items = (data.items ?? []).map((r: Record<string, unknown>) => ({
           id: r.id, title: r.name ?? r.title, category: r.category, description: r.description, scenarios: r.scenarios as string[] | undefined, type: 'resource' as const,
-        }));
-      } else if (type === 'case') {
-        const res = await fetch('/api/cases');
-        const data = await res.json();
-        items = (data.items ?? []).map((c: Record<string, unknown>) => ({
-          id: c.id, title: c.title, category: c.category, description: c.summary, type: 'case' as const,
         }));
       } else if (type === 'submission') {
         const res = await fetch('/api/competitions/sync?period=2605');
@@ -462,7 +454,6 @@ export default function AdminPushPage() {
 const CARD_THEMES: Record<string, { bg: string; label: string; subtitle?: string; tags?: { text: string; color: string }[] }> = {
   course: { bg: '#13c2c2', label: '🎓 新课程上线', subtitle: 'AI岛推荐：HRAS AI公开课，体系化带你从AI工具上手到落地', tags: [{ text: 'AI公开课', color: '#13c2c2' }] },
   resource: { bg: '#52c41a', label: '新工具推荐', subtitle: 'AI岛推荐：HRAS AI精选工具，助你高效办公', tags: [{ text: '工具推荐', color: '#52c41a' }] },
-  case: { bg: '#722ed1', label: '📚 新案例推荐', subtitle: 'AI岛推荐：来自HR实践者的AI应用案例' },
   submission: { bg: '#fa8c16', label: '📋 大赛方案速览', subtitle: 'AI岛推荐：AI大赛优秀方案速览' },
 };
 
@@ -560,7 +551,7 @@ function PreviewCard({ item }: { item: ContentItem }) {
           </>
         ) : (
           <span style={{ padding: '6px 16px', borderRadius: 6, background: theme.bg, color: '#fff', fontSize: 12, fontWeight: 500 }}>
-            {item.type === 'submission' ? '📋 查看方案' : '📖 查看详情'}
+            📋 查看方案
           </span>
         )}
       </div>

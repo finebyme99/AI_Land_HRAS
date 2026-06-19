@@ -1,4 +1,4 @@
-import type { CaseCategory, ResourceCategory, CourseDifficulty, ContentType, EventStatus, CaseTeam, CaseBusinessScenario } from '@/types';
+import type { ResourceCategory, CourseDifficulty, ContentType, EventStatus } from '@/types';
 import { RESOURCE_CATEGORIES } from '@/types';
 
 /**
@@ -16,20 +16,6 @@ import { RESOURCE_CATEGORIES } from '@/types';
  */
 export const HARDCODED_REVIEWER_PROPOSALS: Record<string, string[]> = {
   '章佳媛': ['AI员工关怀物料设计流程'],
-};
-
-// HR 模块分类颜色映射
-export const CATEGORY_COLORS: Record<CaseCategory, string> = {
-  'HRAS_人力数据看板': 'blue',
-  'HSSC_招聘': 'cyan',
-  'HCOE/HSSC_薪酬绩效': 'orange',
-  'HCOE_培训': 'green',
-  'HCOE/HSSC_组织与人才发展': 'purple',
-  'HCOE_文化氛围': 'magenta',
-  'HSSC_核算与报账': 'gold',
-  'HSSC_基础人事支持': 'lime',
-  'ASSC_行政管理': 'geekblue',
-  '其他': 'default',
 };
 
 /** 资源分类颜色映射 */
@@ -53,65 +39,6 @@ export const CONTENT_TYPE_OPTIONS = [
   { label: '视频', value: 'video' as ContentType },
   { label: '文档', value: 'doc' as ContentType },
 ];
-
-export const CASE_CATEGORIES: CaseCategory[] = [
-  'HRAS_人力数据看板',
-  'HSSC_招聘',
-  'HCOE/HSSC_薪酬绩效',
-  'HCOE_培训',
-  'HCOE/HSSC_组织与人才发展',
-  'HCOE_文化氛围',
-  'HSSC_核算与报账',
-  'HSSC_基础人事支持',
-  'ASSC_行政管理',
-  '其他',
-];
-
-export const CASE_CATEGORY_OPTIONS = CASE_CATEGORIES.map((c) => ({ label: c, value: c }));
-
-// 常用 AI 工具
-export const AI_TOOL_OPTIONS = [
-  { label: 'ChatGPT / Codex', value: 'ChatGPT/Codex' },
-  { label: 'Claude / Claude Code', value: 'Claude/Claude Code' },
-  { label: 'DeepSeek', value: 'DeepSeek' },
-  { label: 'Gemini', value: 'Gemini' },
-  { label: 'GLM', value: 'GLM' },
-  { label: 'Kimi', value: 'Kimi' },
-  { label: 'Mimo / MimoClaw', value: 'Mimo/MimoClaw' },
-  { label: 'MiniMax', value: 'MiniMax' },
-  { label: 'Qwen', value: 'Qwen' },
-  { label: 'Trae', value: 'Trae' },
-  { label: 'Workbuddy / Codebuddy', value: 'Workbuddy/Codebuddy' },
-  { label: '其他（请补充）', value: '其他' },
-];
-
-// 提报团队
-export const CASE_TEAMS: CaseTeam[] = ['LBU', 'FBU', 'ABU', 'HQU', 'WX', 'GEU', 'GUS', 'ZT_HSSC', 'GF_HSSC', 'ZT_ASSC', 'GF_ASSC'];
-export const CASE_TEAM_OPTIONS = CASE_TEAMS.map((t) => ({ label: t, value: t }));
-
-// 业务场景
-export const CASE_BUSINESS_SCENARIOS: CaseBusinessScenario[] = [
-  '数据分析', '招聘管理', '薪酬绩效', '培训管理', '组织与人才发展',
-  '文化氛围', '核算与报账', '基础人事支持', '行政管理', '日常工作', '考勤管理', '其他',
-];
-export const CASE_BUSINESS_SCENARIO_OPTIONS = CASE_BUSINESS_SCENARIOS.map((s) => ({ label: s, value: s }));
-
-// 原核心痛点
-export const PAIN_POINTS = [
-  '重复劳动，机械操作太多',
-  '涉及多个系统，来回切换',
-  '数据整理/清洗耗时巨大',
-  '容易出错，反复核对',
-  '跨部门协调沟通成本高',
-  '需要等别人/等审批，被卡住',
-  '格式/模板要求繁琐',
-  '知识经验难以沉淀和复用',
-];
-export const PAIN_POINT_OPTIONS = PAIN_POINTS.map((p) => ({ label: p, value: p }));
-
-// 其他价值补充（非必填）
-export const OTHER_VALUES = ['准确率提升', '质量提升', '员工体验提升'];
-export const OTHER_VALUE_OPTIONS = OTHER_VALUES.map((v) => ({ label: v, value: v }));
 
 export const EVENT_STATUS_MAP: Record<EventStatus, { label: string; color: string }> = {
   upcoming: { label: '即将开始', color: 'blue' },

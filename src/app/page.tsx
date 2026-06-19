@@ -22,8 +22,8 @@ import {
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
-import { CATEGORY_COLORS, COURSE_DIFFICULTY_COLORS } from '@/lib/constants';
-import type { Case, Event, Course } from '@/types';
+import { COURSE_DIFFICULTY_COLORS } from '@/lib/constants';
+import type { Event, Course } from '@/types';
 
 /* ─── Animated Counter ─── */
 function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: number }) {
@@ -197,32 +197,6 @@ function DataDashboard({ savedHours, participantCount }: { savedHours: number; p
   );
 }
 
-function CaseCard({ data }: { data: Case }) {
-  return (
-    <Link href={`/cases/${data.id}`} className="block group">
-      <div className="glass rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden"
-        style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-        <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ background: 'var(--gradient-primary)' }} />
-        <div className="flex items-start gap-2 mb-3">
-          <Tag color={CATEGORY_COLORS[data.category]}>{data.category}</Tag>
-          {data.is_featured && <Tag color="orange">精选</Tag>}
-        </div>
-        <h3 className="text-base font-semibold mb-2 line-clamp-2 group-hover:opacity-80 transition-opacity">
-          {data.title}
-        </h3>
-        <p className="text-sm mb-4 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{data.summary}</p>
-        <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
-          <span>{data.author.name} · {data.author.department}</span>
-          <span className="flex items-center gap-3">
-            <span><EyeOutlined /> {data.view_count}</span>
-            <span><LikeOutlined /> {data.like_count}</span>
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 
 function SectionHeader({ icon, title, href, iconBg, iconColor, linkText = '查看全部' }: { icon: React.ReactNode; title: string; href: string; iconBg?: string; iconColor?: string; linkText?: string }) {
@@ -242,10 +216,9 @@ function SectionHeader({ icon, title, href, iconBg, iconColor, linkText = '查�
 
 export default function Home() {
   const { isAdmin, user } = useAuth();
-  const [cases, setCases] = useState<Case[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [stats, setStats] = useState({ cases: 0, users: 0, courses: 0, apps: 0 });
+  const [stats, setStats] = useState({ users: 0, courses: 0, apps: 0 });
   const [dashboard, setDashboard] = useState({ savedHours: 0, participantCount: 0, awardCount: 0 });
   const [loading, setLoading] = useState(true);
   const [courseInteractions, setCourseInteractions] = useState<Record<string, { liked: boolean; bookmarked: boolean }>>({});
@@ -254,23 +227,19 @@ export default function Home() {
     async function fetchData() {
       setLoading(true);
       try {
-        const [casesRes, eventsRes, coursesRes, caseCount, userCount, courseCount, appCount, settingsRes] = await Promise.all([
-          getSupabase().from('cases').select('*, author:users!author_id(id, name, avatar, department)').eq('status', 'published').order('view_count', { ascending: false }).limit(6),
+        const [eventsRes, coursesRes, userCount, courseCount, appCount, settingsRes] = await Promise.all([
           getSupabase().from('events').select('*').in('status', ['ongoing', 'upcoming']).order('start_time', { ascending: false }),
           getSupabase().from('courses').select('*').order('created_at', { ascending: false }).limit(6),
-          getSupabase().from('cases').select('id', { count: 'exact', head: true }).eq('status', 'published'),
           getSupabase().from('users').select('id', { count: 'exact', head: true }),
           getSupabase().from('courses').select('id', { count: 'exact', head: true }),
           getSupabase().from('apps').select('id', { count: 'exact', head: true }).eq('status', 'published'),
           fetch('/api/admin/settings').then(r => r.json()).catch(() => ({ saved_hours: 0, participant_count: 0, award_count: 0 })),
         ]);
 
-        setCases((casesRes.data ?? []) as Case[]);
         setEvents((eventsRes.data ?? []) as Event[]);
         setCourses((coursesRes.data ?? []) as Course[]);
 
         setStats({
-          cases: caseCount.count || 0,
           users: userCount.count || 0,
           courses: courseCount.count || 0,
           apps: appCount.count || 0,
@@ -356,9 +325,8 @@ export default function Home() {
   }
 
   const statItems = [
-    { label: '案例总数', value: stats.cases, icon: <BookOutlined />, iconBg: 'rgba(26, 58, 138, 0.12)', iconColor: '#1a3a8a', href: '/cases' },
-    { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a', href: '/courses' },
-    { label: '工具总数', value: stats.apps, icon: <AppstoreOutlined />, iconBg: 'rgba(120, 80, 160, 0.12)', iconColor: '#7850a0', href: '/apps' },
+    { label: '课程总数', value: stats.courses, icon: <ReadOutlined />, iconBg: 'rgba(232, 101, 10, 0.12)', iconColor: '#e8650a', href: '/resources?tab=courses' },
+    { label: '工具总数', value: stats.apps, icon: <AppstoreOutlined />, iconBg: 'rgba(120, 80, 160, 0.12)', iconColor: '#7850a0', href: '/resources?tab=apps' },
     { label: '注册用户', value: stats.users, icon: <TeamOutlined />, iconBg: 'rgba(34, 197, 94, 0.12)', iconColor: '#22c55e', href: isAdmin ? '/admin/users' : '' },
   ];
 
@@ -383,26 +351,16 @@ export default function Home() {
               案例沉淀、知识学习、活动运营，<br />HRAS 全员的 AI 园地
             </p>
             <div className="flex flex-wrap gap-3">
-              {isAdmin && (
-                <Link href="/cases/create">
-                  <button className="btn-gradient">
-                    <PlusOutlined /> 提交案例
-                  </button>
-                </Link>
-              )}
-              <Link href="/apps/create">
+              <Link href="/resources/apps/create">
                 <button className="btn-gradient">
                   <ApiOutlined /> 分享工具
                 </button>
               </Link>
-              <Link href="/cases">
-                <button className="pill-btn">HRAS案例库</button>
-              </Link>
               <Link href="/competitions">
                 <button className="pill-btn">AI 大赛</button>
               </Link>
-              <Link href="/courses">
-                <button className="pill-btn">公开课</button>
+              <Link href="/resources?tab=courses">
+                <button className="pill-btn">课程与资源</button>
               </Link>
             </div>
           </div>
@@ -438,17 +396,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Hot Cases */}
-      {cases.length > 0 && (
-        <section className="mb-10">
-          <SectionHeader icon={<BookOutlined />} title="热门案例" href="/cases" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cases.map((c) => (
-              <CaseCard key={c.id} data={c} />
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Ongoing Events */}
       {ongoingEvents.length > 0 && (
@@ -479,7 +426,7 @@ export default function Home() {
       {/* Recommended Courses */}
       {courses.length > 0 && (
         <section className="mb-10">
-          <SectionHeader icon={<ReadOutlined />} title="推荐课程" href="/courses" iconBg="rgba(232, 101, 10, 0.1)" iconColor="#e8650a" />
+          <SectionHeader icon={<ReadOutlined />} title="推荐课程" href="/resources?tab=courses" iconBg="rgba(232, 101, 10, 0.1)" iconColor="#e8650a" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {courses.map((course) => (
               <div key={course.id} className="glass rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-md relative overflow-hidden">
@@ -548,7 +495,7 @@ export default function Home() {
       )}
 
       {/* Empty state */}
-      {cases.length === 0 && courses.length === 0 && (
+      {courses.length === 0 && (
         <div className="text-center py-16">
           <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl glass">
             <BookOutlined style={{ color: 'var(--primary)' }} />

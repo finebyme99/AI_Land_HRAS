@@ -79,7 +79,7 @@ export default function CreateResourcePage() {
       } else {
         message.success('工具已提交，等待审核');
       }
-      window.location.href = '/apps';
+      window.location.href = '/resources?tab=apps';
     } catch (err) {
       console.error('Failed to create resource:', err);
       message.error(err instanceof Error ? err.message : '提交失败');
@@ -101,7 +101,7 @@ export default function CreateResourcePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <Link href="/apps" className="inline-flex items-center gap-1.5 text-sm mb-6 transition-opacity hover:opacity-70" style={{ color: 'var(--text-muted)' }}>
+      <Link href="/resources?tab=apps" className="inline-flex items-center gap-1.5 text-sm mb-6 transition-opacity hover:opacity-70" style={{ color: 'var(--text-muted)' }}>
         <ArrowLeftOutlined /> 返回工具列表
       </Link>
 

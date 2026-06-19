@@ -29,13 +29,6 @@ export async function GET(request: NextRequest) {
             .eq('id', bm.target_id)
             .maybeSingle();
           target = data;
-        } else if (bm.target_type === 'case') {
-          const { data } = await getSupabaseAdmin()
-            .from('cases')
-            .select('id, title, summary as description, category, like_count')
-            .eq('id', bm.target_id)
-            .maybeSingle();
-          target = data;
         }
 
         return { ...bm, target };

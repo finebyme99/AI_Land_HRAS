@@ -21,7 +21,7 @@ export default function CreateCoursePage() {
           <p className="text-base mb-4" style={{ color: 'var(--text-secondary)' }}>
             课程由管理员统一发布
           </p>
-          <Link href="/courses" className="text-sm transition-opacity hover:opacity-70" style={{ color: 'var(--primary)' }}>
+          <Link href="/resources?tab=courses" className="text-sm transition-opacity hover:opacity-70" style={{ color: 'var(--primary)' }}>
             返回课程列表
           </Link>
         </div>
@@ -51,7 +51,7 @@ export default function CreateCoursePage() {
         throw new Error(err.error || '发布失败');
       }
       message.success('课程发布成功！');
-      window.location.href = '/courses';
+      window.location.href = '/resources?tab=courses';
     } catch (err) {
       console.error('Failed to create course:', err);
       message.error(err instanceof Error ? err.message : '发布失败，请重试');
@@ -62,7 +62,7 @@ export default function CreateCoursePage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <Link href="/courses" className="inline-flex items-center gap-1.5 text-sm mb-6 transition-opacity hover:opacity-70" style={{ color: 'var(--primary)' }}>
+      <Link href="/resources?tab=courses" className="inline-flex items-center gap-1.5 text-sm mb-6 transition-opacity hover:opacity-70" style={{ color: 'var(--primary)' }}>
         <ArrowLeftOutlined /> 返回课程列表
       </Link>
 

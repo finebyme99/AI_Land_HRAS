@@ -489,15 +489,21 @@ function CompetitionsPageInner() {
                           <span className="competition-banner-flow-node-accent">我创造 + AI 执行</span>
                         </div>
 
-                        {/* 操作按钮行 */}
-                        <div className="competition-banner-actions">
-                          <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer" className="competition-banner-btn-primary">
-                            立即提报 →
-                          </a>
-                          <a href="https://ztn.feishu.cn/share/base/form/shrcnPYqHe7ySrBxA9DbXijzhUb" target="_blank" rel="noopener noreferrer" className="competition-banner-btn-secondary">
-                            AI许愿
-                          </a>
-                        </div>
+                        {/* 操作按钮行 - 仅管理员可见 */}
+                        {isAdmin && (
+                          <div className="flex items-center gap-2 mt-4">
+                            <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:opacity-90"
+                              style={{ background: 'var(--primary)' }}>
+                              立即提报
+                            </a>
+                            <a href="https://ztn.feishu.cn/share/base/form/shrcnPYqHe7ySrBxA9DbXijzhUb" target="_blank" rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
+                              style={{ color: 'var(--primary)', border: '1px solid var(--primary)' }}>
+                              AI许愿
+                            </a>
+                          </div>
+                        )}
                       </div>
 
                       {/* 右栏 */}

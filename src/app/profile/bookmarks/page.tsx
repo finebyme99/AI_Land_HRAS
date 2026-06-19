@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { StarOutlined, ArrowLeftOutlined, LikeOutlined, ReadOutlined, FileTextOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons';
+import { StarOutlined, ArrowLeftOutlined, LikeOutlined, ReadOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons';
 import { Spin, Tag, Button, Popconfirm, App } from 'antd';
 import { useAuth } from '@/lib/auth-context';
 
@@ -68,7 +68,6 @@ export default function BookmarksPage() {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'course': return <ReadOutlined style={{ color: '#4a6fa5' }} />;
-      case 'case': return <FileTextOutlined style={{ color: '#10b981' }} />;
       default: return <StarOutlined style={{ color: '#c4883a' }} />;
     }
   };
@@ -76,7 +75,6 @@ export default function BookmarksPage() {
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'course': return '公开课';
-      case 'case': return 'HRAS案例库';
       default: return type;
     }
   };
@@ -84,7 +82,6 @@ export default function BookmarksPage() {
   const getLink = (item: BookmarkItem) => {
     switch (item.target_type) {
       case 'course': return '/courses';
-      case 'case': return `/cases/${item.target_id}`;
       default: return '#';
     }
   };

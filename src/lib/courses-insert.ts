@@ -14,6 +14,7 @@ export interface CourseInsertInput {
   video_url?: string;
   created_at?: string;
   period?: string | null;
+  season?: string | null;
 }
 
 export interface InsertCourseResult {
@@ -26,7 +27,7 @@ export interface InsertCourseResult {
  * 必填：title、instructor。其他字段允许空字符串 / 默认值，避免前端漏填被后端拒。
  */
 export async function insertCourseRow(input: CourseInsertInput): Promise<InsertCourseResult> {
-  const { title, description, instructor, duration, difficulty, content_type, cover_image, courseware_url, video_url, created_at, period } = input;
+  const { title, description, instructor, duration, difficulty, content_type, cover_image, courseware_url, video_url, created_at, period, season } = input;
 
   if (!title || !instructor) {
     return { course: null, error: 'title 和 instructor 必填' };
@@ -45,6 +46,7 @@ export async function insertCourseRow(input: CourseInsertInput): Promise<InsertC
   };
   if (created_at) insertData.created_at = created_at;
   if (period) insertData.period = period;
+  if (season) insertData.season = season;
 
   const { data, error } = await getSupabaseAdmin()
     .from('courses')

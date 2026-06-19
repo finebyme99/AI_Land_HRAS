@@ -519,6 +519,7 @@ export default function EntryCardLayoutEditorPage() {
   const [activeDrag, setActiveDrag] = useState<
     | { kind: 'field'; fieldKey: string; label: string; groupId: string; span: FieldSpan }
     | { kind: 'group'; groupId: string; title: string }
+    | { kind: 'header-field'; fieldKey: string; label: string; style: string }
     | null
   >(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));

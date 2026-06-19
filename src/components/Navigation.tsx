@@ -6,10 +6,8 @@ import { usePathname } from 'next/navigation';
 import { Menu, Drawer, Avatar, Dropdown } from 'antd';
 import {
   HomeOutlined,
-  BookOutlined,
   TrophyOutlined,
   ReadOutlined,
-  AppstoreOutlined,
   UserOutlined,
   MenuOutlined,
   BellOutlined,
@@ -22,11 +20,9 @@ import { PAGE_LABELS } from '@/lib/bitable/page-usage';
 
 const navItems = [
   { key: '/', label: '首页', icon: <HomeOutlined /> },
-  { key: '/cases', label: 'HRAS案例库', icon: <BookOutlined /> },
   { key: '/wish-pool', label: PAGE_LABELS.wishPool, icon: <StarOutlined />, adminOnly: true },
   { key: '/competitions', label: 'AI大赛', icon: <TrophyOutlined /> },
-  { key: '/courses', label: '公开课', icon: <ReadOutlined /> },
-  { key: '/apps', label: '工具推荐', icon: <AppstoreOutlined /> },
+  { key: '/resources', label: '课程与资源', icon: <ReadOutlined /> },
 ];
 
 const userMenuItems = [

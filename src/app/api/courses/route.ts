@@ -65,7 +65,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
     const updates: Record<string, unknown> = {};
-    const allowed = ['title', 'description', 'instructor', 'duration', 'difficulty', 'content_type', 'cover_image', 'courseware_url', 'video_url', 'created_at'];
+    const allowed = ['title', 'description', 'instructor', 'duration', 'difficulty', 'content_type', 'cover_image', 'courseware_url', 'video_url', 'created_at', 'season'];
     for (const key of allowed) {
       if (key in body) updates[key] = body[key];
     }

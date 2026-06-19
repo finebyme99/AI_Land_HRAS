@@ -3,11 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Table, Tag, Button, Input, Select, Spin, Popconfirm, Tabs, App } from 'antd';
-import { SearchOutlined, CheckCircleOutlined, CloseCircleOutlined, AppstoreOutlined, LinkOutlined, BookOutlined } from '@ant-design/icons';
+import { SearchOutlined, CheckCircleOutlined, CloseCircleOutlined, AppstoreOutlined, LinkOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
-import { RESOURCE_CATEGORY_COLORS, CATEGORY_COLORS, CASE_TEAM_OPTIONS } from '@/lib/constants';
+import { RESOURCE_CATEGORY_COLORS } from '@/lib/constants';
 import type { ColumnsType } from 'antd/es/table';
-import type { CaseCategory, CaseTeam } from '@/types';
 
 // ========== 共用常量 ==========
 const STATUS_OPTIONS = [
@@ -176,139 +175,6 @@ function ToolReviewTab() {
   );
 }
 
-// ========== 案例审核 ==========
-interface CaseItem {
-  id: string;
-  title: string;
-  summary: string;
-  category: CaseCategory;
-  team: CaseTeam | '';
-  business_scenario: string;
-  status: 'pending' | 'published' | 'rejected';
-  author_id: string | null;
-  author?: { id: string; name: string; avatar: string; department: string };
-  developers?: { id: string; name: string; avatar: string; department: string }[];
-  created_at: string;
-}
-
-function CaseReviewTab() {
-  const { message } = App.useApp();
-  const [cases, setCases] = useState<CaseItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('pending');
-  const [search, setSearch] = useState('');
-
-  const fetchCases = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/cases/admin');
-      if (!res.ok) throw new Error('获取失败');
-      const data = await res.json();
-      setCases(data.cases ?? []);
-    } catch {
-      message.error('获取案例列表失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchCases(); }, []);
-
-  const handleReview = async (id: string, status: 'published' | 'rejected') => {
-    try {
-      const res = await fetch('/api/cases', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status }),
-      });
-      if (!res.ok) throw new Error('操作失败');
-      message.success(status === 'published' ? '已通过' : '已驳回');
-      fetchCases();
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : '操作失败');
-    }
-  };
-
-  const filtered = cases.filter((c) => {
-    if (statusFilter !== 'all' && c.status !== statusFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return c.title.toLowerCase().includes(q) || c.summary.toLowerCase().includes(q);
-    }
-    return true;
-  });
-
-  const columns: ColumnsType<CaseItem> = [
-    { title: '标题', dataIndex: 'title', key: 'title', width: 200, ellipsis: true },
-    {
-      title: '分类', dataIndex: 'category', key: 'category', width: 140,
-      render: (val: string) => <Tag color={(CATEGORY_COLORS as Record<string, string>)[val] ?? 'default'}>{val}</Tag>,
-    },
-    {
-      title: '提报团队', dataIndex: 'team', key: 'team', width: 90,
-      render: (val: string) => val || '-',
-    },
-    {
-      title: '开发者', key: 'developers', width: 120,
-      render: (_, r) => {
-        const devs = r.developers ?? [];
-        if (devs.length === 0) return r.author?.name ?? '-';
-        return devs.map(d => d.name).join('、');
-      },
-    },
-    {
-      title: '提交人', key: 'author', width: 80,
-      render: (_, r) => r.author?.name ?? '-',
-    },
-    {
-      title: '状态', dataIndex: 'status', key: 'status', width: 80,
-      render: (val: string) => {
-        const s = STATUS_MAP[val];
-        return s ? <Tag color={s.color}>{s.label}</Tag> : val;
-      },
-    },
-    {
-      title: '提交时间', dataIndex: 'created_at', key: 'created_at', width: 140,
-      render: (val: string) => new Date(val).toLocaleString('zh-CN'),
-      sorter: (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-      defaultSortOrder: 'descend',
-    },
-    {
-      title: '操作', key: 'action', width: 150,
-      render: (_, r) => (
-        <div className="flex gap-2 items-center">
-          {r.status === 'pending' && (
-            <>
-              <Popconfirm title="确认通过？" onConfirm={() => handleReview(r.id, 'published')}>
-                <Button type="primary" size="small" icon={<CheckCircleOutlined />}>通过</Button>
-              </Popconfirm>
-              <Popconfirm title="确认驳回？" onConfirm={() => handleReview(r.id, 'rejected')}>
-                <Button danger size="small" icon={<CloseCircleOutlined />}>驳回</Button>
-              </Popconfirm>
-            </>
-          )}
-        </div>
-      ),
-    },
-  ];
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          待审核 <b style={{ color: '#d46b08' }}>{cases.filter(c => c.status === 'pending').length}</b>
-        </p>
-        <div className="flex items-center gap-2">
-          <Select value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} style={{ width: 100 }} size="small" />
-          <Input placeholder="搜索标题" prefix={<SearchOutlined />} value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 200 }} allowClear size="small" />
-        </div>
-      </div>
-      <Table columns={columns} dataSource={filtered} rowKey="id" loading={loading}
-        pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 条` }} scroll={{ x: 1000 }} />
-    </div>
-  );
-}
-
 // ========== 主页面 ==========
 export default function AdminReviewPage() {
   const router = useRouter();
@@ -326,11 +192,6 @@ export default function AdminReviewPage() {
       key: 'tools',
       label: <span className="flex items-center gap-1.5"><AppstoreOutlined /> 工具审核</span>,
       children: <ToolReviewTab />,
-    },
-    {
-      key: 'cases',
-      label: <span className="flex items-center gap-1.5"><BookOutlined /> 案例审核</span>,
-      children: <CaseReviewTab />,
     },
   ];
 

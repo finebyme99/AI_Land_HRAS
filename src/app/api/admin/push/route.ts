@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { sendFeishuCardMessage } from '@/lib/feishu-message';
-import { buildCourseCard, buildResourceCard, buildCaseCard, buildSubmissionCard } from '@/lib/feishu-cards';
+import { buildCourseCard, buildResourceCard, buildSubmissionCard } from '@/lib/feishu-cards';
 
 const BUCKET = 'competition-attachments';
 
@@ -106,17 +106,6 @@ async function buildCard(supabase: ReturnType<typeof getSupabaseAdmin>, contentT
       return buildResourceCard({
         ...data,
         author_name: (data.author as { name?: string })?.name,
-      });
-    }
-    case 'case': {
-      const { data } = await supabase.from('cases').select('id, title, category, summary, author:users!author_id(name, department)').eq('id', contentId).single();
-      if (!data) return null;
-      return buildCaseCard({
-        id: data.id,
-        title: data.title,
-        author: (data.author as { name?: string })?.name,
-        category: data.category,
-        summary: data.summary,
       });
     }
     case 'submission': {

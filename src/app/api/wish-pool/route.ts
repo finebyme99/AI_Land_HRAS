@@ -73,11 +73,33 @@ export async function GET(request: NextRequest) {
     const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'wish-pool');
 
     // 映射字段
-    const items = allRecords.map((r) => mapRecord(r, fieldMap));
+    const rawItems = allRecords.map((r) => mapRecord(r, fieldMap));
+
+    // 过滤脏数据：排除大赛进展或落地进展为"数据补充中"的记录
+    const items = rawItems.filter((d) =>
+      (d.competitionProgress as string) !== '数据补充中' &&
+      (d.landingProgress as string) !== '数据补充中'
+    );
+
+    // 价值星级计算（前端计算字段，不从飞书同步）
+    // 按 finalValueScore 降序排序，根据排名百分位分配星级
+    const withScore = items.filter((d) => d.finalValueScore != null && (d.finalValueScore as number) > 0);
+    withScore.sort((a, b) => ((b.finalValueScore as number) ?? 0) - ((a.finalValueScore as number) ?? 0));
+    const scoreTotal = withScore.length;
+    withScore.forEach((d, idx) => {
+      const percentile = (idx + 1) / scoreTotal;
+      if (percentile <= 0.2) d.valueStarLevel = 5;
+      else if (percentile <= 0.4) d.valueStarLevel = 4;
+      else if (percentile <= 0.6) d.valueStarLevel = 3;
+      else if (percentile <= 0.8) d.valueStarLevel = 2;
+      else d.valueStarLevel = 1;
+    });
+    // 无 finalValueScore 的场景不评级
+    items.filter((d) => !d.finalValueScore || (d.finalValueScore as number) <= 0)
+      .forEach((d) => { d.valueStarLevel = null; });
 
     // 计算统计指标
     const total = items.length;
-    const withScore = items.filter((d) => d.finalValueScore != null && (d.finalValueScore as number) > 0);
     const avgScore = withScore.length > 0
       ? Math.round(withScore.reduce((s, d) => s + (d.finalValueScore as number), 0) / withScore.length * 10) / 10
       : 0;
@@ -111,6 +133,20 @@ export async function GET(request: NextRequest) {
       teamMap[label] = (teamMap[label] || 0) + 1;
     });
 
+    // 新增指标：已落地场景数（试点+推广+全面上线）
+    const landedCount = (progressMap['试点上线'] || 0) + (progressMap['推广上线'] || 0) + (progressMap['全面上线'] || 0);
+
+    // 新增指标：月均提效节省工时之和
+    const totalMonthlySavedHours = Math.round(items.reduce((sum, d) => sum + ((d.monthlySavedHours as number) ?? 0), 0) * 10) / 10;
+
+    // 新增指标：月均降本费用之和（不含人力成本）
+    const totalMonthlySavedCost = items.reduce((sum, d) => {
+      const cost = d.monthlySavedCost as number | string | null;
+      if (!cost) return sum;
+      const num = typeof cost === 'number' ? cost : parseFloat(String(cost).replace(/[^0-9.\-]/g, ''));
+      return sum + (num > 0 ? num : 0);
+    }, 0);
+
     // 价值排名排序
     const ranked = [...items]
       .filter((d) => d.valueRank != null)
@@ -128,6 +164,9 @@ export async function GET(request: NextRequest) {
         contestMap,
         categoryMap,
         teamMap,
+        landedCount,
+        totalMonthlySavedHours,
+        totalMonthlySavedCost,
       },
     });
   } catch (err) {

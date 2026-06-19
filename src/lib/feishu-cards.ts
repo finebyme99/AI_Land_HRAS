@@ -358,56 +358,6 @@ export function buildResourceCard(resource: {
   };
 }
 
-/** 案例卡片 */
-export function buildCaseCard(c: {
-  id: string;
-  title: string;
-  author?: string;
-  category?: string;
-  summary?: string;
-  like_count?: number;
-  comment_count?: number;
-}) {
-  const lines: string[] = [];
-  lines.push(`**${c.title}**`);
-  const meta: string[] = [];
-  if (c.author) meta.push(`👤 ${c.author}`);
-  if (c.category) meta.push(`🏷️ ${c.category}`);
-  if (meta.length) lines.push(meta.join('　　'));
-  if (c.summary) lines.push('', truncate(c.summary, 120));
-  if (c.like_count || c.comment_count) {
-    lines.push('', `👍 ${c.like_count ?? 0}　💬 ${c.comment_count ?? 0}`);
-  }
-
-  return {
-    schema: '2.0',
-    config: { update_multi: true },
-    header: {
-      title: { tag: 'plain_text', content: '📚 新案例推荐' },
-      subtitle: { tag: 'plain_text', content: 'AI岛推荐：来自HR实践者的AI应用案例' },
-      template: 'violet',
-    },
-    body: {
-      direction: 'vertical',
-      elements: [
-        { tag: 'markdown', content: lines.join('\n') },
-        { tag: 'hr' },
-        {
-          tag: 'action',
-          actions: [
-            {
-              tag: 'button',
-              text: { tag: 'plain_text', content: '🔍 查看详情' },
-              type: 'primary',
-              url: `${APP_URL}/cases/${c.id}`,
-            },
-          ],
-        },
-      ],
-    },
-  };
-}
-
 /** 大赛方案卡片 */
 export function buildSubmissionCard(s: {
   id: string;

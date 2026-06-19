@@ -114,6 +114,7 @@ function mapRecord(record: any) {
     courseware_url: extractUrl(f['课件文档']),
     content_type: extractContentTypes(f['资源类型']),
     period: extractText(f['期数']) || null,
+    season: extractText(f['季数']) || null,
     poster_attachment: extractFirstAttachment(f['海报']),
   };
 }
@@ -177,6 +178,7 @@ export async function POST(request: NextRequest) {
         courseware_url: r.courseware_url,
         content_type: r.content_type.length > 0 ? r.content_type : ['doc'],
         period: r.period,
+        season: r.season,
         cover_image_key,
       });
     }

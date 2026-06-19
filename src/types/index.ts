@@ -43,70 +43,9 @@ export interface User {
   last_active_at?: string | null;
 }
 
-// ============ 案例 ============
-export type CaseCategory =
-  | 'HRAS_人力数据看板'
-  | 'HSSC_招聘'
-  | 'HCOE/HSSC_薪酬绩效'
-  | 'HCOE_培训'
-  | 'HCOE/HSSC_组织与人才发展'
-  | 'HCOE_文化氛围'
-  | 'HSSC_核算与报账'
-  | 'HSSC_基础人事支持'
-  | 'ASSC_行政管理'
-  | '其他';
-
+// ============ 工具推荐 ============
 export type ContentStatus = 'draft' | 'pending' | 'published' | 'rejected';
 
-export type CaseTeam = 'LBU' | 'FBU' | 'ABU' | 'HQU' | 'WX' | 'GEU' | 'GUS' | 'ZT_HSSC' | 'GF_HSSC' | 'ZT_ASSC' | 'GF_ASSC';
-
-export type CaseBusinessScenario =
-  | '数据分析'
-  | '招聘管理'
-  | '薪酬绩效'
-  | '培训管理'
-  | '组织与人才发展'
-  | '文化氛围'
-  | '核算与报账'
-  | '基础人事支持'
-  | '行政管理'
-  | '日常工作'
-  | '考勤管理'
-  | '其他';
-
-export interface Case {
-  id: string;
-  title: string;
-  summary: string;
-  content: string;
-  cover_image: string;
-  category: CaseCategory;
-  ai_tools: string[];
-  attachments: string[];
-  author: Pick<User, 'id' | 'name' | 'avatar' | 'department'>;
-  status: ContentStatus;
-  view_count: number;
-  like_count: number;
-  bookmark_count: number;
-  comment_count: number;
-  event_id: string | null;
-  is_featured?: boolean;
-  team?: CaseTeam | '';
-  business_scenario?: CaseBusinessScenario | '';
-  // 新增字段
-  team_members?: string;
-  original_business_scenario?: string;
-  pain_points?: string[];
-  monthly_saved_hours?: number;
-  efficiency_ratio?: number;
-  demo_link?: string;
-  other_values?: string[];
-  developers?: Pick<User, 'id' | 'name' | 'avatar' | 'department'>[];
-  created_at: string;
-  updated_at: string;
-}
-
-// ============ 工具推荐 ============
 export type ResourceCategory = 'AI Agent/大模型' | '好用 Skills';
 
 export const RESOURCE_CATEGORIES: ResourceCategory[] = ['AI Agent/大模型', '好用 Skills'];
@@ -157,7 +96,8 @@ export interface Course {
   bookmark_count: number;
   comment_count: number;
   is_featured?: boolean;
-  period?: string | null;
+  period?: string | null;  // 期数
+  season?: string | null;  // 季数
   cover_image_key?: string | null;
   created_at: string;
 }

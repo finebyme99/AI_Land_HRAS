@@ -19,13 +19,12 @@ import { getSupabase } from '@/lib/supabase';
 import { RESOURCE_CATEGORY_COLORS } from '@/lib/constants';
 import { useAuth } from '@/lib/auth-context';
 import SearchInput from '@/components/SearchInput';
-import HighlightSweep from '@/components/HighlightSweep';
 import type { Resource, ResourceCategory } from '@/types';
 import { RESOURCE_CATEGORIES } from '@/types';
 
 const SCENARIO_OPTIONS = ['编程', '设计', '写作', '数据分析', '咨询搜集', '日常提效'];
 
-export default function AppsPage() {
+export default function AppsContent() {
   const { user, isAdmin } = useAuth();
   const { message } = App.useApp();
   const [resources, setResources] = useState<Resource[]>([]);
@@ -211,17 +210,7 @@ export default function AppsPage() {
   };
 
   return (
-    <div className="px-[100px]" style={{ paddingTop: 20 }}>
-      {/* Header */}
-      <div className="flex items-center justify-end mb-6">
-        <Link href="/apps/create">
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5"
-            style={{ color: 'var(--primary)', border: '1px solid var(--primary)' }}>
-            <PlusOutlined /> 分享好用工具
-          </button>
-        </Link>
-      </div>
-
+    <div className="mt-0">
       {/* Filters */}
       <div className="glass rounded-xl p-4 mb-6 space-y-3" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex flex-wrap gap-3 items-center">
@@ -281,6 +270,15 @@ export default function AppsPage() {
               }}
             >{s}</button>
           ))}
+        </div>
+        {/* 操作按钮 */}
+        <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}>
+          <Link href="/resources/apps/create">
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', boxShadow: '0 4px 15px rgba(26,58,138,0.3)', color: '#fff' }}>
+              <PlusOutlined /> 分享好用工具
+            </button>
+          </Link>
         </div>
       </div>
 
