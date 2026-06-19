@@ -16,13 +16,12 @@ import {
   StarOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
-import { PAGE_LABELS } from '@/lib/bitable/page-usage';
 
 const navItems = [
   { key: '/', label: '首页', icon: <HomeOutlined /> },
-  { key: '/wish-pool', label: PAGE_LABELS.wishPool, icon: <StarOutlined />, adminOnly: true },
+  { key: '/wish-pool', label: '场景大全', icon: <StarOutlined /> },
   { key: '/competitions', label: 'AI大赛', icon: <TrophyOutlined /> },
-  { key: '/resources', label: '课程与资源', icon: <ReadOutlined /> },
+  { key: '/resources', label: '课程资源', icon: <ReadOutlined /> },
 ];
 
 const userMenuItems = [
