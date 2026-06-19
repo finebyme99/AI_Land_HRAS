@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
 const LANDED_STATES = ['试点上线', '推广上线', '全面上线'];
+const CURRENT_PERIOD = '2605';
 
 /**
  * GET /api/dashboard-summary
@@ -12,7 +13,8 @@ const LANDED_STATES = ['试点上线', '推广上线', '全面上线'];
  *   - totalPeople: SUM(before_people_count) — 总覆盖执行人数
  *   - landedCount: COUNT where landing_progress in LANDED_STATES — 已落地场景数
  *
- * 数据口径与 ChoDashboard 成效看板一致，仅统计 status='评审中' 的方案。
+ * 数据口径与 ChoDashboard 成效看板一致：
+ *   period=CURRENT_PERIOD + status='评审中' + scene_source='AI大赛'
  */
 export async function GET() {
   const supabase = getSupabaseAdmin();
@@ -21,7 +23,9 @@ export async function GET() {
     const { data, error } = await supabase
       .from('competition_submissions')
       .select('total_monthly_saved_hours, before_people_count, landing_progress')
-      .eq('status', '评审中');
+      .eq('period', CURRENT_PERIOD)
+      .eq('status', '评审中')
+      .eq('scene_source', 'AI大赛');
 
     if (error) throw error;
 
