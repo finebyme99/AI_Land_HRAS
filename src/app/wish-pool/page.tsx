@@ -225,14 +225,11 @@ function ProgressDonut({ progressMap, total }: { progressMap: Record<string, num
         {arcs.map((arc, i) => {
           if (arc.angle < 0.5) return null;
           const outerPath = describeArc(cx, cy, outerR, arc.startAngle, arc.endAngle);
-          const innerPath = describeArc(cx, cy, innerR, arc.startAngle, arc.endAngle);
           const startInner = polarToCartesian(cx, cy, innerR, arc.startAngle);
           const endInner = polarToCartesian(cx, cy, innerR, arc.endAngle);
-          const startOuter = polarToCartesian(cx, cy, outerR, arc.startAngle);
-          const endOuter = polarToCartesian(cx, cy, outerR, arc.endAngle);
           return (
             <path key={i}
-              d={`${outerPath} L ${endOuter.x} ${endOuter.y} L ${startInner.x} ${startInner.y} A ${innerR} ${innerR} 0 ${arc.angle > 180 ? 1 : 0} 1 ${endInner.x} ${endInner.y} Z`}
+              d={`${outerPath} L ${startInner.x} ${startInner.y} A ${innerR} ${innerR} 0 ${arc.angle > 180 ? 1 : 0} 1 ${endInner.x} ${endInner.y} Z`}
               fill={arc.color} opacity={0.85}
               style={{ transition: 'opacity 0.2s' }}
             />
