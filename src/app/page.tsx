@@ -19,6 +19,7 @@ import {
   RocketOutlined,
   AppstoreOutlined,
   ApiOutlined,
+  StarOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
@@ -90,7 +91,7 @@ function Orb3D() {
 }
 
 /* ─── Data Dashboard Panel ─── */
-function DataDashboard({ savedHours, participantCount }: { savedHours: number; participantCount: number }) {
+function DataDashboard({ totalMonthlySavedHours, totalPeople }: { totalMonthlySavedHours: number; totalPeople: number }) {
   return (
     <div className="relative group/dashboard">
       {/* Breathing glow behind card */}
@@ -145,12 +146,12 @@ function DataDashboard({ savedHours, participantCount }: { savedHours: number; p
                 <ClockCircleOutlined />
               </span>
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>累计节省工时</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>月均节省总工时</div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-[32px] font-extrabold tracking-tight leading-none" style={{ color: 'var(--foreground)' }}>
-                    <AnimatedCounter target={savedHours} duration={2.5} />
+                    <AnimatedCounter target={totalMonthlySavedHours} duration={2.5} />
                   </span>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--primary)', opacity: 0.7 }}>小时</span>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--primary)', opacity: 0.7 }}>h</span>
                 </div>
               </div>
             </div>
@@ -167,12 +168,12 @@ function DataDashboard({ savedHours, participantCount }: { savedHours: number; p
                 <TeamOutlined />
               </span>
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>参与人次</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>覆盖人数</div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-[32px] font-extrabold tracking-tight leading-none" style={{ color: 'var(--foreground)' }}>
-                    <AnimatedCounter target={participantCount} duration={2.5} />
+                    <AnimatedCounter target={totalPeople} duration={2.5} />
                   </span>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--accent)', opacity: 0.7 }}>人次</span>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--accent)', opacity: 0.7 }}>人</span>
                 </div>
               </div>
             </div>
@@ -219,7 +220,7 @@ export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [stats, setStats] = useState({ users: 0, courses: 0, apps: 0 });
-  const [dashboard, setDashboard] = useState({ savedHours: 0, participantCount: 0, awardCount: 0 });
+  const [dashboard, setDashboard] = useState({ totalMonthlySavedHours: 0, totalPeople: 0 });
   const [loading, setLoading] = useState(true);
   const [courseInteractions, setCourseInteractions] = useState<Record<string, { liked: boolean; bookmarked: boolean }>>({});
   const [courseCounts, setCourseCounts] = useState<Record<string, { like_count: number; bookmark_count: number }>>({});
@@ -227,13 +228,13 @@ export default function Home() {
     async function fetchData() {
       setLoading(true);
       try {
-        const [eventsRes, coursesRes, userCount, courseCount, appCount, settingsRes] = await Promise.all([
+        const [eventsRes, coursesRes, userCount, courseCount, appCount, dashboardRes] = await Promise.all([
           getSupabase().from('events').select('*').in('status', ['ongoing', 'upcoming']).order('start_time', { ascending: false }),
           getSupabase().from('courses').select('*').order('created_at', { ascending: false }).limit(6),
           getSupabase().from('users').select('id', { count: 'exact', head: true }),
           getSupabase().from('courses').select('id', { count: 'exact', head: true }),
           getSupabase().from('apps').select('id', { count: 'exact', head: true }).eq('status', 'published'),
-          fetch('/api/admin/settings').then(r => r.json()).catch(() => ({ saved_hours: 0, participant_count: 0, award_count: 0 })),
+          fetch('/api/dashboard-summary').then(r => r.json()).catch(() => ({ totalMonthlySavedHours: 0, totalPeople: 0 })),
         ]);
 
         setEvents((eventsRes.data ?? []) as Event[]);
@@ -245,9 +246,8 @@ export default function Home() {
           apps: appCount.count || 0,
         });
         setDashboard({
-          savedHours: settingsRes.saved_hours || 0,
-          participantCount: settingsRes.participant_count || 0,
-          awardCount: settingsRes.award_count || 0,
+          totalMonthlySavedHours: dashboardRes.totalMonthlySavedHours || 0,
+          totalPeople: dashboardRes.totalPeople || 0,
         });
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -351,16 +351,20 @@ export default function Home() {
               案例沉淀、知识学习、活动运营，<br />HRAS 全员的 AI 园地
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link href="/resources/apps/create">
+              <a href="https://ztn.feishu.cn/share/base/form/shrcnPYqHe7ySrBxA9DbXijzhUb" target="_blank" rel="noopener noreferrer">
                 <button className="btn-gradient">
+                  <StarOutlined /> AI许愿
+                </button>
+              </a>
+              <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer">
+                <button className="btn-gradient">
+                  <TrophyOutlined /> 参加大赛
+                </button>
+              </a>
+              <Link href="/resources/apps/create">
+                <button className="pill-btn">
                   <ApiOutlined /> 分享工具
                 </button>
-              </Link>
-              <Link href="/competitions">
-                <button className="pill-btn">AI 大赛</button>
-              </Link>
-              <Link href="/resources?tab=courses">
-                <button className="pill-btn">课程与资源</button>
               </Link>
             </div>
           </div>
@@ -368,8 +372,8 @@ export default function Home() {
           {/* Right — Data Dashboard */}
           <div className="hidden lg:block">
             <DataDashboard
-              savedHours={dashboard.savedHours}
-              participantCount={dashboard.participantCount}
+              totalMonthlySavedHours={dashboard.totalMonthlySavedHours}
+              totalPeople={dashboard.totalPeople}
             />
           </div>
         </div>
