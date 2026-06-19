@@ -830,15 +830,15 @@ export default function WishPoolPage() {
         ) : stats ? (
           <div id="wish-pool-export">
             {/* 操作栏 */}
-            <div className="glass rounded-xl px-4 py-3 mb-2 flex items-center gap-2" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
+            <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 mb-2 flex items-center gap-2">
               <button onClick={handleRefresh} disabled={syncing}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #1a3a8a, #2d5bc7)', boxShadow: '0 4px 15px rgba(26,58,138,0.3)' }}>
+                style={{ background: 'linear-gradient(135deg, #1a3a8a, #2d5bc7)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <SyncOutlined spin={syncing} /> 刷新
               </button>
               <button onClick={handleExportImage} disabled={exporting}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
-                style={{ background: 'rgba(255,255,255,0.7)', color: '#1a3a8a', border: '1px solid rgba(26,58,138,0.3)' }}>
+                style={{ background: 'white', color: '#1a3a8a', border: '1px solid #d1d5db' }}>
                 <DownloadOutlined spin={exporting} /> 导出图片
               </button>
             </div>
