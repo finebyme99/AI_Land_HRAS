@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { Suspense, useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Spin, Tag, App, Table, Tabs, Tooltip, type TableColumnsType } from 'antd';
 import {
@@ -533,8 +533,8 @@ function FormulaSection() {
   );
 }
 
-// ── 主页面 ──
-export default function WishPoolPage() {
+// ── 主页面内容 ──
+function WishPoolContent() {
   const router = useRouter();
   const { isAdmin, loading: authLoading } = useAuth();
   const { message } = App.useApp();
@@ -1015,5 +1015,14 @@ export default function WishPoolPage() {
         {selectedItem && <SceneDrillDownModal item={selectedItem} onClose={() => setSelectedItem(null)} />}
       </div>
     </>
+  );
+}
+
+// ── 导出（Suspense 包裹 useSearchParams）──
+export default function WishPoolPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>}>
+      <WishPoolContent />
+    </Suspense>
   );
 }
