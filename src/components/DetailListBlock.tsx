@@ -43,7 +43,7 @@ export interface WishItem {
   painPoints?: string[];
   beforeFrequency?: string;
   beforeOperationCount?: number;
-  beforeFreq?: number;
+  beforeFreq?: string;
   beforePeopleCount?: number;
   beforeHoursPerTask?: number;
   beforeMonthlyHours?: number;
@@ -55,7 +55,7 @@ export interface WishItem {
   afterProcess?: string;
   afterFrequency?: string;
   afterOperationCount?: number;
-  afterFreq?: number;
+  afterFreq?: string;
   afterPeopleCount?: number;
   afterHoursPerTask?: number;
   afterMonthlyHours?: number;

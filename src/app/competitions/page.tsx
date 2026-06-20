@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ChoDashboard from '@/components/ChoDashboard';
-import { Spin, App, Tabs, Tag } from 'antd';
+import { Spin, App, Tabs, Tag, Tooltip } from 'antd';
 import {
   TrophyOutlined,
   TeamOutlined,
@@ -17,6 +17,7 @@ import {
   ThunderboltOutlined,
   DollarOutlined,
   SyncOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import { PAGE_LABELS } from '@/lib/bitable/page-usage';
@@ -41,87 +42,145 @@ function periodLabel(p: string): string {
   return p;
 }
 
-// ── 方案详情弹窗 ──
-function EntryDrillDownModal({ item, categoryColors, statusColors, onClose }: { item: WishItem; categoryColors: Record<string, string>; statusColors: Record<string, string>; onClose: () => void }) {
-  const sectionTitle = (text: string, color: string) => (
-    <div style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: `2px solid ${color}30`, paddingBottom: 6, marginBottom: 12, marginTop: 20 }}>{text}</div>
+// ── 方案详情弹窗（4分组布局） ──
+function EntryDrillDownModal({ item, categoryColors, statusColors, fieldDescriptions, onClose }: { item: WishItem; categoryColors: Record<string, string>; statusColors: Record<string, string>; fieldDescriptions: Record<string, string>; onClose: () => void }) {
+  const catColor = categoryColors[item.sceneCategory || ''] || FALLBACK_COLOR;
+  const arr = (v: string[] | undefined) => v?.length ? v.join('、') : null;
+  const members = [...new Set([...(item.submitter || []), ...(item.teamMembers || [])])];
+
+  // 带问号tooltip的字段标签
+  const labelWithTip = (label: string, fieldKey: string) => (
+    <span className="inline-flex items-center gap-1" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+      {label}
+      {fieldDescriptions[fieldKey] && (
+        <Tooltip title={fieldDescriptions[fieldKey]} placement="top">
+          <QuestionCircleOutlined style={{ fontSize: 10, color: '#9ca3af', cursor: 'help' }} />
+        </Tooltip>
+      )}
+    </span>
   );
-  const labelStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 12 };
-  const valStyle: React.CSSProperties = { color: 'var(--foreground)', fontSize: 13, fontWeight: 500, textAlign: 'right' as const };
-  const row = (label: string, value: React.ReactNode, full?: boolean) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, padding: '5px 0', gridColumn: full ? '1 / -1' : undefined }}>
-      <span style={labelStyle}>{label}</span>
-      <span style={{ ...valStyle, maxWidth: full ? 500 : 240, wordBreak: 'break-word' }}>{value || '—'}</span>
+
+  // 分组标题
+  const groupHeader = (title: string, accentColor: string) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 8 }}>
+      <div style={{ width: 3, height: 14, borderRadius: 2, background: accentColor }} />
+      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--foreground)' }}>{title}</span>
     </div>
   );
-  const arr = (v: string[] | undefined) => v?.length ? v.join('、') : null;
+
+  // 标签-值行（2列grid内，左对齐）
+  const fieldRow = (label: string | React.ReactNode, value: React.ReactNode) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+      <div>{typeof label === 'string' ? <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</span> : label}</div>
+      <span style={{ fontSize: 12, color: 'var(--foreground)', fontWeight: 500, textAlign: 'left', wordBreak: 'break-word', maxWidth: 240 }}>{value || '—'}</span>
+    </div>
+  );
+
+  // 宽值行（跨列，左对齐）
+  const wideRow = (label: string | React.ReactNode, value: React.ReactNode) => (
+    <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+      <div>{typeof label === 'string' ? <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</span> : label}</div>
+      <span style={{ fontSize: 12, color: 'var(--foreground)', fontWeight: 500, textAlign: 'left', wordBreak: 'break-word', maxWidth: 400 }}>{value || '—'}</span>
+    </div>
+  );
+
+  // ── 改造前后对比行 ──
+  const beforeAfterRow = (label: string, before: React.ReactNode, after: React.ReactNode) => {
+    const hasChange = before !== '—' && after !== '—' && before !== after;
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 100, flexShrink: 0 }}>{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 500, color: hasChange ? '#b45309' : 'var(--foreground)', width: 100, textAlign: 'left' }}>{before}</span>
+        <span style={{ fontSize: 11, color: hasChange ? '#16a34a' : 'var(--text-muted)', fontWeight: hasChange ? 700 : 400, flexShrink: 0 }}>→</span>
+        <span style={{ fontSize: 12, fontWeight: 500, color: hasChange ? '#16a34a' : 'var(--foreground)', width: 100, textAlign: 'left' }}>{after}</span>
+      </div>
+    );
+  };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <div style={{ width: '92%', maxWidth: 700, maxHeight: '85vh', background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(24px)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', animation: 'slideUp 0.3s ease-out' }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ width: '92%', maxWidth: 680, maxHeight: '85vh', background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(24px)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', animation: 'slideUp 0.3s ease-out' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div style={{ background: 'linear-gradient(135deg, #0F2057 0%, #1a3a8a 40%, #F27F22 100%)', padding: '20px 24px', color: 'white', position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        <div style={{ background: 'linear-gradient(135deg, #0F2057 0%, #1a3a8a 40%, #F27F22 100%)', padding: '16px 24px', color: 'white', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
             {item.proposalNo && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>#{item.proposalNo}</Tag>}
-            {item.sceneCategory && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>{item.sceneCategory}</Tag>}
+            {item.sceneCategory && <Tag style={{ fontSize: 11, margin: 0, background: `${catColor}40`, borderColor: `${catColor}60`, color: 'white' }}>{item.sceneCategory}</Tag>}
             {item.competitionProgress && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>{STATUS_TEXT[item.competitionProgress] || item.competitionProgress}</Tag>}
           </div>
           <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{item.title || '未命名方案'}</div>
-          {item.briefIntro && <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>{item.briefIntro}</div>}
-          <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 16, width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
 
         {/* Body */}
-        <div style={{ padding: '0 24px 24px', maxHeight: 'calc(85vh - 120px)', overflowY: 'auto' }}>
-          {/* Score highlight */}
-          <div style={{ display: 'flex', gap: 24, padding: '16px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-            {[
-              { label: '月均节省总工时', value: item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : '-', color: '#16a34a' },
-              { label: '总降本提效', value: item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : '-', color: '#1a3a8a' },
-              { label: '复用价值等级', value: item.reuseValueLevel || '-', color: '#F27F22' },
-            ].map((m) => (
-              <div key={m.label} style={{ textAlign: 'center', flex: 1 }}>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>{m.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: m.color }}>{m.value}</div>
+        <div style={{ padding: '12px 24px 24px', maxHeight: 'calc(85vh - 80px)', overflowY: 'auto' }}>
+
+          {/* ── 分组一：参赛信息 ── */}
+          {groupHeader('参赛信息', '#1a3a8a')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+            {fieldRow('提报团队', item.team)}
+            {fieldRow('提报人', arr(item.submitter))}
+            {wideRow('团队成员', members.length > 0 ? (members.length > 6 ? `${members.slice(0, 6).join('、')}等${members.length}人` : members.join('、')) : null)}
+          </div>
+
+          {/* ── 分组二：场景信息 ── */}
+          {groupHeader('场景信息', '#2d5bc7')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+            {fieldRow(labelWithTip('场景分类', 'sceneCategory'), item.sceneCategory)}
+            {fieldRow(labelWithTip('核心价值', 'coreValue'), item.coreValue)}
+            {wideRow(labelWithTip('一句话简介', 'briefIntro'), item.briefIntro)}
+            {wideRow(labelWithTip('核心痛点', 'painPoints'), arr(item.painPoints))}
+            {fieldRow(labelWithTip('AI工具', 'aiTools'), arr(item.aiTools))}
+            {wideRow(labelWithTip('AI实现效果', 'implementationLink'), item.implementationLink ? <a href={item.implementationLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#1a3a8a', textDecoration: 'underline' }}>查看实现效果 →</a> : null)}
+          </div>
+
+          {/* ── 分组三：量化数据 ── */}
+          {groupHeader('量化数据', '#16a34a')}
+          {/* 改造前后对比表 */}
+          <div style={{ background: 'rgba(0,0,0,0.02)', borderRadius: 8, padding: '4px 12px', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', padding: '4px 0', marginBottom: 2 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', width: 100, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#b45309', width: 100 }}>改造前</span>
+              <span style={{ fontSize: 11, width: 20, textAlign: 'center', flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', width: 100 }}>改造后</span>
+            </div>
+            {beforeAfterRow('操作频次', item.beforeFreq || '—', item.afterFreq || '—')}
+            {beforeAfterRow('单次操作耗时', item.beforeHoursPerTask ? `${item.beforeHoursPerTask}h` : '—', item.afterHoursPerTask ? `${item.afterHoursPerTask}h` : '—')}
+            {beforeAfterRow('操作人数', item.beforePeopleCount ? `${item.beforePeopleCount}人` : '—', item.afterPeopleCount ? `${item.afterPeopleCount}人` : '—')}
+            {beforeAfterRow('月均耗时', item.beforeMonthlyHours ? `${fmtF(Math.round(item.beforeMonthlyHours))}h` : '—', item.afterMonthlyHours ? `${fmtF(Math.round(item.afterMonthlyHours))}h` : '—')}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+            {fieldRow(labelWithTip('降本费用', 'monthlySavedCost'), fmtCost(item.monthlySavedCost))}
+            {fieldRow(labelWithTip('月均Token费用', 'aiCost'), item.aiCost ? `¥${fmtF(Math.round(item.aiCost))}` : '—')}
+            {wideRow(labelWithTip('降本费用说明', 'costReductionNote'), item.costReductionNote)}
+          </div>
+          {/* 突出高亮：月均节省总工时 + 提效比例 */}
+          <div style={{ display: 'flex', gap: 0, marginTop: 8 }}>
+            <div style={{ flex: 1, textAlign: 'center', padding: '12px 0', background: 'rgba(26,58,138,0.06)', borderRadius: 8 }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>月均节省总工时</div>
+              <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'SF Mono, Menlo, monospace', color: '#1a3a8a' }}>
+                {item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : '—'}
               </div>
-            ))}
-          </div>
-
-          {sectionTitle('参赛信息', '#1a3a8a')}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
-            {row('核心价值', item.coreValue)}
-            {row('提报团队', item.team)}
-            {row('组队类型', item.teamType)}
-            {row('AI工具', arr(item.aiTools))}
-            {row('落地进展', item.landingProgress)}
-          </div>
-
-          {sectionTitle('改造前后对比', '#2d5bc7')}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
-            <div style={{ textAlign: 'center', padding: '12px 0' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>改造前 · 月均耗时</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#b45309' }}>{item.beforeMonthlyHours ? `${fmtF(Math.round(item.beforeMonthlyHours))}h` : '-'}</div>
-              {item.beforePeopleCount && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.beforePeopleCount}人参与</div>}
             </div>
-            <div style={{ textAlign: 'center', padding: '12px 0' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>改造后 · 月均耗时</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#16a34a' }}>{item.afterMonthlyHours ? `${fmtF(Math.round(item.afterMonthlyHours))}h` : '-'}</div>
-              {item.afterPeopleCount && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.afterPeopleCount}人参与</div>}
+            <div style={{ flex: 1, textAlign: 'center', padding: '12px 0', background: 'rgba(16,163,74,0.06)', borderRadius: 8 }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>降本提效比例</div>
+              <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'SF Mono, Menlo, monospace', color: '#16a34a' }}>
+                {item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : '—'}
+              </div>
             </div>
           </div>
-          {item.painPoints && item.painPoints.length > 0 && row('原核心痛点', item.painPoints.join('、'), true)}
 
-          {(item.implementation || item.implementationLink) && (
-            <>
-              {sectionTitle('实现过程', '#2d5bc7')}
-              {item.implementation && <div style={{ fontSize: 13, color: 'var(--foreground)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{item.implementation}</div>}
-              {item.implementationLink && <a href={item.implementationLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: '#1a3a8a', textDecoration: 'underline' }}>查看实现效果 →</a>}
-            </>
-          )}
+          {/* ── 分组四：价值计分 ── */}
+          {groupHeader('价值计分', '#F27F22')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+            {fieldRow(labelWithTip('推广复用价值系数', 'reuseValue'), item.reuseValue || (item.reuseValueNumber ? `×${item.reuseValueNumber}` : null))}
+            {fieldRow(labelWithTip('场景归属地区系数', 'regionCoefficient'), item.regionCoefficient || (item.regionCoefficientValue ? `${item.regionCoefficientValue}` : null))}
+            {fieldRow(labelWithTip('最终价值计分', 'finalValueScore'), item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '—')}
+            {fieldRow(labelWithTip('价值星级', 'valueStarLevel'), item.valueStarLevel ? `${'★'.repeat(item.valueStarLevel)}${'☆'.repeat(5 - item.valueStarLevel)}` : '—')}
+          </div>
 
           {item.recordUrl && (
-            <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-              <a href={item.recordUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#1a3a8a', textDecoration: 'underline' }}>在飞书多维表格中查看 →</a>
+            <div style={{ marginTop: 20, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+              <a href={item.recordUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#1a3a8a', textDecoration: 'underline' }}>在飞书多维表格中查看 →</a>
             </div>
           )}
         </div>
@@ -130,7 +189,7 @@ function EntryDrillDownModal({ item, categoryColors, statusColors, onClose }: { 
   );
 }
 
-// ── 亮点方案卡片 ──
+// ── 亮点项目卡片 ──
 function SpotlightCard({ item, rank, categoryColors, onClick }: { item: WishItem; rank: number; categoryColors: Record<string, string>; onClick: () => void }) {
   const [hovered, setHovered] = useState(false);
   const catColor = categoryColors[item.sceneCategory || ''] || FALLBACK_COLOR;
@@ -386,12 +445,6 @@ function CompetitionsPageInner() {
 
                   {/* ── 单列紧凑 Banner ── */}
                   <div className="glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)', padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    {/* Badge */}
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(255,255,255,0.5)', borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}>
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#16a34a' }} />
-                      HRAS · AI"智"造赛
-                    </div>
-
                     {/* 主标题 */}
                     <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.2 }}>
                       <span>AI 重构效率 </span>
@@ -401,13 +454,6 @@ function CompetitionsPageInner() {
                     {/* 副标题 */}
                     <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                       欢迎每一位勇于拥抱变化、重塑流程、迎击时代浪潮的探索者
-                    </div>
-
-                    {/* 流程示意（纯文本，无胶囊/按钮容器） */}
-                    <div style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>我来执行</span>
-                      <span style={{ color: 'var(--accent)', fontWeight: 600 }}>→</span>
-                      <span className="gradient-text" style={{ fontWeight: 700 }}>我创造 + AI 执行</span>
                     </div>
 
                     {/* 管理员按钮 */}
@@ -430,15 +476,6 @@ function CompetitionsPageInner() {
                         </button>
                       </div>
                     )}
-
-                    {/* 底部信息行（11px inline） */}
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span>鼓励全员 AI 落地实际工作场景</span>
-                      <span>·</span>
-                      <span>HRAS 全体覆盖</span>
-                      <span>·</span>
-                      <span>每月26日-月底评审</span>
-                    </div>
                   </div>
 
                   {/* ── 5 指标卡 ── */}
@@ -536,13 +573,15 @@ function CompetitionsPageInner() {
                     </div>
                   )}
 
-                  {/* ── 亮点方案 Top 3 ── */}
+                  {/* ── 亮点项目 Top 3 ── */}
                   {spotlightEntries.length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 mb-3">
                         <BulbOutlined style={{ color: '#F27F22' }} />
-                        <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>亮点方案</h3>
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>当期价值排名 Top 3</span>
+                        <h3 className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>亮点项目</h3>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: 'rgba(242,127,34,0.1)', color: '#F27F22', border: '1px solid rgba(242,127,34,0.2)' }}>
+                          点击展示项目详情
+                        </span>
                       </div>
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {spotlightEntries.map((item, idx) => (
@@ -597,7 +636,7 @@ function CompetitionsPageInner() {
       `}</style>
 
       {/* 详情弹窗 */}
-      {selectedEntry && <EntryDrillDownModal item={selectedEntry} categoryColors={categoryColors} statusColors={statusColors} onClose={() => setSelectedEntry(null)} />}
+      {selectedEntry && <EntryDrillDownModal item={selectedEntry} categoryColors={categoryColors} statusColors={statusColors} fieldDescriptions={fieldDescriptions} onClose={() => setSelectedEntry(null)} />}
     </>
   );
 }
