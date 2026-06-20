@@ -40,7 +40,7 @@ src/
 │   ├── resources/    # 课程资源（课程+工具）
 │   ├── competitions/ # AI 大赛
 │   └── page.tsx      # 首页（居中Hero+5项glass指标带）
-├── components/       # 共享组件
+├── components/       # 共享组件（Navigation/ChoDashboard/DetailListBlock/HighlightSweep/SearchInput/EntryCard）
 └── lib/              # 工具函数 (Supabase、飞书、认证、bitable映射)
 ```
 

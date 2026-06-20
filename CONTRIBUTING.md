@@ -118,6 +118,7 @@ src/
 ├── components/            # 公共组件
 │   ├── Navigation.tsx     # 导航栏（4项：首页/场景大全/AI大赛/课程资源）
 │   ├── ChoDashboard.tsx   # 成效看板（筛选+导出+指标卡+公式）
+│   ├── DetailListBlock.tsx # 共享明细列表（WishItem类型+fmt系列+FilterRow+表格），wish-pool/competitions共用
 │   ├── HighlightSweep.tsx # 标题 shimmer 动效
 │   ├── SearchInput.tsx    # 搜索输入框
 │   └── EntryCard/         # 大赛参赛卡片
