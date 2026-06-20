@@ -19,6 +19,12 @@ import {
   HourglassOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
+import { fieldOptionsToFilterItems, type FilterItem } from '@/lib/bitable/filter-options';
+import type { FieldSelectOption } from '@/lib/bitable/field-map';
+import {
+  isLandedState, partitionProgressStates, buildProgressColorMap,
+  buildCategoryColorMap, reuseLevelStyle, FALLBACK_COLOR,
+} from '@/lib/bitable/enums';
 
 // ── 类型定义 ──
 interface WishItem {
@@ -94,24 +100,6 @@ interface Stats {
 }
 
 // ── 常量 ──
-const CATEGORY_COLORS: Record<string, string> = {
-  数据分析: '#1a3a8a', 招聘管理: '#F27F22', 薪酬绩效: '#2d5bc7', 培训管理: '#4a7de0',
-  组织与人才发展: '#1a3a8a', 文化氛围: '#F27F22', 核算与报账: '#2d5bc7', 基础人事支持: '#4a7de0',
-  行政管理: '#1a3a8a', 日常工作: '#2d5bc7', 考勤管理: '#4a7de0',
-};
-
-// 已落地色系（蓝绿）
-const LANDED_STATES = ['试点上线', '推广上线', '全面上线'];
-const LANDED_COLORS: Record<string, string> = { '试点上线': '#1a3a8a', '推广上线': '#2d5bc7', '全面上线': '#4a7de0' };
-// 待实现色系（暖灰）
-const PENDING_STATES = ['待启动', '训练验证中', '关闭'];
-const PENDING_COLORS: Record<string, string> = { '待启动': '#94a3b8', '训练验证中': '#64748b', '关闭': '#e2e8f0' };
-// 合并
-const PROGRESS_COLORS: Record<string, string> = { ...LANDED_COLORS, ...PENDING_COLORS };
-
-const LANDING_PROGRESS_OPTIONS = [...LANDED_STATES, ...PENDING_STATES];
-const SCENE_CATEGORY_OPTIONS = ['数据分析', '招聘管理', '薪酬绩效', '培训管理', '组织与人才发展', '文化氛围', '核算与报账', '基础人事支持', '行政管理', '日常工作', '考勤管理', '其他（请补充）', '人才发展'];
-
 const SORT_OPTIONS = [
   { value: 'finalValueScore', label: '最终价值计分' },
   { value: 'monthlySavedHours', label: '月均提效节省工时' },
@@ -186,15 +174,18 @@ function StatCard({ icon, label, value, sub, color, highlight }: {
 }
 
 // ── 饼图（SVG donut）──
-function ProgressDonut({ progressMap, total }: { progressMap: Record<string, number>; total: number }) {
-  const landedTotal = LANDED_STATES.reduce((s, k) => s + (progressMap[k] || 0), 0);
-  const pendingTotal = PENDING_STATES.reduce((s, k) => s + (progressMap[k] || 0), 0);
-  const allStates = [...LANDED_STATES, ...PENDING_STATES];
+function ProgressDonut({ progressMap, total, landedStates, pendingStates, progressColors }: {
+  progressMap: Record<string, number>; total: number;
+  landedStates: string[]; pendingStates: string[]; progressColors: Record<string, string>;
+}) {
+  const landedTotal = landedStates.reduce((s, k) => s + (progressMap[k] || 0), 0);
+  const pendingTotal = pendingStates.reduce((s, k) => s + (progressMap[k] || 0), 0);
+  const allStates = [...landedStates, ...pendingStates];
   const segments = allStates.map((state) => ({
     state,
     count: progressMap[state] || 0,
-    color: LANDED_COLORS[state] || PENDING_COLORS[state] || '#cbd5e1',
-    group: LANDED_STATES.includes(state) ? '已落地' : '待实现',
+    color: progressColors[state] || '#cbd5e1',
+    group: landedStates.includes(state) ? '已落地' : '待实现',
   }));
 
   // SVG arc calculation
@@ -246,9 +237,9 @@ function ProgressDonut({ progressMap, total }: { progressMap: Record<string, num
           <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#1a3a8a' }} />
           <span className="text-xs font-semibold" style={{ color: '#1a3a8a' }}>已落地 {landedTotal}</span>
         </div>
-        {LANDED_STATES.map((s) => (
+        {landedStates.map((s) => (
           <div key={s} className="flex items-center gap-2 ml-2">
-            <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: LANDED_COLORS[s] }} />
+            <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: progressColors[s] }} />
             <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{s} {progressMap[s] || 0}</span>
           </div>
         ))}
@@ -256,9 +247,9 @@ function ProgressDonut({ progressMap, total }: { progressMap: Record<string, num
           <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#94a3b8' }} />
           <span className="text-xs font-semibold" style={{ color: '#94a3b8' }}>待实现 {pendingTotal}</span>
         </div>
-        {PENDING_STATES.map((s) => (
+        {pendingStates.map((s) => (
           <div key={s} className="flex items-center gap-2 ml-2">
-            <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: PENDING_COLORS[s] }} />
+            <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: progressColors[s] }} />
             <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{s} {progressMap[s] || 0}</span>
           </div>
         ))}
@@ -270,7 +261,7 @@ function ProgressDonut({ progressMap, total }: { progressMap: Record<string, num
 // ── 筛选行（简约版，无icon）──
 function FilterRow({ label, options, value, onChange }: {
   label: string;
-  options: { value: string; label: string; count: number }[];
+  options: FilterItem[];
   value: string; onChange: (v: string) => void;
 }) {
   return (
@@ -294,7 +285,7 @@ function FilterRow({ label, options, value, onChange }: {
 }
 
 // ── 场景详情悬浮弹窗 ──
-function SceneDetailPopup({ item }: { item: WishItem }) {
+function SceneDetailPopup({ item, categoryColors, progressColors }: { item: WishItem; categoryColors: Record<string, string>; progressColors: Record<string, string> }) {
   const labelStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 11, whiteSpace: 'nowrap' };
   const valStyle: React.CSSProperties = { color: 'var(--foreground)', fontSize: 12, fontWeight: 500, textAlign: 'right' as const };
   const sectionTitle = (text: string, color: string) => (
@@ -316,8 +307,8 @@ function SceneDetailPopup({ item }: { item: WishItem }) {
       <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           {item.proposalNo && <Tag style={{ fontSize: 10, margin: 0, background: 'rgba(26,58,138,0.1)', borderColor: 'rgba(26,58,138,0.2)', color: '#1a3a8a' }}>{item.proposalNo}</Tag>}
-          {item.sceneCategory && <Tag color={CATEGORY_COLORS[item.sceneCategory] || '#6b7280'} style={{ fontSize: 10, margin: 0 }}>{item.sceneCategory}</Tag>}
-          {item.landingProgress && <Tag color={PROGRESS_COLORS[item.landingProgress] || '#6b7280'} style={{ fontSize: 10, margin: 0 }}>{item.landingProgress}</Tag>}
+          {item.sceneCategory && <Tag color={categoryColors[item.sceneCategory] || FALLBACK_COLOR} style={{ fontSize: 10, margin: 0 }}>{item.sceneCategory}</Tag>}
+          {item.landingProgress && <Tag color={progressColors[item.landingProgress] || FALLBACK_COLOR} style={{ fontSize: 10, margin: 0 }}>{item.landingProgress}</Tag>}
         </div>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--foreground)', lineHeight: 1.3 }}>{item.title || '未命名场景'}</div>
         {item.briefIntro && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{item.briefIntro}</div>}
@@ -375,7 +366,7 @@ function SceneDetailPopup({ item }: { item: WishItem }) {
 }
 
 // ── 悬浮明细列表 ──
-function SceneHoverList({ items }: { items: WishItem[] }) {
+function SceneHoverList({ items, progressColors }: { items: WishItem[]; progressColors: Record<string, string> }) {
   return (
     <div style={{ maxHeight: 360, overflowY: 'auto', overflowX: 'auto' }}>
       <table style={{ fontSize: 11, borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
@@ -392,7 +383,7 @@ function SceneHoverList({ items }: { items: WishItem[] }) {
               <td style={{ padding: '4px 8px', color: 'var(--foreground)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title || '-'}</td>
               <td style={{ padding: '4px 8px', color: 'var(--text-secondary)' }}>{item.team || '—'}</td>
               <td style={{ padding: '4px 8px' }}>
-                {item.landingProgress ? <Tag color={PROGRESS_COLORS[item.landingProgress] || '#6b7280'} style={{ fontSize: 10, margin: 0, lineHeight: '16px' }}>{item.landingProgress}</Tag> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                {item.landingProgress ? <Tag color={progressColors[item.landingProgress] || FALLBACK_COLOR} style={{ fontSize: 10, margin: 0, lineHeight: '16px' }}>{item.landingProgress}</Tag> : <span style={{ color: '#cbd5e1' }}>—</span>}
               </td>
               <td style={{ padding: '4px 8px', color: 'var(--text-secondary)', fontFamily: 'SF Mono, monospace' }}>{item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '—'}</td>
               <td style={{ padding: '4px 8px', color: 'var(--text-secondary)' }}>{item.reuseValueLevel || '—'}</td>
@@ -533,6 +524,230 @@ function FormulaSection() {
   );
 }
 
+// ── 明细列表区块（排序+筛选+summary+表格，可复用组件）──
+function DetailListBlock({
+  baseList,
+  label,
+  emptyText,
+  showMetrics = true,
+  labelColor = '#1a3a8a',
+  showPendingDates = false,
+  fieldDescriptions,
+  fieldOptions,
+  progressColors,
+  categoryColors,
+  onRowEnter,
+  onRowLeave,
+  onSelectItem,
+}: {
+  baseList: WishItem[];
+  label: string;
+  emptyText: string;
+  showMetrics?: boolean;
+  labelColor?: string;
+  showPendingDates?: boolean;
+  fieldDescriptions: Record<string, string>;
+  fieldOptions: Record<string, FieldSelectOption[]>;
+  progressColors: Record<string, string>;
+  categoryColors: Record<string, string>;
+  onRowEnter: (item: WishItem) => void;
+  onRowLeave: () => void;
+  onSelectItem: (item: WishItem) => void;
+}) {
+  const [sortBy, setSortBy] = useState('finalValueScore');
+  const [titleWidth, setTitleWidth] = useState(180);
+  const [sceneCategoryFilter, setSceneCategoryFilter] = useState<string>('all');
+  const [teamFilter, setTeamFilter] = useState<string>('all');
+
+  // 篮选选项（从 baseList 聚合，count 只反映当前视图的数据）
+  const categoryOptions = useMemo(
+    () => fieldOptionsToFilterItems('sceneCategory', baseList, fieldOptions, {}),
+    [baseList, fieldOptions],
+  );
+  const teamOptions = useMemo(
+    () => fieldOptionsToFilterItems('team', baseList, fieldOptions, {}),
+    [baseList, fieldOptions],
+  );
+
+  // 篮选+排序后的数据
+  const filteredData = useMemo(() => {
+    let list = baseList;
+    if (sceneCategoryFilter !== 'all') list = list.filter((d) => d.sceneCategory === sceneCategoryFilter);
+    if (teamFilter !== 'all') list = list.filter((d) => d.team === teamFilter);
+    return [...list].sort((a, b) => {
+      switch (sortBy) {
+        case 'finalValueScore': return (b.finalValueScore ?? -1) - (a.finalValueScore ?? -1);
+        case 'monthlySavedHours': return (b.monthlySavedHours ?? -1) - (a.monthlySavedHours ?? -1);
+        case 'totalSavedHours': return (b.totalSavedHours ?? -1) - (a.totalSavedHours ?? -1);
+        case 'monthlySavedCost': {
+          const aC = typeof a.monthlySavedCost === 'number' ? a.monthlySavedCost : parseFloat(String(a.monthlySavedCost || '0').replace(/[^0-9.\-]/g, '')) || 0;
+          const bC = typeof b.monthlySavedCost === 'number' ? b.monthlySavedCost : parseFloat(String(b.monthlySavedCost || '0').replace(/[^0-9.\-]/g, '')) || 0;
+          return bC - aC;
+        }
+        case 'reuseValueNumber': return (b.reuseValueNumber ?? -1) - (a.reuseValueNumber ?? -1);
+        default: return 0;
+      }
+    }).map((s, i) => ({ ...s, seq: i + 1 }));
+  }, [baseList, sceneCategoryFilter, teamFilter, sortBy]);
+
+  // Summary
+  const summary = useMemo(() => {
+    const eff = Math.round(filteredData.reduce((s, d) => s + (d.monthlySavedHours ?? 0), 0) * 10) / 10;
+    const cost = filteredData.reduce((s, d) => {
+      if (!d.monthlySavedCost) return s;
+      const n = typeof d.monthlySavedCost === 'number' ? d.monthlySavedCost : parseFloat(String(d.monthlySavedCost).replace(/[^0-9.\-]/g, ''));
+      return s + (n > 0 ? n : 0);
+    }, 0);
+    return { count: filteredData.length, eff, costDisplay: cost > 0 ? `¥${fmtF(Math.round(cost))}` : '—' };
+  }, [filteredData]);
+
+  // 待实现视图额外列：预计启动日、预计试点上线（仅 showPendingDates 时插入落地进展后面）
+  const pendingDateColumns: TableColumnsType<typeof filteredData[number]> = showPendingDates ? [
+    { title: <FmtHeader label="预计启动日" tip={fieldDescriptions.plannedStartDate || '计划启动日期'} />, dataIndex: 'plannedStartDate', key: 'psd', width: 90, align: 'center' as const,
+      render: (v: string | null) => <span className="text-xs" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{v ? v.slice(0, 10) : '—'}</span> },
+    { title: <FmtHeader label="预计试点上线" tip={fieldDescriptions.pilotDate || '试点上线日期'} />, dataIndex: 'pilotDate', key: 'pd', width: 90, align: 'center' as const,
+      render: (v: string | null) => <span className="text-xs" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{v ? v.slice(0, 10) : '—'}</span> },
+  ] : [];
+
+  // Table columns（3视图共用，列顺序：序号→名称→价值星级→最终价值计分→落地进展→[日期列]→改造成效→复用价值）
+  const columns: TableColumnsType<typeof filteredData[number]> = [
+    {
+      title: '序号', dataIndex: 'seq', key: 'seq', width: 50, align: 'center', fixed: 'left', className: 'cho-frozen-rank',
+      render: (seq: number) => <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{seq}</span>,
+    },
+    {
+      title: '名称', dataIndex: 'title', key: 'title', width: titleWidth, ellipsis: true,
+      onHeaderCell: () => ({
+        style: { position: 'relative' },
+        children: (
+          <div className="flex items-center justify-between">
+            <span>名称</span>
+            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-300" style={{ zIndex: 10 }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                const startX = e.clientX, startWidth = titleWidth;
+                const onMove = (e: MouseEvent) => setTitleWidth(Math.max(100, startWidth + e.clientX - startX));
+                const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+                document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+              }}
+            />
+          </div>
+        ),
+      }),
+      render: (title: string, record) => (
+        <div>
+          <button onClick={() => onSelectItem(record)} className="text-xs font-medium truncate text-left hover:underline w-full" style={{ color: '#1a3a8a' }}
+            onMouseEnter={() => onRowEnter(record)} onMouseLeave={onRowLeave}>
+            {title || '—'}
+          </button>
+          <div className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{record.team || '—'}</div>
+        </div>
+      ),
+    },
+    {
+      title: <FmtHeader label="价值星级" tip="按最终价值计分排名百分位：前20%=5★，前40%=4★，前60%=3★，前80%=2★，后20%=1★" />,
+      dataIndex: 'valueStarLevel', key: 'valueStarLevel', width: 80, align: 'center',
+      render: (v: number | null) => {
+        if (v == null) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
+        const starColor = v >= 4 ? '#1a3a8a' : v >= 3 ? '#2d5bc7' : '#94a3b8';
+        return (
+          <span className="inline-flex items-center gap-0.5">
+            {Array.from({ length: v }, (_, i) => <StarFilled key={i} style={{ fontSize: 11, color: starColor }} />)}
+            {Array.from({ length: 5 - v }, (_, i) => <StarOutlined key={i} style={{ fontSize: 11, color: '#cbd5e1' }} />)}
+          </span>
+        );
+      },
+    },
+    {
+      title: <FmtHeader label="最终价值计分" tip={fieldDescriptions.finalValueScore || '最终价值计分'} />,
+      dataIndex: 'finalValueScore', key: 'fvs', width: 80, align: 'center',
+      render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#F27F22' : 'var(--text-muted)' }}>{v != null && v > 0 ? fmtF(Math.round(v)) : '—'}</span>,
+    },
+    {
+      title: '落地进展', dataIndex: 'landingProgress', key: 'landingProgress', width: 90, align: 'center',
+      render: (v: string | null) => {
+        if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
+        return <Tag color={progressColors[v] || FALLBACK_COLOR} className="text-[11px]" style={{ margin: 0 }}>{v}</Tag>;
+      },
+    },
+    ...pendingDateColumns,
+    {
+      title: <FmtHeader label="改造成效" tip="量化改造效果" />,
+      key: 'result-group', className: 'cho-group-result',
+      children: [
+        { title: <FmtHeader label="提效工时" tip={fieldDescriptions.monthlySavedHours || '月均提效节省工时'} />, dataIndex: 'monthlySavedHours', key: 'sh', width: 80, align: 'center', className: 'cho-col-result',
+          render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span> },
+        { title: <FmtHeader label="降本费用" tip={fieldDescriptions.monthlySavedCost || '月均降本费用（不含人力成本）'} />, dataIndex: 'monthlySavedCost', key: 'mc', width: 80, align: 'center', className: 'cho-col-result',
+          render: (v: number | string | null) => <span className="font-mono text-xs" style={{ color: (typeof v === 'number' ? v : parseFloat(String(v || '0').replace(/[^0-9.\-]/g, ''))) > 0 ? '#d97706' : 'var(--text-muted)' }}>{fmtCost(v)}</span> },
+        { title: <FmtHeader label="月均节省总工时" tip={fieldDescriptions.totalSavedHours || '提效+降本折算'} />, dataIndex: 'totalSavedHours', key: 'tsh', width: 90, align: 'center', className: 'cho-col-result',
+          render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span> },
+      ],
+    },
+    {
+      title: <FmtHeader label="复用价值" tip="方案可复用范围和地区系数" />,
+      key: 'reuse-group', className: 'cho-group-reuse',
+      children: [
+        { title: <FmtHeader label="复用价值系数" tip="跨团队/BU 复用范围" />, dataIndex: 'reuseValue', key: 'rm', width: 110, align: 'center', className: 'cho-col-reuse',
+          render: (v: string | null, record) => {
+            if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
+            const level = record.reuseValueLevel;
+            const ls = reuseLevelStyle(level);
+            return <span className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap" style={{ background: ls.bg, color: ls.fg, border: `1px solid ${ls.border}` }}>{v}</span>;
+          },
+        },
+        { title: <FmtHeader label="地区系数" tip="场景归属地区系数" />, dataIndex: 'regionCoefficient', key: 'rc', width: 70, align: 'center', className: 'cho-col-reuse',
+          render: (v: string | null) => <span className="text-xs font-medium" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{v || '—'}</span> },
+      ],
+    },
+  ];
+
+  return (
+    <div className="space-y-2">
+      {/* 篮选+排序 */}
+      <div className="glass rounded-xl px-4 py-3" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>排序</span>
+            {SORT_OPTIONS.map((opt) => (
+              <button key={opt.value} onClick={() => setSortBy(opt.value)}
+                className="px-2 py-0.5 rounded-md text-[11px] font-medium transition-all"
+                style={{ background: sortBy === opt.value ? '#1a3a8a' : 'rgba(0,0,0,0.04)', color: sortBy === opt.value ? '#fff' : 'var(--text-secondary)' }}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <FilterRow label="场景分类" options={categoryOptions} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
+          <FilterRow label="提报团队" options={teamOptions} value={teamFilter} onChange={setTeamFilter} />
+        </div>
+      </div>
+
+      {/* 小summary */}
+      {showMetrics ? (
+        <div className="flex items-center gap-4 text-xs px-2" style={{ color: 'var(--text-muted)' }}>
+          <span>共 <strong style={{ color: labelColor }}>{summary.count}</strong> 个{label}</span>
+          <span>月均提效 <strong style={{ color: labelColor }}>{summary.eff > 0 ? `${summary.eff}h` : '—'}</strong></span>
+          <span>月均降本 <strong style={{ color: '#4a7de0' }}>{summary.costDisplay}</strong></span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-4 text-xs px-2" style={{ color: 'var(--text-muted)' }}>
+          <span>共 <strong style={{ color: labelColor }}>{summary.count}</strong> 个{label}</span>
+        </div>
+      )}
+
+      {/* 表格 */}
+      {filteredData.length === 0 ? (
+        <div className="text-center py-16 glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{emptyText}</p>
+        </div>
+      ) : (
+        <div className="glass rounded-2xl overflow-hidden cho-table-wrap" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
+          <Table dataSource={filteredData} columns={columns} rowKey="id" pagination={false} size="small" scroll={{ x: 'max-content' }} rowClassName={() => 'cho-table-row'} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── 主页面内容 ──
 function WishPoolContent() {
   const router = useRouter();
@@ -541,6 +756,15 @@ function WishPoolContent() {
 
   const [items, setItems] = useState<WishItem[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [fieldDescriptions, setFieldDescriptions] = useState<Record<string, string>>({});
+  const [fieldOptions, setFieldOptions] = useState<Record<string, FieldSelectOption[]>>({});
+
+  // ── 动态枚举（从飞书 fieldOptions 构建，不硬编码）──
+  const landedStates = useMemo(() => partitionProgressStates(fieldOptions.landingProgress).landed, [fieldOptions]);
+  const pendingStates = useMemo(() => partitionProgressStates(fieldOptions.landingProgress).pending, [fieldOptions]);
+  const categoryColors = useMemo(() => buildCategoryColorMap(fieldOptions.sceneCategory), [fieldOptions]);
+  const progressColors = useMemo(() => buildProgressColorMap(fieldOptions.landingProgress), [fieldOptions]);
+
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -549,12 +773,6 @@ function WishPoolContent() {
   const [hoveredRow, setHoveredRow] = useState<WishItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<WishItem | null>(null);
   const [listHover, setListHover] = useState<{ label: string; items: WishItem[]; x: number; y: number } | null>(null);
-
-  // 篮选+排序（明细视图共用）
-  const [sortBy, setSortBy] = useState('finalValueScore');
-  const [titleWidth, setTitleWidth] = useState(260);
-  const [sceneCategoryFilter, setSceneCategoryFilter] = useState<string>('all');
-  const [teamFilter, setTeamFilter] = useState<string>('all');
 
   const detailTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const listTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -585,13 +803,25 @@ function WishPoolContent() {
       const data = await res.json();
       setItems(data.items || []);
       setStats(data.stats);
+      setFieldDescriptions(data.fieldDescriptions || {});
+      setFieldOptions(data.fieldOptions || {});
     } catch { message.error('获取场景池数据失败'); }
     finally { setLoading(false); }
   }, [message]);
 
   useEffect(() => { if (isAdmin) fetchData(); }, [isAdmin, fetchData]);
 
-  const handleRefresh = async () => { setSyncing(true); await fetchData(); setSyncing(false); message.success('数据已刷新'); };
+  const handleRefresh = async () => {
+    setSyncing(true);
+    try {
+      // 第一步：同步飞书字段映射（含 options 选项列表），确保筛选枚举是最新的
+      const syncRes = await fetch('/api/wish-pool/sync-field-map', { method: 'POST' });
+      if (!syncRes.ok) console.warn('字段映射同步失败，继续用现有数据');
+      // 第二步：重新拉取数据 + 已更新的 fieldOptions
+      await fetchData();
+      message.success('数据已刷新');
+    } finally { setSyncing(false); }
+  };
 
   // ── 导出图片 ──
   const handleExportImage = async () => {
@@ -622,31 +852,8 @@ function WishPoolContent() {
   };
 
   // ── 已落地/待实现数据 ──
-  const landedItems = useMemo(() => items.filter((d) => LANDED_STATES.includes(d.landingProgress || '')), [items]);
-  const pendingItems = useMemo(() => items.filter((d) => PENDING_STATES.includes(d.landingProgress || '')), [items]);
-
-  // ── 篮选+排序后的明细数据 ──
-  const getFilteredSorted = useCallback((baseList: WishItem[]) => {
-    let list = baseList;
-    if (sceneCategoryFilter !== 'all') list = list.filter((d) => d.sceneCategory === sceneCategoryFilter);
-    if (teamFilter !== 'all') list = list.filter((d) => d.team === teamFilter);
-    return [...list].sort((a, b) => {
-      switch (sortBy) {
-        case 'finalValueScore': return (b.finalValueScore ?? -1) - (a.finalValueScore ?? -1);
-        case 'monthlySavedHours': return (b.monthlySavedHours ?? -1) - (a.monthlySavedHours ?? -1);
-        case 'totalSavedHours': return (b.totalSavedHours ?? -1) - (a.totalSavedHours ?? -1);
-        case 'monthlySavedCost':
-          const aC = typeof a.monthlySavedCost === 'number' ? a.monthlySavedCost : parseFloat(String(a.monthlySavedCost || '0').replace(/[^0-9.\-]/g, '')) || 0;
-          const bC = typeof b.monthlySavedCost === 'number' ? b.monthlySavedCost : parseFloat(String(b.monthlySavedCost || '0').replace(/[^0-9.\-]/g, '')) || 0;
-          return bC - aC;
-        case 'reuseValueNumber': return (b.reuseValueNumber ?? -1) - (a.reuseValueNumber ?? -1);
-        default: return 0;
-      }
-    }).map((s, i) => ({ ...s, seq: i + 1 }));
-  }, [sceneCategoryFilter, teamFilter, sortBy]);
-
-  const landedTableData = useMemo(() => getFilteredSorted(landedItems), [landedItems, getFilteredSorted]);
-  const pendingTableData = useMemo(() => getFilteredSorted(pendingItems), [pendingItems, getFilteredSorted]);
+  const landedItems = useMemo(() => items.filter((d) => landedStates.includes(d.landingProgress || '')), [items, landedStates]);
+  const pendingItems = useMemo(() => items.filter((d) => pendingStates.includes(d.landingProgress || '')), [items, pendingStates]);
 
   // ── Summary ──
   const overviewSummary = useMemo(() => {
@@ -664,138 +871,9 @@ function WishPoolContent() {
     };
   }, [items, stats]);
 
-  const landedSummary = useMemo(() => {
-    const eff = Math.round(landedTableData.reduce((s, d) => s + (d.monthlySavedHours ?? 0), 0) * 10) / 10;
-    const cost = landedTableData.reduce((s, d) => {
-      if (!d.monthlySavedCost) return s;
-      const n = typeof d.monthlySavedCost === 'number' ? d.monthlySavedCost : parseFloat(String(d.monthlySavedCost).replace(/[^0-9.\-]/g, ''));
-      return s + (n > 0 ? n : 0);
-    }, 0);
-    return { count: landedTableData.length, eff, costDisplay: cost > 0 ? `¥${fmtF(Math.round(cost))}` : '—' };
-  }, [landedTableData]);
-
-  const pendingSummary = useMemo(() => ({ count: pendingTableData.length }), [pendingTableData]);
-
   // ── 统计图 ──
   const maxCat = useMemo(() => stats ? Math.max(...Object.values(stats.categoryMap), 1) : 1, [stats]);
   const maxTeam = useMemo(() => stats ? Math.max(...Object.values(stats.teamMap), 1) : 1, [stats]);
-
-  // ── 筛选选项 ──
-  const categoryOptions = useMemo(() => {
-    const counts: Record<string, number> = {};
-    items.forEach((d) => { counts[d.sceneCategory || '未分类'] = (counts[d.sceneCategory || '未分类'] || 0) + 1; });
-    return [{ value: 'all', label: '全部', count: items.length }, ...SCENE_CATEGORY_OPTIONS.map((v) => ({ value: v, label: v, count: counts[v] ?? 0 }))];
-  }, [items]);
-
-  const teamOptions = useMemo(() => {
-    const counts: Record<string, number> = {};
-    items.forEach((d) => { counts[d.team || '未填写'] = (counts[d.team || '未填写'] || 0) + 1; });
-    return [{ value: 'all', label: '全部', count: items.length }, ...Object.keys(counts).sort().map((t) => ({ value: t, label: t, count: counts[t] ?? 0 }))];
-  }, [items]);
-
-  // ── Table columns ──
-  const columns: TableColumnsType<typeof landedTableData[number]> = [
-    {
-      title: '序号', dataIndex: 'seq', key: 'seq', width: 50, align: 'center', fixed: 'left', className: 'cho-frozen-rank',
-      render: (seq: number) => <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{seq}</span>,
-    },
-    {
-      title: '名称', dataIndex: 'title', key: 'title', width: titleWidth, ellipsis: true,
-      onHeaderCell: () => ({
-        style: { position: 'relative' },
-        children: (
-          <div className="flex items-center justify-between">
-            <span>名称</span>
-            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-300" style={{ zIndex: 10 }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                const startX = e.clientX, startWidth = titleWidth;
-                const onMove = (e: MouseEvent) => setTitleWidth(Math.max(120, startWidth + e.clientX - startX));
-                const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-                document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
-              }}
-            />
-          </div>
-        ),
-      }),
-      render: (title: string, record) => (
-        <div>
-          <button onClick={() => setSelectedItem(record)} className="text-xs font-medium truncate text-left hover:underline w-full" style={{ color: '#1a3a8a' }}
-            onMouseEnter={() => handleRowEnter(record)} onMouseLeave={handleRowLeave}>
-            {title || '—'}
-          </button>
-          <div className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{record.team || '—'}</div>
-        </div>
-      ),
-    },
-    {
-      title: <FmtHeader label="价值星级" tip="按最终价值计分排名百分位：前20%=5★，前40%=4★，前60%=3★，前80%=2★，后20%=1★" />,
-      dataIndex: 'valueStarLevel', key: 'valueStarLevel', width: 100, align: 'center',
-      render: (v: number | null) => {
-        if (v == null) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
-        const starColor = v >= 4 ? '#1a3a8a' : v >= 3 ? '#2d5bc7' : '#94a3b8';
-        return (
-          <span className="inline-flex items-center gap-0.5">
-            {Array.from({ length: v }, (_, i) => <StarFilled key={i} style={{ fontSize: 11, color: starColor }} />)}
-            {Array.from({ length: 5 - v }, (_, i) => <StarOutlined key={i} style={{ fontSize: 11, color: '#cbd5e1' }} />)}
-          </span>
-        );
-      },
-    },
-    {
-      title: '落地进展', dataIndex: 'landingProgress', key: 'landingProgress', width: 120, align: 'center',
-      render: (v: string | null) => {
-        if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
-        return <Tag color={PROGRESS_COLORS[v] || '#6b7280'} className="text-[11px]" style={{ margin: 0 }}>{v}</Tag>;
-      },
-    },
-    {
-      title: <FmtHeader label="计划启动/大赛进展" tip="计划启动日期和大赛进展状态" />,
-      key: 'progressInfo', width: 180, align: 'center',
-      render: (_: unknown, r) => (
-        <div className="text-[11px]">
-          <div style={{ color: 'var(--text-muted)' }}>{r.plannedStartDate ? `启动 ${r.plannedStartDate.slice(0, 7)}` : '—'}</div>
-          <div className="mt-0.5">
-            {r.competitionProgress ? <Tag style={{ fontSize: 10, margin: 0, background: 'rgba(26,58,138,0.08)', borderColor: 'rgba(26,58,138,0.15)', color: '#1a3a8a' }}>{r.competitionProgress}</Tag> : <span style={{ color: '#cbd5e1' }}>—</span>}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: <FmtHeader label="改造成效" tip="量化改造效果" />,
-      key: 'result-group', className: 'cho-group-result',
-      children: [
-        { title: <FmtHeader label="提效" tip="月均提效节省工时" />, dataIndex: 'monthlySavedHours', key: 'sh', width: 100, align: 'center', className: 'cho-col-result',
-          render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span> },
-        { title: <FmtHeader label="降本" tip="月均降本费用（不含人力成本）" />, dataIndex: 'monthlySavedCost', key: 'mc', width: 100, align: 'center', className: 'cho-col-result',
-          render: (v: number | string | null) => <span className="font-mono text-xs" style={{ color: (typeof v === 'number' ? v : parseFloat(String(v || '0').replace(/[^0-9.\-]/g, ''))) > 0 ? '#d97706' : 'var(--text-muted)' }}>{fmtCost(v)}</span> },
-        { title: <FmtHeader label="节省工时" tip="提效+降本折算" />, dataIndex: 'totalSavedHours', key: 'tsh', width: 110, align: 'center', className: 'cho-col-result',
-          render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span> },
-      ],
-    },
-    {
-      title: <FmtHeader label="复用价值" tip="方案可复用范围和地区系数" />,
-      key: 'reuse-group', className: 'cho-group-reuse',
-      children: [
-        { title: <FmtHeader label="复用价值系数" tip="跨团队/BU 复用范围" />, dataIndex: 'reuseValue', key: 'rm', width: 180, align: 'center', className: 'cho-col-reuse',
-          render: (v: string | null, record) => {
-            if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
-            const level = record.reuseValueLevel;
-            const s: Record<string, { bg: string; fg: string; border: string }> = {
-              '低价值': { bg: 'rgba(34,197,94,0.08)', fg: '#16a34a', border: 'rgba(34,197,94,0.2)' },
-              '中价值': { bg: 'rgba(20,184,166,0.1)', fg: '#0d9488', border: 'rgba(20,184,166,0.25)' },
-              '高价值': { bg: 'rgba(245,158,11,0.12)', fg: '#d97706', border: 'rgba(245,158,11,0.3)' },
-              '极高价值': { bg: 'rgba(234,88,12,0.15)', fg: '#c2410c', border: 'rgba(234,88,12,0.35)' },
-            };
-            const ls = s[level ?? ''] ?? { bg: 'rgba(0,0,0,0.04)', fg: 'var(--text-secondary)', border: 'rgba(0,0,0,0.08)' };
-            return <span className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap" style={{ background: ls.bg, color: ls.fg, border: `1px solid ${ls.border}` }}>{v}</span>;
-          },
-        },
-        { title: <FmtHeader label="地区系数" tip="场景归属地区系数" />, dataIndex: 'regionCoefficient', key: 'rc', width: 100, align: 'center', className: 'cho-col-reuse',
-          render: (v: string | null) => <span className="text-xs font-medium" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{v || '—'}</span> },
-      ],
-    },
-  ];
 
   if (authLoading) return <div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>;
   if (!isAdmin) return null;
@@ -872,7 +950,7 @@ function WishPoolContent() {
                           <div className="p-4">
                             {Object.entries(stats.categoryMap).sort((a, b) => b[1] - a[1]).map(([cat, count]) => (
                               <div key={cat} onMouseEnter={showListHover(cat, items.filter((d) => d.sceneCategory === cat))} onMouseLeave={hideListHover} style={{ cursor: 'pointer' }}>
-                                <HBar label={cat} value={count} max={maxCat} color={CATEGORY_COLORS[cat] || '#6b7280'} />
+                                <HBar label={cat} value={count} max={maxCat} color={categoryColors[cat] || FALLBACK_COLOR} />
                               </div>
                             ))}
                           </div>
@@ -896,12 +974,27 @@ function WishPoolContent() {
                             <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>落地进展分布</h3>
                           </div>
                           <div className="p-4 flex justify-center">
-                            <ProgressDonut progressMap={stats.progressMap} total={stats.total} />
+                            <ProgressDonut progressMap={stats.progressMap} total={stats.total} landedStates={landedStates} pendingStates={pendingStates} progressColors={progressColors} />
                           </div>
                         </div>
                       </div>
 
                       <FormulaSection />
+
+                      {/* 数据总览明细列表 */}
+                      <DetailListBlock
+                        baseList={items}
+                        label="场景"
+                        emptyText="暂无场景数据"
+                        showMetrics
+                        fieldDescriptions={fieldDescriptions}
+                        fieldOptions={fieldOptions}
+                        progressColors={progressColors}
+                        categoryColors={categoryColors}
+                        onRowEnter={handleRowEnter}
+                        onRowLeave={handleRowLeave}
+                        onSelectItem={setSelectedItem}
+                      />
                     </div>
                   ),
                 },
@@ -910,42 +1003,19 @@ function WishPoolContent() {
                   label: <span className="flex items-center gap-1"><RocketOutlined /> 已落地场景明细</span>,
                   children: (
                     <div className="space-y-2">
-                      {/* 篮选+排序 */}
-                      <div className="glass rounded-xl px-4 py-3" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>排序</span>
-                            {SORT_OPTIONS.map((opt) => (
-                              <button key={opt.value} onClick={() => setSortBy(opt.value)}
-                                className="px-2 py-0.5 rounded-md text-[11px] font-medium transition-all"
-                                style={{ background: sortBy === opt.value ? '#1a3a8a' : 'rgba(0,0,0,0.04)', color: sortBy === opt.value ? '#fff' : 'var(--text-secondary)' }}>
-                                {opt.label}
-                              </button>
-                            ))}
-                          </div>
-                          <FilterRow label="场景分类" options={categoryOptions} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
-                          <FilterRow label="提报团队" options={teamOptions} value={teamFilter} onChange={setTeamFilter} />
-                        </div>
-                      </div>
-
-                      {/* 小summary */}
-                      <div className="flex items-center gap-4 text-xs px-2" style={{ color: 'var(--text-muted)' }}>
-                        <span>共 <strong style={{ color: '#1a3a8a' }}>{landedSummary.count}</strong> 个已落地场景</span>
-                        <span>月均提效 <strong style={{ color: '#1a3a8a' }}>{landedSummary.eff > 0 ? `${landedSummary.eff}h` : '—'}</strong></span>
-                        <span>月均降本 <strong style={{ color: '#4a7de0' }}>{landedSummary.costDisplay}</strong></span>
-                      </div>
-
-                      {/* 表格 */}
-                      {landedTableData.length === 0 ? (
-                        <div className="text-center py-16 glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>暂无已落地场景</p>
-                        </div>
-                      ) : (
-                        <div className="glass rounded-2xl overflow-hidden cho-table-wrap" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                          <Table dataSource={landedTableData} columns={columns} rowKey="id" pagination={false} size="small" scroll={{ x: 'max-content' }} rowClassName={() => 'cho-table-row'} />
-                        </div>
-                      )}
-
+                      <DetailListBlock
+                        baseList={landedItems}
+                        label="已落地场景"
+                        emptyText="暂无已落地场景"
+                        showMetrics
+                        fieldDescriptions={fieldDescriptions}
+                        fieldOptions={fieldOptions}
+                        progressColors={progressColors}
+                        categoryColors={categoryColors}
+                        onRowEnter={handleRowEnter}
+                        onRowLeave={handleRowLeave}
+                        onSelectItem={setSelectedItem}
+                      />
                       <FormulaSection />
                     </div>
                   ),
@@ -955,40 +1025,21 @@ function WishPoolContent() {
                   label: <span className="flex items-center gap-1"><HourglassOutlined /> 待实现场景明细</span>,
                   children: (
                     <div className="space-y-2">
-                      {/* 篮选+排序 */}
-                      <div className="glass rounded-xl px-4 py-3" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>排序</span>
-                            {SORT_OPTIONS.map((opt) => (
-                              <button key={opt.value} onClick={() => setSortBy(opt.value)}
-                                className="px-2 py-0.5 rounded-md text-[11px] font-medium transition-all"
-                                style={{ background: sortBy === opt.value ? '#1a3a8a' : 'rgba(0,0,0,0.04)', color: sortBy === opt.value ? '#fff' : 'var(--text-secondary)' }}>
-                                {opt.label}
-                              </button>
-                            ))}
-                          </div>
-                          <FilterRow label="场景分类" options={categoryOptions} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
-                          <FilterRow label="提报团队" options={teamOptions} value={teamFilter} onChange={setTeamFilter} />
-                        </div>
-                      </div>
-
-                      {/* 小summary */}
-                      <div className="flex items-center gap-4 text-xs px-2" style={{ color: 'var(--text-muted)' }}>
-                        <span>共 <strong style={{ color: '#94a3b8' }}>{pendingSummary.count}</strong> 个待实现场景</span>
-                      </div>
-
-                      {/* 表格 */}
-                      {pendingTableData.length === 0 ? (
-                        <div className="text-center py-16 glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>暂无待实现场景</p>
-                        </div>
-                      ) : (
-                        <div className="glass rounded-2xl overflow-hidden cho-table-wrap" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
-                          <Table dataSource={pendingTableData} columns={columns} rowKey="id" pagination={false} size="small" scroll={{ x: 'max-content' }} rowClassName={() => 'cho-table-row'} />
-                        </div>
-                      )}
-
+                      <DetailListBlock
+                        baseList={pendingItems}
+                        label="待实现场景"
+                        emptyText="暂无待实现场景"
+                        showMetrics={false}
+                        labelColor="#94a3b8"
+                        showPendingDates
+                        fieldDescriptions={fieldDescriptions}
+                        fieldOptions={fieldOptions}
+                        progressColors={progressColors}
+                        categoryColors={categoryColors}
+                        onRowEnter={handleRowEnter}
+                        onRowLeave={handleRowLeave}
+                        onSelectItem={setSelectedItem}
+                      />
                       <FormulaSection />
                     </div>
                   ),
@@ -1002,14 +1053,14 @@ function WishPoolContent() {
         {hoveredRow && (
           <div style={{ position: 'fixed', top: '50%', left: '55%', transform: 'translate(-50%, -50%)', zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 14, padding: '16px 20px', boxShadow: '0 12px 48px rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.7)', maxWidth: 460 }}
             onMouseEnter={handleDetailEnter} onMouseLeave={handleDetailLeave}>
-            <SceneDetailPopup item={hoveredRow} />
+            <SceneDetailPopup item={hoveredRow} categoryColors={categoryColors} progressColors={progressColors} />
           </div>
         )}
         {listHover && (
           <div style={{ position: 'fixed', left: listHover.x, top: listHover.y, zIndex: 1050, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid rgba(255,255,255,0.6)', maxWidth: 560 }}
             onMouseEnter={handleListEnter} onMouseLeave={handleListLeave}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3a8a', marginBottom: 6 }}>{listHover.label} · {listHover.items.length} 个场景</div>
-            <SceneHoverList items={listHover.items} />
+            <SceneHoverList items={listHover.items} progressColors={progressColors} />
           </div>
         )}
         {selectedItem && <SceneDrillDownModal item={selectedItem} onClose={() => setSelectedItem(null)} />}

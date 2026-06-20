@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { getTenantAccessTokenFor } from '@/lib/feishu';
 import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
-import { extractValue, type FieldMapEntry } from '@/lib/bitable/field-map';
+import { extractValue, type FieldMapEntry, type FieldSelectOption } from '@/lib/bitable/field-map';
+import { isLandedState } from '@/lib/bitable/enums';
 
 // ── 飞书多维表格配置 ──
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
@@ -72,6 +73,26 @@ export async function GET(request: NextRequest) {
     // 加载字段映射（DB 优先，fallback 硬编码）
     const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'wish-pool');
 
+    // 字段注释 map：前端 key → 飞书字段注释（用于表头问号 tooltip）
+    const fieldDescriptions: Record<string, string> = {};
+    for (const entry of Object.values(fieldMap)) {
+      if (entry.description) fieldDescriptions[entry.key] = entry.description;
+    }
+
+    // select 字段选项列表（用于前端筛选枚举动态化）
+    const fieldOptions: Record<string, FieldSelectOption[]> = {};
+    for (const entry of Object.values(fieldMap)) {
+      if (entry.options && entry.options.length > 0) {
+        fieldOptions[entry.key] = entry.options;
+      }
+    }
+    // 永久排除"数据补充中"选项（落地进展、大赛进展均不展示此枚举）
+    for (const key of ['landingProgress', 'competitionProgress']) {
+      if (fieldOptions[key]) {
+        fieldOptions[key] = fieldOptions[key].filter(o => o.name !== '数据补充中');
+      }
+    }
+
     // 映射字段
     const rawItems = allRecords.map((r) => mapRecord(r, fieldMap));
 
@@ -133,8 +154,10 @@ export async function GET(request: NextRequest) {
       teamMap[label] = (teamMap[label] || 0) + 1;
     });
 
-    // 新增指标：已落地场景数（试点+推广+全面上线）
-    const landedCount = (progressMap['试点上线'] || 0) + (progressMap['推广上线'] || 0) + (progressMap['全面上线'] || 0);
+    // 新增指标：已落地场景数（动态判断所有"上线"状态）
+    const landedCount = Object.entries(progressMap)
+      .filter(([k]) => isLandedState(k))
+      .reduce((s, [, v]) => s + v, 0);
 
     // 新增指标：月均提效节省工时之和
     const totalMonthlySavedHours = Math.round(items.reduce((sum, d) => sum + ((d.monthlySavedHours as number) ?? 0), 0) * 10) / 10;
@@ -156,6 +179,8 @@ export async function GET(request: NextRequest) {
       items,
       ranked,
       total,
+      fieldDescriptions,
+      fieldOptions,
       stats: {
         total,
         avgScore,

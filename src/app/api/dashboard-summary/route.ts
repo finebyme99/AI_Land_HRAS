@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
+import { isLandedState } from '@/lib/bitable/enums';
 
-const LANDED_STATES = ['试点上线', '推广上线', '全面上线'];
 const CURRENT_PERIOD = '2605';
 
 /**
@@ -11,7 +12,7 @@ const CURRENT_PERIOD = '2605';
  * 聚合 competition_submissions 表的三个指标：
  *   - totalMonthlySavedHours: SUM(total_monthly_saved_hours) — 月均节省总工时
  *   - totalPeople: SUM(before_people_count) — 总覆盖执行人数
- *   - landedCount: COUNT where landing_progress in LANDED_STATES — 已落地场景数
+ *   - landedCount: COUNT where landing_progress 为已落地状态 — 已落地场景数
  *
  * 数据口径与 ChoDashboard 成效看板一致：
  *   period=CURRENT_PERIOD + status='评审中' + scene_source='AI大赛'
@@ -20,6 +21,9 @@ export async function GET() {
   const supabase = getSupabaseAdmin();
 
   try {
+    // 获取字段映射（sync 角色，与 ChoDashboard 一致）
+    await getActiveFieldMap('LRROwulJciI7JYkIT55cQtdpnze', 'tbl9WJyxl9bbtYjb', 'sync');
+
     const { data, error } = await supabase
       .from('competition_submissions')
       .select('total_monthly_saved_hours, before_people_count, landing_progress')
@@ -37,7 +41,7 @@ export async function GET() {
       (sum, r) => sum + (r.before_people_count ?? 0), 0
     );
     const landedCount = rows.filter(
-      (r) => LANDED_STATES.includes(r.landing_progress)
+      (r) => isLandedState(r.landing_progress ?? '')
     ).length;
 
     return NextResponse.json({

@@ -17,6 +17,7 @@ import {
   FALLBACK_FIELD_MAP,
   type FieldMapEntry,
   type FieldType,
+  type FieldSelectOption,
 } from '@/lib/bitable/field-map';
 
 interface DBFieldRow {
@@ -26,6 +27,8 @@ interface DBFieldRow {
   group_name: string;
   is_active: boolean;
   roles: string[];
+  description: string | null;
+  options: FieldSelectOption[] | null;
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -59,7 +62,7 @@ export async function getActiveFieldMap(
     const supabase = getSupabaseAdmin();
     const { data: rows } = await supabase
       .from('bitable_field_map')
-      .select('field_name, key, type, group_name, is_active, roles')
+      .select('field_name, key, type, group_name, is_active, roles, description, options')
       .eq('base_app', baseApp)
       .eq('table_id', tableId)
       .eq('is_active', true)
@@ -71,6 +74,8 @@ export async function getActiveFieldMap(
           key: r.key,
           type: r.type,
           group: r.group_name,
+          description: r.description ?? undefined,
+          options: r.options ?? undefined,
         };
       }
     }
@@ -99,4 +104,4 @@ export function invalidateFieldMapCache(): void {
 
 // 重新导出 lib 的公共 API，方便消费方只引一处
 export { FALLBACK_FIELD_MAP, extractValue } from '@/lib/bitable/field-map';
-export type { FieldMapEntry, FieldType } from '@/lib/bitable/field-map';
+export type { FieldMapEntry, FieldType, FieldSelectOption } from '@/lib/bitable/field-map';

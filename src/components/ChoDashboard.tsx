@@ -1,7 +1,9 @@
 'use client';
 
+import { fieldOptionsToFilterItems, type FilterItem } from '@/lib/bitable/filter-options';
+import { reuseLevelStyle } from '@/lib/bitable/enums';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Spin, App, Select, Table, Modal, Tag, Tooltip, type TableColumnsType } from 'antd';
+import { Spin, App, Table, Modal, Tag, Tooltip, type TableColumnsType } from 'antd';
 import {
   BarChartOutlined,
   TeamOutlined,
@@ -10,7 +12,6 @@ import {
   ThunderboltOutlined,
   SyncOutlined,
   SwapRightOutlined,
-  LinkOutlined,
   QuestionCircleOutlined,
   DownloadOutlined,
 } from '@ant-design/icons';
@@ -77,16 +78,11 @@ interface OverviewResponse {
   };
   submissions: ChoSubmission[];
   panel: Record<string, string[]>;
+  fieldDescriptions?: Record<string, string>;
+  fieldOptions?: Record<string, { id: string; name: string }[]>;
 }
 
 // ─── Constants ───────────────────────────────────────────────────
-
-const PERIOD_OPTIONS = [
-  { value: '2605', label: '5 月 (2605)' },
-  { value: '2606', label: '6 月 (2606)' },
-  { value: '2604', label: '4 月 (2604)' },
-  { value: '2603', label: '3 月 (2603)' },
-];
 
 const SORT_OPTIONS = [
   { value: 'finalValueScore', label: '最终价值计分' },
@@ -100,13 +96,12 @@ const SORT_OPTIONS = [
   { value: 'reuseValueCoefficient', label: '复用价值系数' },
 ];
 
-// ─── 筛选条件完整选项（飞书多维表格字段配置） ───
-const SCENE_SOURCE_OPTIONS = ['AI大赛', 'AI许愿', 'HSSC统一新增', '待补充数据'];
-const LANDING_PROGRESS_OPTIONS = ['待启动', '训练验证中', '试点上线', '推广上线', '全面上线', '关闭'];
-const COMPETITION_PROGRESS_OPTIONS = ['未参赛', '数据补充中', '评审中', '终审通过', '并入其他方案', '取消'];
-const SCENE_CATEGORY_OPTIONS = ['数据分析', '招聘管理', '薪酬绩效', '培训管理', '组织与人才发展', '文化氛围', '核算与报账', '基础人事支持', '行政管理', '日常工作', '考勤管理', '其他（请补充）', '人才发展'];
-const CORE_VALUE_OPTIONS = ['提效', '降本（不含内部人力成本）'];
-const TEAM_OPTIONS = ['LBU', 'FBU', 'ABU', 'HQU', 'WX', 'GEU', 'GUS', 'ZT_HSSC', 'GF_HSSC', 'ZT_ASSC', 'GF_ASSC', 'HCOE'];
+/** 评审周期选项（不是飞书枚举，是评审周期标识符，保持硬编码） */
+const PERIOD_OPTIONS = [
+  { value: '2605', label: '2605期' },
+  { value: '2604', label: '2604期' },
+  { value: '2603', label: '2603期' },
+];
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -197,6 +192,8 @@ export default function ChoDashboard() {
   const { isAdmin } = useAuth();
   const [period, setPeriod] = useState('2605');
   const [data, setData] = useState<OverviewResponse | null>(null);
+  const [fieldDescriptions, setFieldDescriptions] = useState<Record<string, string>>({});
+  const [fieldOptions, setFieldOptions] = useState<Record<string, { id: string; name: string }[]>>({});
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [sceneCategoryFilter, setSceneCategoryFilter] = useState<string>('all');
@@ -214,7 +211,10 @@ export default function ChoDashboard() {
     try {
       const res = await fetch(`/api/admin/competitions/overview?period=${period}`);
       if (!res.ok) throw new Error((await res.json()).error || '加载失败');
-      setData(await res.json());
+      const json = await res.json();
+      setData(json);
+      setFieldDescriptions(json.fieldDescriptions ?? {});
+      setFieldOptions(json.fieldOptions ?? {});
     } catch (e) {
       message.error(e instanceof Error ? e.message : '加载失败');
     } finally {
@@ -432,7 +432,7 @@ export default function ChoDashboard() {
       ),
     },
     {
-      title: '标题',
+      title: '名称',
       dataIndex: 'title',
       key: 'title',
       width: titleWidth,
@@ -594,15 +594,9 @@ export default function ChoDashboard() {
           render: (v: string | null, record: any) => {
             if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
             const level = record.reuseValueLevel;
-            const levelStyle: Record<string, { bg: string; fg: string; border: string }> = {
-              '低价值':   { bg: 'rgba(34,197,94,0.08)',  fg: '#16a34a', border: 'rgba(34,197,94,0.2)' },
-              '中价值':   { bg: 'rgba(20,184,166,0.1)',  fg: '#0d9488', border: 'rgba(20,184,166,0.25)' },
-              '高价值':   { bg: 'rgba(245,158,11,0.12)', fg: '#d97706', border: 'rgba(245,158,11,0.3)' },
-              '极高价值': { bg: 'rgba(234,88,12,0.15)',  fg: '#c2410c', border: 'rgba(234,88,12,0.35)' },
-            };
-            const s = levelStyle[level ?? ''] ?? { bg: 'rgba(0,0,0,0.04)', fg: 'var(--text-secondary)', border: 'rgba(0,0,0,0.08)' };
+            const ls = reuseLevelStyle(level);
             return (
-              <span className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap" style={{ background: s.bg, color: s.fg, border: `1px solid ${s.border}` }}>
+              <span className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap" style={{ background: ls.bg, color: ls.fg, border: `1px solid ${ls.border}` }}>
                 {v}
               </span>
             );
@@ -781,16 +775,13 @@ export default function ChoDashboard() {
           </div>
           {filterExpanded && (
             <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>评审周期</span>
-                <Select value={period} onChange={setPeriod} options={PERIOD_OPTIONS} style={{ width: 120 }} size="small" />
-              </div>
-              <FilterRow label="部门" icon={<TeamOutlined />} options={[{ value: 'all', label: '全部', count: enriched.length }, ...TEAM_OPTIONS.map((t) => ({ value: t, label: t, count: teamCounts[t] ?? 0 }))]} value={teamFilter} onChange={setTeamFilter} />
-              <FilterRow label="场景分类" options={[{ value: 'all', label: '全部', count: enriched.length }, ...SCENE_CATEGORY_OPTIONS.map((v) => ({ value: v, label: v, count: 0 }))]} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
-              <FilterRow label="核心价值" options={[{ value: 'all', label: '全部', count: enriched.length }, ...CORE_VALUE_OPTIONS.map((v) => ({ value: v, label: v, count: 0 }))]} value={coreValueFilter} onChange={setCoreValueFilter} />
-              <FilterRow label="场景来源" options={[{ value: 'all', label: '全部', count: enriched.length }, ...SCENE_SOURCE_OPTIONS.map((v) => ({ value: v, label: v, count: 0 }))]} value={sceneSourceFilter} onChange={setSceneSourceFilter} />
-              <FilterRow label="落地进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...LANDING_PROGRESS_OPTIONS.map((v) => ({ value: v, label: v, count: 0 }))]} value={landingProgressFilter} onChange={setLandingProgressFilter} />
-              <FilterRow label="大赛进展" options={[{ value: 'all', label: '全部', count: enriched.length }, ...COMPETITION_PROGRESS_OPTIONS.map((v) => ({ value: v, label: v, count: 0 }))]} value={statusFilter} onChange={setStatusFilter} />
+              <FilterRow label="评审周期" options={PERIOD_OPTIONS.map(p => ({ value: p.value, label: p.label, count: p.value === (data?.period ?? period) ? enriched.length : 0 }))} value={period} onChange={setPeriod} />
+              <FilterRow label="部门" options={fieldOptionsToFilterItems('team', enriched, fieldOptions)} value={teamFilter} onChange={setTeamFilter} />
+              <FilterRow label="场景分类" options={fieldOptionsToFilterItems('sceneCategory', enriched, fieldOptions)} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
+              <FilterRow label="核心价值" options={fieldOptionsToFilterItems('coreValue', enriched, fieldOptions)} value={coreValueFilter} onChange={setCoreValueFilter} />
+              <FilterRow label="场景来源" options={fieldOptionsToFilterItems('sceneSource', enriched, fieldOptions)} value={sceneSourceFilter} onChange={setSceneSourceFilter} />
+              <FilterRow label="落地进展" options={fieldOptionsToFilterItems('landingProgress', enriched, fieldOptions)} value={landingProgressFilter} onChange={setLandingProgressFilter} />
+              <FilterRow label="大赛进展" options={fieldOptionsToFilterItems('competitionProgress', enriched, fieldOptions)} value={statusFilter} onChange={setStatusFilter} />
             </div>
           )}
         </div>
@@ -902,15 +893,15 @@ function StatCard({ icon, label, value, sub, color, highlight }: {
 }
 
 /** 筛选行 pill 组件 */
-function FilterRow({ label, icon, options, value, onChange }: {
-  label: string; icon?: React.ReactNode;
-  options: { value: string; label: string; count: number }[];
+function FilterRow({ label, options, value, onChange }: {
+  label: string;
+  options: FilterItem[];
   value: string; onChange: (v: string) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-        {icon} {label}
+      <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+        {label}
       </span>
       {options.map((opt) => (
         <button

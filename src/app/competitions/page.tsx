@@ -18,6 +18,11 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import HighlightSweep from '@/components/HighlightSweep';
 import { PAGE_LABELS } from '@/lib/bitable/page-usage';
+import {
+  buildCategoryColorMap, buildStatusColorMap,
+  FALLBACK_COLOR,
+} from '@/lib/bitable/enums';
+import type { FieldSelectOption } from '@/lib/bitable/field-map';
 
 // ── 赛事进展数据类型 ──
 interface ProgressEntry {
@@ -73,26 +78,6 @@ interface ProgressStats {
   periodMap: Record<string, { total: number; byStatus: Record<string, number> }>;
 }
 
-// ── 颜色配置 ──
-const CATEGORY_COLORS: Record<string, string> = {
-  数据分析: '#1a3a8a', 招聘管理: '#F27F22', 薪酬绩效: '#2d5bc7',
-  培训管理: '#4a7de0', 组织与人才发展: '#1a3a8a', 文化氛围: '#F27F22',
-  核算与报账: '#2d5bc7', 基础人事支持: '#4a7de0', 行政管理: '#1a3a8a',
-  日常工作: '#2d5bc7', 考勤管理: '#4a7de0',
-};
-
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  终审通过: { label: '已结项', color: '#16a34a' },
-  评审中: { label: '评审中', color: '#1a3a8a' },
-};
-
-const CATEGORY_ICONS: Record<string, string> = {
-  数据分析: '📊', 招聘管理: '👥', 薪酬绩效: '💰',
-  培训管理: '🎓', 组织与人才发展: '🌱', 文化氛围: '🎉',
-  核算与报账: '🧾', 基础人事支持: '🛠', 行政管理: '📋',
-  日常工作: '🔄', 考勤管理: '⏰',
-};
-
 function fmt(n: number): string {
   if (n >= 1e4) return (n / 1e4).toFixed(1) + '万';
   if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
@@ -101,6 +86,8 @@ function fmt(n: number): string {
 function fmtF(n: number): string {
   return n.toLocaleString('zh-CN', { maximumFractionDigits: 0 });
 }
+// 大赛进展标签文本映射（仅2项特殊文本替换，其余保持原文）
+const STATUS_TEXT: Record<string, string> = { '终审通过': '已结项' };
 function periodLabel(p: string): string {
   if (p.length === 4) {
     const m = p.slice(2);
@@ -110,7 +97,7 @@ function periodLabel(p: string): string {
 }
 
 // ── 方案详情弹窗 ──
-function EntryDrillDownModal({ item, onClose }: { item: ProgressEntry; onClose: () => void }) {
+function EntryDrillDownModal({ item, categoryColors, statusColors, onClose }: { item: ProgressEntry; categoryColors: Record<string, string>; statusColors: Record<string, string>; onClose: () => void }) {
   const sectionTitle = (text: string, color: string) => (
     <div style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: `2px solid ${color}30`, paddingBottom: 6, marginBottom: 12, marginTop: 20 }}>{text}</div>
   );
@@ -131,8 +118,8 @@ function EntryDrillDownModal({ item, onClose }: { item: ProgressEntry; onClose: 
         <div style={{ background: 'linear-gradient(135deg, #0F2057 0%, #1a3a8a 40%, #F27F22 100%)', padding: '20px 24px', color: 'white', position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
             {item.proposalNo && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>#{item.proposalNo}</Tag>}
-            {item.sceneCategory && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>{CATEGORY_ICONS[item.sceneCategory] || ''} {item.sceneCategory}</Tag>}
-            {item.competitionProgress && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>{STATUS_LABELS[item.competitionProgress]?.label || item.competitionProgress}</Tag>}
+            {item.sceneCategory && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>{item.sceneCategory}</Tag>}
+            {item.competitionProgress && <Tag style={{ fontSize: 11, margin: 0, background: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>{STATUS_TEXT[item.competitionProgress] || item.competitionProgress}</Tag>}
           </div>
           <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{item.title || '未命名方案'}</div>
           {item.briefIntro && <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>{item.briefIntro}</div>}
@@ -199,10 +186,9 @@ function EntryDrillDownModal({ item, onClose }: { item: ProgressEntry; onClose: 
 }
 
 // ── 亮点方案卡片 ──
-function SpotlightCard({ item, rank, onClick }: { item: ProgressEntry; rank: number; onClick: () => void }) {
+function SpotlightCard({ item, rank, categoryColors, onClick }: { item: ProgressEntry; rank: number; categoryColors: Record<string, string>; onClick: () => void }) {
   const [hovered, setHovered] = useState(false);
-  const catColor = CATEGORY_COLORS[item.sceneCategory || ''] || '#6b7280';
-  const catIcon = CATEGORY_ICONS[item.sceneCategory || ''] || '';
+  const catColor = categoryColors[item.sceneCategory || ''] || FALLBACK_COLOR;
 
   const rankBg = rank === 1 ? 'linear-gradient(135deg, #F27F22, #d46b08)' : rank === 2 ? 'linear-gradient(135deg, #1a3a8a, #2d5bc7)' : 'linear-gradient(135deg, #2d5bc7, #4a7de0)';
   const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
@@ -229,7 +215,7 @@ function SpotlightCard({ item, rank, onClick }: { item: ProgressEntry; rank: num
           <span style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: rankBg, color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: `0 4px 12px ${rank === 1 ? 'rgba(242,127,34,0.3)' : 'rgba(26,58,138,0.25)'}` }}>{rankEmoji}</span>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Top {rank}</span>
         </div>
-        <Tag style={{ fontSize: 11, margin: 0, background: `${catColor}15`, borderColor: `${catColor}30`, color: catColor }}>{catIcon} {item.sceneCategory || '未分类'}</Tag>
+        <Tag style={{ fontSize: 11, margin: 0, background: `${catColor}15`, borderColor: `${catColor}30`, color: catColor }}>{item.sceneCategory || '未分类'}</Tag>
       </div>
 
       {/* 方案标题 + 简介 */}
@@ -276,10 +262,9 @@ function SpotlightCard({ item, rank, onClick }: { item: ProgressEntry; rank: num
 }
 
 // ── 场景分类卡片 ──
-function CategoryCard({ category, count, maxCount, items, onClick }: { category: string; count: number; maxCount: number; items: ProgressEntry[]; onClick: () => void }) {
+function CategoryCard({ category, count, maxCount, items, categoryColors, onClick }: { category: string; count: number; maxCount: number; items: ProgressEntry[]; categoryColors: Record<string, string>; onClick: () => void }) {
   const [hovered, setHovered] = useState(false);
-  const color = CATEGORY_COLORS[category] || '#6b7280';
-  const icon = CATEGORY_ICONS[category] || '📌';
+  const color = categoryColors[category] || FALLBACK_COLOR;
   const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
 
   // 计算该分类的总省工时
@@ -301,7 +286,7 @@ function CategoryCard({ category, count, maxCount, items, onClick }: { category:
     >
       <div className="px-4 py-3">
         <div className="flex items-center justify-between mb-2">
-          <span style={{ fontSize: 14, fontWeight: 700, color }}>{icon} {category}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color }}>{category}</span>
           <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'SF Mono, monospace', color }}>{count}</span>
         </div>
         {/* 进度条 */}
@@ -374,6 +359,11 @@ function CompetitionsPageInner() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { message } = App.useApp();
 
+  // ── fieldOptions（用于动态构建颜色映射）──
+  const [fieldOptions, setFieldOptions] = useState<Record<string, FieldSelectOption[]>>({});
+  const categoryColors = useMemo(() => buildCategoryColorMap(fieldOptions.sceneCategory), [fieldOptions]);
+  const statusColors = useMemo(() => buildStatusColorMap(fieldOptions.competitionProgress), [fieldOptions]);
+
   // ── 获取数据 ──
   const fetchProgress = async () => {
     setProgressLoading(true);
@@ -393,7 +383,18 @@ function CompetitionsPageInner() {
     }
   };
 
-  useEffect(() => { fetchProgress(); }, []);
+  // ── 获取 fieldOptions（用于动态颜色映射）──
+  const fetchFieldOptions = async () => {
+    try {
+      const res = await fetch('/api/wish-pool');
+      if (res.ok) {
+        const data = await res.json();
+        setFieldOptions(data.fieldOptions || {});
+      }
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => { fetchProgress(); fetchFieldOptions(); }, []);
 
   // 切换期数时重新过滤
   useEffect(() => {
@@ -592,7 +593,7 @@ function CompetitionsPageInner() {
                       </div>
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {spotlightEntries.map((item, idx) => (
-                          <SpotlightCard key={item.id} item={item} rank={idx + 1} onClick={() => setSelectedEntry(item)} />
+                          <SpotlightCard key={item.id} item={item} rank={idx + 1} categoryColors={categoryColors} onClick={() => setSelectedEntry(item)} />
                         ))}
                       </div>
                     </div>
@@ -616,6 +617,7 @@ function CompetitionsPageInner() {
                               count={count}
                               maxCount={maxCat}
                               items={catItems}
+                              categoryColors={categoryColors}
                               onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
                             />
                           );
@@ -664,11 +666,11 @@ function CompetitionsPageInner() {
                                 </span>
                               </td>
                               <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                {item.sceneCategory ? <Tag color={CATEGORY_COLORS[item.sceneCategory] || '#6b7280'} className="text-[11px]">{item.sceneCategory}</Tag> : <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>}
+                                {item.sceneCategory ? <Tag color={categoryColors[item.sceneCategory] || FALLBACK_COLOR} className="text-[11px]">{item.sceneCategory}</Tag> : <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>}
                               </td>
                               <td className="py-2 px-3 text-xs" style={{ color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{item.team || '—'}</td>
                               <td className="py-2 px-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                {item.competitionProgress ? <Tag color={STATUS_LABELS[item.competitionProgress]?.color || '#6b7280'} className="text-[11px]">{STATUS_LABELS[item.competitionProgress]?.label || item.competitionProgress}</Tag> : <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>}
+                                {item.competitionProgress ? <Tag color={statusColors[item.competitionProgress] || FALLBACK_COLOR} className="text-[11px]">{STATUS_TEXT[item.competitionProgress] || item.competitionProgress}</Tag> : <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>}
                               </td>
                               <td className="py-2 px-3 text-right font-mono text-xs" style={{ color: '#16a34a', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                                 {item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '-'}
@@ -976,16 +978,10 @@ function CompetitionsPageInner() {
           line-height: 1.3;
         }
 
-        /* ── Tabs 样式 ── */
-        .ant-tabs-ink-bar { background: var(--primary) !important; }
-        .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn { color: var(--primary) !important; }
-        .ant-tabs-tab:not(.ant-tabs-tab-active) .ant-tabs-tab-btn { color: var(--text-secondary) !important; }
-        .ant-tabs-tab:not(.ant-tabs-tab-active):hover .ant-tabs-tab-btn { color: var(--primary) !important; }
-        .ant-tabs-nav::before { border-bottom-color: rgba(26, 58, 138, 0.08) !important; }
       `}</style>
 
       {/* 点击下钻详情弹窗 */}
-      {selectedEntry && <EntryDrillDownModal item={selectedEntry} onClose={() => setSelectedEntry(null)} />}
+      {selectedEntry && <EntryDrillDownModal item={selectedEntry} categoryColors={categoryColors} statusColors={statusColors} onClose={() => setSelectedEntry(null)} />}
     </>
   );
 }

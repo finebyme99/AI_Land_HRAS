@@ -20,12 +20,23 @@ export type FieldType =
   | 'date'
   | 'url';
 
+/** select/multi_select 字段的选项（来自飞书 property.options） */
+export interface FieldSelectOption {
+  id: string;      // 飞书选项 ID (如 "optXXXX")
+  name: string;    // 选项显示文本 (如 "数据分析")
+  color?: number;  // 飞书颜色编号（可选）
+}
+
 export interface FieldMapEntry {
   /** 前端 camelCase key，sync / progress / wish-pool 三处共用 */
   key: string;
   type: FieldType;
   /** 飞书编组：场景信息 / 大赛相关 / 落地进展 / AI前指标 / AI后指标 / 价值计分 / 实现 */
   group: string;
+  /** 飞书字段注释（来自 bitable_field_map.description），可能为空 */
+  description?: string;
+  /** select/multi_select 字段的选项列表（来自 bitable_field_map.options），非 select 字段为 undefined */
+  options?: FieldSelectOption[];
 }
 
 /** 飞书字段名 → 前端字段定义 */

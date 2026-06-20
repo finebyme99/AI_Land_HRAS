@@ -187,6 +187,14 @@ h1, h2, h3 {
 }
 
 /* Ant Design overrides */
+
+/* ── Tabs 样式 ── */
+.ant-tabs-ink-bar { background: var(--primary) !important; }
+.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn { color: var(--primary) !important; }
+.ant-tabs-tab:not(.ant-tabs-tab-active) .ant-tabs-tab-btn { color: var(--text-secondary) !important; }
+.ant-tabs-tab:not(.ant-tabs-tab-active):hover .ant-tabs-tab-btn { color: var(--primary) !important; }
+.ant-tabs-nav::before { border-bottom-color: rgba(26, 58, 138, 0.08) !important; }
+
 .ant-card {
   border-radius: var(--radius) !important;
   border-color: var(--glass-border) !important;

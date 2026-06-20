@@ -27,7 +27,7 @@ npm run dev
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (API 路由用) |
 
-> **飞书多租户说明（2026-06-05）**：飞书应用凭证**不再在 env 里**，改存 `feishu_apps` 表（admin UI 录入）。详见 `CONTRIBUTING.md` 和 `docs/superpowers/specs/2026-06-05-feishu-external-sso-design.md`。
+飞书应用凭证存于 `feishu_apps` 表（admin UI），不在 env 中。详见 CONTRIBUTING.md。
 
 ## 项目结构
 
@@ -36,12 +36,12 @@ src/
 ├── app/              # Next.js App Router 页面
 │   ├── api/          # API 路由
 │   ├── admin/        # 管理后台
-│   ├── cases/        # 案例库
-│   ├── courses/      # 课程
+│   ├── wish-pool/    # 场景大全（三Tab视图）
+│   ├── resources/    # 课程资源（课程+工具）
 │   ├── competitions/ # AI 大赛
-│   └── page.tsx      # 首页
+│   └── page.tsx      # 首页（居中Hero+5项glass指标带）
 ├── components/       # 共享组件
-└── lib/              # 工具函数 (Supabase 客户端、飞书 API、认证)
+└── lib/              # 工具函数 (Supabase、飞书、认证、bitable映射)
 ```
 
 ## 详细规范

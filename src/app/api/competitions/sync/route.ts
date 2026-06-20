@@ -3,6 +3,7 @@ import { getTenantAccessToken } from '@/lib/feishu';
 import { getSupabaseAdmin, ensureBucket, uploadToStorage } from '@/lib/supabase-admin';
 import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
 import { FALLBACK_FIELD_MAP, type FieldMapEntry } from '@/lib/bitable/field-map';
+import { syncFieldMapFromFeishu } from '@/lib/bitable/sync-field-map';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
@@ -533,11 +534,25 @@ export async function POST(request: NextRequest) {
       console.log(`[auto-grant] ${name} (${u.id}) → roles:`, next);
     }
 
+    // 同步字段映射 + 清内存缓存（副作用，失败不影响主任务）
+    let fieldDescriptions: Record<string, string> = {};
+    try {
+      const fieldMapResult = await syncFieldMapFromFeishu(BASE_APP, TABLE_ID);
+      if (fieldMapResult.ok) {
+        fieldDescriptions = fieldMapResult.fieldDescriptions;
+      } else {
+        console.warn('[sync] 字段映射同步失败:', fieldMapResult.error);
+      }
+    } catch (fmErr) {
+      console.warn('[sync] 字段映射同步异常:', fmErr);
+    }
+
     return NextResponse.json({
       synced: rows.length,
       period,
       attachments: { downloaded: downloadedAttachments, skipped: skippedAttachments, replaced: replacedAttachments },
       reviewerAutoGranted,
+      fieldDescriptions,
     });
   } catch (err) {
     console.error('同步大赛方案失败:', err);
