@@ -7,7 +7,10 @@ export default function WelcomeModal() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    if (!localStorage.getItem('welcome_dismissed')) setShow(true);
+    const timer = window.setTimeout(() => {
+      if (!localStorage.getItem('welcome_dismissed')) setShow(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   if (!show) return null;

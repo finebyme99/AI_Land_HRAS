@@ -13,6 +13,8 @@
  */
 
 import type React from 'react';
+import { FIELD_LABELS } from '@/lib/bitable/labels';
+import { formatCurrency } from '@/lib/bitable/metrics';
 
 // ────────────────────────────────────────────────────────────────────
 // 类型定义
@@ -117,7 +119,7 @@ export const ENTRY_CARD_FIELD_POOL: EntryCardFieldDef[] = [
   { key: 'proposalNo', label: '场景编号', group: '基本信息', headerStyle: 'tag' },
   { key: 'sceneCategory', label: '场景分类', group: '基本信息', headerStyle: 'tag' },
   { key: 'competitionProgress', label: '大赛进展', group: '基本信息', headerStyle: 'tag' },
-  { key: 'title', label: '方案标题', group: '基本信息', headerStyle: 'heading' },
+  { key: 'title', label: FIELD_LABELS.title, group: '基本信息', headerStyle: 'heading' },
   { key: 'briefIntro', label: '一句话简介', group: '基本信息', headerStyle: 'paragraph' },
 
   // ── 参赛信息 ──
@@ -129,12 +131,12 @@ export const ENTRY_CARD_FIELD_POOL: EntryCardFieldDef[] = [
   { key: 'landingProgress', label: '落地进展', group: '参赛信息', headerStyle: 'tag' },
 
   // ── 价值指标 ──
-  { key: 'monthlySavedHours', label: '月均提效节省', group: '价值指标', headerStyle: 'tag' },
-  { key: 'monthlySavedCost', label: '月均降本', group: '价值指标', headerStyle: 'tag' },
-  { key: 'totalSavedHours', label: '月省总工时', group: '价值指标', headerStyle: 'tag' },
-  { key: 'totalEfficiencyRate', label: '总降本提效', group: '价值指标', headerStyle: 'tag' },
-  { key: 'reuseValueLevel', label: '复用价值', group: '价值指标', headerStyle: 'tag' },
-  { key: 'regionCoefficient', label: '地区系数', group: '价值指标', headerStyle: 'tag' },
+  { key: 'monthlySavedHours', label: FIELD_LABELS.monthlySavedHours, group: '价值指标', headerStyle: 'tag' },
+  { key: 'monthlySavedCost', label: FIELD_LABELS.monthlySavedCost, group: '价值指标', headerStyle: 'tag' },
+  { key: 'totalSavedHours', label: FIELD_LABELS.totalSavedHours, group: '价值指标', headerStyle: 'tag' },
+  { key: 'totalEfficiencyRate', label: FIELD_LABELS.totalEfficiencyRate, group: '价值指标', headerStyle: 'tag' },
+  { key: 'reuseValueLevel', label: FIELD_LABELS.reuseValueLevel, group: '价值指标', headerStyle: 'tag' },
+  { key: 'regionCoefficient', label: FIELD_LABELS.regionCoefficient, group: '价值指标', headerStyle: 'tag' },
 
   // ── 业务流程（paragraph 样式）──
   { key: 'beforeProcess', label: '原业务流程', group: '业务流程', headerStyle: 'paragraph' },
@@ -172,7 +174,7 @@ export function renderFieldValue(item: unknown, key: string): React.ReactNode {
     case 'totalSavedHours':
       return typeof v === 'number' ? `${Math.round(v)}h` : '—';
     case 'monthlySavedCost':
-      return typeof v === 'number' ? `¥${Math.round(v)}` : '—';
+      return formatCurrency(v);
     case 'totalEfficiencyRate':
       return typeof v === 'number' ? `${(v * 100).toFixed(1)}%` : '—';
     case 'finalValueScore':

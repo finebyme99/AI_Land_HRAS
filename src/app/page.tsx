@@ -31,9 +31,15 @@ function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: 
   const started = useRef(false);
 
   useEffect(() => {
-    if (target === 0) { setCount(0); return; }
+    if (target === 0) {
+      const timer = window.setTimeout(() => setCount(0), 0);
+      return () => window.clearTimeout(timer);
+    }
     const el = ref.current;
-    if (!el) { setCount(target); return; }
+    if (!el) {
+      const timer = window.setTimeout(() => setCount(target), 0);
+      return () => window.clearTimeout(timer);
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {

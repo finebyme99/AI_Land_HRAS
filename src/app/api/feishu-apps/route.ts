@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { listFeishuApps, createFeishuApp, updateFeishuAppStatus, getAppSecret } from '@/lib/feishu-app-store';
 import { getTenantAccessTokenFor } from '@/lib/feishu';
 
-async function requireAdmin(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const info = cookieStore.get('feishu_user_info')?.value;
-  if (!info) return null;
-  try {
-    const parsed = JSON.parse(info);
-    return parsed.roles?.includes('admin') || parsed.roles?.includes('moderator') ? parsed.id : null;
-  } catch { return null; }
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && 'message' in error) return String(error.message);
+  return String(error);
+}
+
+async function requirePermission(req: NextRequest, key: string): Promise<string | null> {
+  const userId = req.cookies.get('feishu_user_id')?.value;
+  if (!userId) return null;
+  if (!(await hasPermission(userId, key))) return null;
+  return userId;
 }
 
 // GET /api/feishu-apps — 列表（admin）
-export async function GET() {
-  const adminId = await requireAdmin();
+export async function GET(req: NextRequest) {
+  const adminId = await requirePermission(req, 'admin.feishu-apps');
   if (!adminId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   const apps = await listFeishuApps();
   return NextResponse.json({ apps });
@@ -24,7 +27,7 @@ export async function GET() {
 
 // POST /api/feishu-apps — 新增（admin）
 export async function POST(req: NextRequest) {
-  const adminId = await requireAdmin();
+  const adminId = await requirePermission(req, 'feishu-app.manage');
   if (!adminId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   const body = await req.json();
   if (!body.app_id || !body.app_secret || !body.tenant_key || !body.enterprise_name || !body.redirect_uri) {
@@ -36,7 +39,7 @@ export async function POST(req: NextRequest) {
 
 // PATCH /api/feishu-apps — 改 status 或 extra_redirect_uris（admin）
 export async function PATCH(req: NextRequest) {
-  const adminId = await requireAdmin();
+  const adminId = await requirePermission(req, 'feishu-app.manage');
   if (!adminId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   const body = await req.json();
   const { id } = body;
@@ -66,7 +69,7 @@ export async function PATCH(req: NextRequest) {
 
 // PUT /api/feishu-apps — 测试连通性（admin）
 export async function PUT(req: NextRequest) {
-  const adminId = await requireAdmin();
+  const adminId = await requirePermission(req, 'feishu-app.manage');
   if (!adminId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   const { id } = await req.json();
   const apps = await listFeishuApps();
@@ -76,7 +79,7 @@ export async function PUT(req: NextRequest) {
     const secret = await getAppSecret(app);
     await getTenantAccessTokenFor(app.app_id, secret);
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 400 });
+  } catch (e: unknown) {
+    return NextResponse.json({ ok: false, error: errorMessage(e) }, { status: 400 });
   }
 }

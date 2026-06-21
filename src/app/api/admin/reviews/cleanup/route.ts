@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
 // POST /api/admin/reviews/cleanup
-// 清理"并入其他方案"的方案及其关联评审记录（仅 admin/moderator）
+// 清理"并入其他方案"的方案及其关联评审记录
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
 
-  const { data: user } = await getSupabaseAdmin()
-    .from('users')
-    .select('id, roles')
-    .eq('id', userId)
-    .single();
-
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) {
+  if (!(await hasPermission(userId, 'review.clear-reviewer'))) {
     return NextResponse.json({ error: '仅管理员可执行清理' }, { status: 403 });
   }
 

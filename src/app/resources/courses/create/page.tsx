@@ -8,12 +8,13 @@ import { useAuth } from '@/lib/auth-context';
 import dayjs from 'dayjs';
 
 export default function CreateCoursePage() {
-  const { canManageCourses } = useAuth();
+  const { hasPermission } = useAuth();
+  const canPublishCourses = hasPermission('course.publish');
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
-  if (!canManageCourses) {
+  if (!canPublishCourses) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="glass rounded-2xl p-8 text-center" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
@@ -30,6 +31,10 @@ export default function CreateCoursePage() {
   }
 
   const handleSubmit = async (values: Record<string, unknown>) => {
+    if (!canPublishCourses) {
+      message.error('无课程发布权限');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/courses', {

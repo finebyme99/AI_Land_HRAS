@@ -8,7 +8,8 @@ import { useAuth } from '@/lib/auth-context';
 import { RESOURCE_CATEGORIES } from '@/types';
 
 export default function CreateResourcePage() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const canSubmitResource = hasPermission('resource.submit');
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
@@ -55,6 +56,10 @@ export default function CreateResourcePage() {
       message.error('请先登录');
       return;
     }
+    if (!canSubmitResource) {
+      message.error('无工具提交权限');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/resources', {
@@ -94,6 +99,17 @@ export default function CreateResourcePage() {
         <div className="glass rounded-2xl p-8 text-center" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
           <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>请先登录后再提交工具</p>
           <Link href="/login" className="text-sm font-medium" style={{ color: 'var(--primary)' }}>去登录</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canSubmitResource) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="glass rounded-2xl p-8 text-center" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+          <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>暂无工具提交权限</p>
+          <Link href="/resources?tab=apps" className="text-sm font-medium" style={{ color: 'var(--primary)' }}>返回工具列表</Link>
         </div>
       </div>
     );

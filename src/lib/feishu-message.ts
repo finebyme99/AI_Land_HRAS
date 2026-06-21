@@ -20,6 +20,13 @@ export interface MessageResponse {
   error?: string;
 }
 
+interface FeishuMessageRequestBody {
+  receive_id: string;
+  msg_type: SendMessageParams['messageType'];
+  content: string;
+  urgent?: boolean;
+}
+
 /** 检测内容里是否有 markdown 超链接 [text](url) */
 export function hasMarkdownLinks(text: string): boolean {
   return /\[[^\]]+\]\([^)]+\)/.test(text);
@@ -81,7 +88,7 @@ export async function sendFeishuMessage(params: SendMessageParams): Promise<Mess
     const url = new URL(`${FEISHU_API_BASE}/im/v1/messages`);
     url.searchParams.set('receive_id_type', recipientType);
 
-    const requestBody: any = {
+    const requestBody: FeishuMessageRequestBody = {
       receive_id: recipientId,
       msg_type: messageType,
       content: typeof content === 'string' ? content : JSON.stringify(content),
@@ -302,7 +309,7 @@ export function buildDeadlineReminderCard(params: {
 /**
  * 渲染模板变量
  */
-export function renderTemplate(template: string, variables: Record<string, any>): string {
+export function renderTemplate(template: string, variables: Record<string, unknown>): string {
   let result = template;
   for (const [key, value] of Object.entries(variables)) {
     result = result.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
@@ -312,7 +319,7 @@ export function renderTemplate(template: string, variables: Record<string, any>)
 
 /**
  * 构建"补录本周 AI 公开课"的输入卡片
- * 用于周一 18:25 CST 推给 course_admin 用户
+ * 用于周一 18:25 CST 推给有课程发布权限的用户
  * JSON 来源：src/lib/feishu-card-templates.ts 的 COURSE_INPUT_CARD_TEMPLATE
  */
 export function buildCourseInputCard(): object {

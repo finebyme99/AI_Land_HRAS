@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ChoDashboard from '@/components/ChoDashboard';
 import { Spin, App, Tabs, Tag, Tooltip } from 'antd';
@@ -8,13 +8,12 @@ import {
   TrophyOutlined,
   TeamOutlined,
   StarOutlined,
+  StarFilled,
   ClockCircleOutlined,
   FireOutlined,
   BarChartOutlined,
   RiseOutlined,
   BulbOutlined,
-  CheckCircleOutlined,
-  ThunderboltOutlined,
   DollarOutlined,
   SyncOutlined,
   QuestionCircleOutlined,
@@ -22,28 +21,25 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { PAGE_LABELS } from '@/lib/bitable/page-usage';
 import {
-  buildCategoryColorMap, buildStatusColorMap, reuseLevelStyle,
+  buildCategoryColorMap, buildStatusColorMap,
   FALLBACK_COLOR,
 } from '@/lib/bitable/enums';
 import type { FieldSelectOption } from '@/lib/bitable/field-map';
+import { FIELD_LABELS } from '@/lib/bitable/labels';
+import { summarizeValueMetrics } from '@/lib/bitable/metrics';
 import {
   DetailListBlock,
   WishItem,
-  fmt, fmtF, numOrDash, fmtCost, FmtHeader,
+  fmt, fmtF, fmtCost,
 } from '@/components/DetailListBlock';
 
 // ── 大赛进展标签文本映射（仅特殊文本替换）──
 const STATUS_TEXT: Record<string, string> = { '终审通过': '已结项' };
-function periodLabel(p: string): string {
-  if (p.length === 4) {
-    const m = p.slice(2);
-    return `${parseInt(m)}月`;
-  }
-  return p;
-}
+// ── 价值星级 tooltip（AI岛计算逻辑）──
+const STAR_TOOLTIP = '按最终价值计分排名百分位：前20%=5★，前40%=4★，前60%=3★，前80%=2★，后20%=1★';
 
 // ── 方案详情弹窗（4分组布局） ──
-function EntryDrillDownModal({ item, categoryColors, statusColors, fieldDescriptions, onClose }: { item: WishItem; categoryColors: Record<string, string>; statusColors: Record<string, string>; fieldDescriptions: Record<string, string>; onClose: () => void }) {
+function EntryDrillDownModal({ item, categoryColors, fieldDescriptions, onClose }: { item: WishItem; categoryColors: Record<string, string>; fieldDescriptions: Record<string, string>; onClose: () => void }) {
   const catColor = categoryColors[item.sceneCategory || ''] || FALLBACK_COLOR;
   const arr = (v: string[] | undefined) => v?.length ? v.join('、') : null;
   const members = [...new Set([...(item.submitter || []), ...(item.teamMembers || [])])];
@@ -60,8 +56,7 @@ function EntryDrillDownModal({ item, categoryColors, statusColors, fieldDescript
     </span>
   );
 
-  // 价值星级专属tooltip（AI岛计算逻辑，不走飞书fieldDescriptions）
-  const STAR_TOOLTIP = '按最终价值计分排名百分位：前20%=5★，前40%=4★，前60%=3★，前80%=2★，后20%=1★';
+  // 价值星级专属tooltip（提取到模块级，此处不再重复定义）
 
   // 分组标题
   const groupHeader = (title: string, accentColor: string) => (
@@ -152,7 +147,7 @@ function EntryDrillDownModal({ item, categoryColors, statusColors, fieldDescript
             {beforeAfterRow('月均耗时', item.beforeMonthlyHours ? `${fmtF(Math.round(item.beforeMonthlyHours))}h` : '—', item.afterMonthlyHours ? `${fmtF(Math.round(item.afterMonthlyHours))}h` : '—')}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
-            {fieldRow(labelWithTip('降本费用', 'monthlySavedCost'), fmtCost(item.monthlySavedCost))}
+            {fieldRow(labelWithTip(FIELD_LABELS.monthlySavedCost, 'monthlySavedCost'), fmtCost(item.monthlySavedCost))}
             {fieldRow(labelWithTip('月均Token费用', 'aiCost'), item.aiCost ? `¥${fmtF(Math.round(item.aiCost))}` : '—')}
             {wideRow(labelWithTip('降本费用说明', 'costReductionNote'), item.costReductionNote)}
           </div>
@@ -242,7 +237,7 @@ function SpotlightCard({ item, rank, categoryColors, onClick }: { item: WishItem
       {/* 关键数据 */}
       <div className="flex items-center justify-between px-5 pb-4 gap-4">
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>月省总工时</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>{FIELD_LABELS.totalSavedHours}</div>
           <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'SF Mono, monospace', color: '#16a34a' }}>
             {item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '-'}
           </div>
@@ -253,6 +248,21 @@ function SpotlightCard({ item, rank, categoryColors, onClick }: { item: WishItem
             {item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(0)}%` : '-'}
           </div>
         </div>
+        {item.valueStarLevel != null && item.valueStarLevel > 0 && (() => {
+          const stars = item.valueStarLevel!;
+          const starColor = stars >= 4 ? '#1a3a8a' : stars >= 3 ? '#2d5bc7' : '#94a3b8';
+          return (
+            <Tooltip title={STAR_TOOLTIP} placement="top" overlayStyle={{ zIndex: 99999 }}>
+              <div style={{ flexShrink: 0, textAlign: 'center', cursor: 'help' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>价值星级</div>
+                <span className="inline-flex items-center gap-0.5">
+                  {Array.from({ length: stars }, (_, i) => <StarFilled key={i} style={{ fontSize: 13, color: starColor }} />)}
+                  {Array.from({ length: 5 - stars }, (_, i) => <StarOutlined key={i} style={{ fontSize: 13, color: '#cbd5e1' }} />)}
+                </span>
+              </div>
+            </Tooltip>
+          );
+        })()}
       </div>
 
       {/* AI 工具 + 复用价值 */}
@@ -309,7 +319,9 @@ export default function CompetitionsPage() {
 }
 
 function CompetitionsPageInner() {
-  const { isAdmin } = useAuth();
+  const { hasPermission } = useAuth();
+  const canSyncCompetition = hasPermission('competition.sync');
+  const canViewDashboard = canSyncCompetition || hasPermission('dashboard.export-image');
   const searchParams = useSearchParams();
   const initialTab = searchParams?.get('tab') ?? 'progress';
   const [activeTab, setActiveTab] = useState(
@@ -318,7 +330,6 @@ function CompetitionsPageInner() {
 
   // ── 赛事数据 state ──
   const [allItems, setAllItems] = useState<WishItem[]>([]);
-  const [currentItems, setCurrentItems] = useState<WishItem[]>([]);
   const [activePeriods, setActivePeriods] = useState<string[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<string>('');
   const [progressLoading, setProgressLoading] = useState(true);
@@ -326,13 +337,9 @@ function CompetitionsPageInner() {
   const [syncing, setSyncing] = useState(false);
   const { message } = App.useApp();
 
-  // ── fieldOptions + fieldDescriptions + summary ──
+  // ── fieldOptions + fieldDescriptions ──
   const [fieldOptions, setFieldOptions] = useState<Record<string, FieldSelectOption[]>>({});
   const [fieldDescriptions, setFieldDescriptions] = useState<Record<string, string>>({});
-  const [summary, setSummary] = useState<{
-    count: number; totalPeople: number; totalSavedEfficiency: number;
-    totalMonthlySavedCostDisplay: string; totalMonthlySavedHoursSum: number;
-  } | null>(null);
   const [globalSummary, setGlobalSummary] = useState<{
     count: number; totalPeople: number; totalSavedEfficiency: number;
     totalMonthlySavedCostDisplay: string; totalMonthlySavedHoursSum: number;
@@ -340,23 +347,20 @@ function CompetitionsPageInner() {
   const [periodMap, setPeriodMap] = useState<Record<string, { total: number; byStatus: Record<string, number> }>>({});
 
   const categoryColors = useMemo(() => buildCategoryColorMap(fieldOptions.sceneCategory), [fieldOptions]);
-  const statusColors = useMemo(() => buildStatusColorMap(fieldOptions.competitionProgress), [fieldOptions]);
   const progressColors = useMemo(() => buildStatusColorMap(fieldOptions.landingProgress), [fieldOptions]);
 
   // ── 获取数据 ──
-  const fetchProgress = async () => {
+  const fetchProgress = useCallback(async () => {
     setProgressLoading(true);
     try {
       const res = await fetch('/api/competitions/progress');
       if (!res.ok) throw new Error('获取失败');
       const data = await res.json();
       setAllItems(data.allItems || []);
-      setCurrentItems(data.items || []);
       setActivePeriods(data.periods || []);
       setSelectedPeriod(data.currentPeriod || '');
       setFieldOptions(data.fieldOptions || {});
       setFieldDescriptions(data.fieldDescriptions || {});
-      setSummary(data.summary);
       setGlobalSummary(data.globalSummary);
       setPeriodMap(data.stats?.periodMap || {});
     } catch {
@@ -364,9 +368,17 @@ function CompetitionsPageInner() {
     } finally {
       setProgressLoading(false);
     }
-  };
+  }, [message]);
 
-  useEffect(() => { fetchProgress(); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchProgress(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchProgress]);
+
+  const currentItems = useMemo(
+    () => selectedPeriod ? allItems.filter((d) => d.reviewPeriod === selectedPeriod) : [],
+    [allItems, selectedPeriod],
+  );
 
   // ── 同步 ──
   const handleSync = async () => {
@@ -384,27 +396,10 @@ function CompetitionsPageInner() {
     }
   };
 
-  // ── 切换期数时重新过滤 ──
-  useEffect(() => {
-    if (!selectedPeriod || allItems.length === 0) return;
-    const filtered = allItems.filter((d) => d.reviewPeriod === selectedPeriod);
-    setCurrentItems(filtered);
-  }, [selectedPeriod, allItems]);
-
   // ── 当期 summary（随 selectedPeriod 变化重新计算）──
   const currentSummary = useMemo(() => {
     if (currentItems.length === 0) return null;
-    const count = currentItems.length;
-    const totalPeople = currentItems.reduce((s, d) => s + (d.beforePeopleCount ?? 0), 0);
-    const totalSavedEfficiency = Math.round(currentItems.reduce((s, d) => s + (d.monthlySavedHours ?? 0), 0) * 10) / 10;
-    const totalMonthlySavedCost = currentItems.reduce((s, d) => {
-      if (!d.monthlySavedCost) return s;
-      const n = typeof d.monthlySavedCost === 'number' ? d.monthlySavedCost : parseFloat(String(d.monthlySavedCost).replace(/[^0-9.\-]/g, ''));
-      return s + (n > 0 ? n : 0);
-    }, 0);
-    const totalMonthlySavedCostDisplay = totalMonthlySavedCost > 0 ? `¥${Math.round(totalMonthlySavedCost)}` : '—';
-    const totalMonthlySavedHoursSum = Math.round(currentItems.reduce((s, d) => s + (d.totalSavedHours ?? 0), 0) * 10) / 10;
-    return { count, totalPeople, totalSavedEfficiency, totalMonthlySavedCostDisplay, totalMonthlySavedHoursSum };
+    return summarizeValueMetrics(currentItems);
   }, [currentItems]);
 
   // ── allTimelinePeriods：活跃 + 未来周期 ──
@@ -432,15 +427,6 @@ function CompetitionsPageInner() {
 
   const spotlightEntries = useMemo(() => rankedEntries.slice(0, 3), [rankedEntries]);
 
-  // ── 当前期的评审进度 ──
-  const statusSummary = useMemo(() => {
-    if (!selectedPeriod || !periodMap[selectedPeriod]) return null;
-    const p = periodMap[selectedPeriod];
-    const done = p.byStatus['终审通过'] || 0;
-    const reviewing = p.byStatus['评审中'] || 0;
-    return { total: p.total, done, reviewing };
-  }, [selectedPeriod, periodMap]);
-
   return (
     <>
       <div className="px-[100px]" style={{ paddingTop: 20 }}>
@@ -465,7 +451,7 @@ function CompetitionsPageInner() {
                       <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                         欢迎每一位勇于拥抱变化、重塑流程、迎击时代浪潮的探索者
                       </div>
-                      {isAdmin && (
+                      {canSyncCompetition && (
                         <div className="flex items-center gap-2">
                           <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer"
                             className="px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all hover:opacity-90"
@@ -506,9 +492,9 @@ function CompetitionsPageInner() {
                   <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                     <StatCard label="参赛方案" value={String(currentSummary?.count ?? 0)} sub={globalSummary && globalSummary.count !== currentSummary?.count ? `累计 ${globalSummary.count} 个` : undefined} color="#1a3a8a" icon={<BulbOutlined />} />
                     <StatCard label="覆盖人数" value={currentSummary?.totalPeople ? String(currentSummary.totalPeople) : '0'} color="#2d5bc7" icon={<TeamOutlined />} />
-                    <StatCard label="月均提效工时" value={currentSummary?.totalSavedEfficiency ? `${fmt(currentSummary.totalSavedEfficiency)}h` : '—'} sub="月均提效节省工时" color="#16a34a" icon={<RiseOutlined />} />
-                    <StatCard label="月均降本费用" value={currentSummary?.totalMonthlySavedCostDisplay ?? '—'} sub="不含人力成本" color="#d97706" icon={<DollarOutlined />} />
-                    <StatCard label="月均节省总工时" value={currentSummary?.totalMonthlySavedHoursSum ? `${fmt(currentSummary.totalMonthlySavedHoursSum)}h` : '—'} sub="提效+降本折算" color="#1a3a8a" icon={<ClockCircleOutlined />} />
+                    <StatCard label={FIELD_LABELS.monthlySavedHours} value={currentSummary?.totalSavedEfficiency ? `${fmt(currentSummary.totalSavedEfficiency)}h` : '—'} sub="飞书公式字段" color="#16a34a" icon={<RiseOutlined />} />
+                    <StatCard label={FIELD_LABELS.monthlySavedCost} value={currentSummary?.totalMonthlySavedCostDisplay ?? '—'} sub="不含人力成本" color="#d97706" icon={<DollarOutlined />} />
+                    <StatCard label={FIELD_LABELS.totalSavedHours} value={currentSummary?.totalMonthlySavedHoursSum ? `${fmt(currentSummary.totalMonthlySavedHoursSum)}h` : '—'} sub="提效+降本折算" color="#1a3a8a" icon={<ClockCircleOutlined />} />
                   </div>
 
                   {/* ── 赛事时间线（极简横向企业发展史风格）── */}
@@ -632,7 +618,6 @@ function CompetitionsPageInner() {
                       fieldDescriptions={fieldDescriptions}
                       fieldOptions={fieldOptions}
                       progressColors={progressColors}
-                      categoryColors={categoryColors}
                       onRowEnter={() => {}}
                       onRowLeave={() => {}}
                       onSelectItem={(item) => setSelectedEntry(item)}
@@ -643,7 +628,7 @@ function CompetitionsPageInner() {
               </div>
             ),
           },
-          ...(isAdmin ? [{
+          ...(canViewDashboard ? [{
             key: 'effect',
             label: <span className="flex items-center gap-1.5 text-sm font-semibold px-1"><BarChartOutlined />{PAGE_LABELS.choDashboard}</span>,
             children: <ChoDashboard />,
@@ -660,7 +645,7 @@ function CompetitionsPageInner() {
       `}</style>
 
       {/* 详情弹窗 */}
-      {selectedEntry && <EntryDrillDownModal item={selectedEntry} categoryColors={categoryColors} statusColors={statusColors} fieldDescriptions={fieldDescriptions} onClose={() => setSelectedEntry(null)} />}
+      {selectedEntry && <EntryDrillDownModal item={selectedEntry} categoryColors={categoryColors} fieldDescriptions={fieldDescriptions} onClose={() => setSelectedEntry(null)} />}
     </>
   );
 }

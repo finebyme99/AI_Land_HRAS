@@ -1,9 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { getTenantAccessTokenFor } from '@/lib/feishu';
 import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
-import { extractValue, type FieldMapEntry, type FieldSelectOption } from '@/lib/bitable/field-map';
+import { mapFeishuRecord } from '@/lib/bitable/field-map';
 import { isLandedState } from '@/lib/bitable/enums';
+import {
+  assignValueStarLevels,
+  collectFieldDescriptions,
+  collectFieldOptions,
+  filterExcludedBitableRecords,
+  summarizeValueMetrics,
+} from '@/lib/bitable/metrics';
 
 // ── 飞书多维表格配置 ──
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
@@ -13,25 +20,8 @@ const VIEW_ID = 'vewKWNtKDJ';  // 场景池视图
 const ZT_APP_ID = 'cli_a84a9ed9597fd01c';
 const FEISHU_API = 'https://open.feishu.cn/open-apis';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapRecord(record: any, map: Record<string, FieldMapEntry>): Record<string, unknown> {
-  const fields = record.fields ?? {};
-  const mapped: Record<string, unknown> = {
-    id: record.record_id,
-    recordUrl: `https://ztn.feishu.cn/wiki/${WIKI_TOKEN}?table=${TABLE_ID}&view=${VIEW_ID}&record=${record.record_id}`,
-  };
-
-  for (const [fieldId, value] of Object.entries(fields)) {
-    const entry = map[fieldId];
-    if (!entry) continue;
-    mapped[entry.key] = extractValue(value, entry.type);
-  }
-
-  return mapped;
-}
-
 // GET: 从飞书实时读取场景池数据
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // 从数据库获取 ZT 应用凭证
     const { data: app } = await getSupabaseAdmin()
@@ -73,51 +63,23 @@ export async function GET(request: NextRequest) {
     // 加载字段映射（DB 优先，fallback 硬编码）
     const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'wish-pool');
 
-    // 字段注释 map：前端 key → 飞书字段注释（用于表头问号 tooltip）
-    const fieldDescriptions: Record<string, string> = {};
-    for (const entry of Object.values(fieldMap)) {
-      if (entry.description) fieldDescriptions[entry.key] = entry.description;
-    }
-
-    // select 字段选项列表（用于前端筛选枚举动态化）
-    const fieldOptions: Record<string, FieldSelectOption[]> = {};
-    for (const entry of Object.values(fieldMap)) {
-      if (entry.options && entry.options.length > 0) {
-        fieldOptions[entry.key] = entry.options;
-      }
-    }
-    // 永久排除"数据补充中"选项（落地进展、大赛进展均不展示此枚举）
-    for (const key of ['landingProgress', 'competitionProgress']) {
-      if (fieldOptions[key]) {
-        fieldOptions[key] = fieldOptions[key].filter(o => o.name !== '数据补充中');
-      }
-    }
+    const fieldDescriptions = collectFieldDescriptions(fieldMap);
+    const fieldOptions = collectFieldOptions(fieldMap);
 
     // 映射字段
-    const rawItems = allRecords.map((r) => mapRecord(r, fieldMap));
+    const rawItems = allRecords.map((record) => mapFeishuRecord(
+      record,
+      (recordId) => `https://ztn.feishu.cn/wiki/${WIKI_TOKEN}?table=${TABLE_ID}&view=${VIEW_ID}&record=${recordId}`,
+      fieldMap,
+    ));
 
     // 过滤脏数据：排除大赛进展或落地进展为"数据补充中"的记录
-    const items = rawItems.filter((d) =>
-      (d.competitionProgress as string) !== '数据补充中' &&
-      (d.landingProgress as string) !== '数据补充中'
-    );
+    const items = filterExcludedBitableRecords(rawItems);
 
     // 价值星级计算（前端计算字段，不从飞书同步）
     // 按 finalValueScore 降序排序，根据排名百分位分配星级
+    assignValueStarLevels(items);
     const withScore = items.filter((d) => d.finalValueScore != null && (d.finalValueScore as number) > 0);
-    withScore.sort((a, b) => ((b.finalValueScore as number) ?? 0) - ((a.finalValueScore as number) ?? 0));
-    const scoreTotal = withScore.length;
-    withScore.forEach((d, idx) => {
-      const percentile = (idx + 1) / scoreTotal;
-      if (percentile <= 0.2) d.valueStarLevel = 5;
-      else if (percentile <= 0.4) d.valueStarLevel = 4;
-      else if (percentile <= 0.6) d.valueStarLevel = 3;
-      else if (percentile <= 0.8) d.valueStarLevel = 2;
-      else d.valueStarLevel = 1;
-    });
-    // 无 finalValueScore 的场景不评级
-    items.filter((d) => !d.finalValueScore || (d.finalValueScore as number) <= 0)
-      .forEach((d) => { d.valueStarLevel = null; });
 
     // 计算统计指标
     const total = items.length;
@@ -159,16 +121,7 @@ export async function GET(request: NextRequest) {
       .filter(([k]) => isLandedState(k))
       .reduce((s, [, v]) => s + v, 0);
 
-    // 新增指标：月均提效节省工时之和
-    const totalMonthlySavedHours = Math.round(items.reduce((sum, d) => sum + ((d.monthlySavedHours as number) ?? 0), 0) * 10) / 10;
-
-    // 新增指标：月均降本费用之和（不含人力成本）
-    const totalMonthlySavedCost = items.reduce((sum, d) => {
-      const cost = d.monthlySavedCost as number | string | null;
-      if (!cost) return sum;
-      const num = typeof cost === 'number' ? cost : parseFloat(String(cost).replace(/[^0-9.\-]/g, ''));
-      return sum + (num > 0 ? num : 0);
-    }, 0);
+    const valueSummary = summarizeValueMetrics(items);
 
     // 价值排名排序
     const ranked = [...items]
@@ -190,8 +143,10 @@ export async function GET(request: NextRequest) {
         categoryMap,
         teamMap,
         landedCount,
-        totalMonthlySavedHours,
-        totalMonthlySavedCost,
+        totalMonthlySavedHours: valueSummary.totalSavedEfficiency,
+        totalSavedEfficiency: valueSummary.totalSavedEfficiency,
+        totalMonthlySavedHoursSum: valueSummary.totalMonthlySavedHoursSum,
+        totalMonthlySavedCost: valueSummary.totalMonthlySavedCost,
       },
     });
   } catch (err) {

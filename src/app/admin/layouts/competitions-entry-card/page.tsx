@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   DndContext,
   DragOverlay,
@@ -48,6 +49,7 @@ import {
   type FieldSpan,
 } from '@/lib/entry-card-layout';
 import { renderHeaderField } from '@/components/EntryCard/renderHeaderField';
+import { useAuth } from '@/lib/auth-context';
 
 // ─── Mock 数据（设计器预览用）───
 const MOCK_ENTRY = {
@@ -476,6 +478,10 @@ function FieldLibrary({
 // ────────────────────────────────────────────────────────────────────
 
 export default function EntryCardLayoutEditorPage() {
+  const router = useRouter();
+  const { hasPermission, loading: authLoading } = useAuth();
+  const canView = hasPermission('admin.layouts');
+  const canEdit = hasPermission('layout.edit');
   const { message, modal } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -524,21 +530,30 @@ export default function EntryCardLayoutEditorPage() {
   >(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  useEffect(() => {
+    if (!authLoading && !canView) router.replace('/');
+  }, [authLoading, canView, router]);
+
   // 初始加载
   useEffect(() => {
-    fetch(`/api/layouts/${LAYOUT_KEY}`)
-      .then((r) => r.json())
-      .then((d) => {
-        const initial = d.config ?? DEFAULT_ENTRY_CARD_LAYOUT;
-        historyRef.current = [initial];
-        cursorRef.current = 0;
-        setHistoryCursor(0);
-        setHistoryLength(1);
-        setLayout(initial);
-      })
-      .catch(() => message.error('加载布局失败'))
-      .finally(() => setLoading(false));
-  }, [message]);
+    if (!canView) return undefined;
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      fetch(`/api/layouts/${LAYOUT_KEY}`)
+        .then((r) => r.json())
+        .then((d) => {
+          const initial = d.config ?? DEFAULT_ENTRY_CARD_LAYOUT;
+          historyRef.current = [initial];
+          cursorRef.current = 0;
+          setHistoryCursor(0);
+          setHistoryLength(1);
+          setLayout(initial);
+        })
+        .catch(() => message.error('加载布局失败'))
+        .finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canView, message]);
 
   // 字段 → 在 layout 里的位置
   //   - null: 没用过
@@ -558,12 +573,6 @@ export default function EntryCardLayoutEditorPage() {
     });
     return (key: string) => map.get(key) ?? { header: false, group: null };
   }, [layout]);
-
-  // 旧 API 兼容（仅返回组名）
-  const usedByGroup = useCallback(
-    (key: string) => usedByLocation(key).group,
-    [usedByLocation],
-  );
 
   // ── 操作 ──
   /**
@@ -822,6 +831,10 @@ export default function EntryCardLayoutEditorPage() {
 
   // ── 保存 / 恢复默认 ──
   async function handleSave() {
+    if (!canEdit) {
+      message.error('无保存权限');
+      return;
+    }
     setSaving(true);
     try {
       const r = await fetch(`/api/layouts/${LAYOUT_KEY}`, {
@@ -870,13 +883,14 @@ export default function EntryCardLayoutEditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [undo, redo]);
 
-  if (loading) {
+  if (authLoading || (canView && loading)) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
         <Spin />
       </div>
     );
   }
+  if (!canView) return null;
 
   return (
     <DndContext
@@ -903,9 +917,11 @@ export default function EntryCardLayoutEditorPage() {
               <Button icon={<RedoOutlined />} disabled={!canRedo} onClick={redo} />
             </Tooltip>
             <Button icon={<ReloadOutlined />} onClick={handleReset}>恢复默认</Button>
-            <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>
-              保存配置
-            </Button>
+            {canEdit && (
+              <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>
+                保存配置
+              </Button>
+            )}
           </div>
         </div>
 

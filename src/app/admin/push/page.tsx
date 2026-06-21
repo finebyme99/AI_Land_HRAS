@@ -48,7 +48,9 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function AdminPushPage() {
   const router = useRouter();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
+  const canView = hasPermission('admin.push');
+  const canSend = hasPermission('push.send');
   const { message } = App.useApp();
 
   // 群聊（多选）
@@ -77,12 +79,12 @@ export default function AdminPushPage() {
 
   /* ─── 权限 ─── */
   useEffect(() => {
-    if (!authLoading && !isAdmin) router.replace('/');
-  }, [authLoading, isAdmin, router]);
+    if (!authLoading && !canView) router.replace('/');
+  }, [authLoading, canView, router]);
 
   /* ─── 加载群列表 ─── */
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!canView) return;
     (async () => {
       setChatsLoading(true);
       try {
@@ -95,15 +97,9 @@ export default function AdminPushPage() {
         setChatsLoading(false);
       }
     })();
-  }, [isAdmin]);
+  }, [canView, message]);
 
-  /* ─── 加载内容列表 ─── */
-  useEffect(() => {
-    if (!isAdmin) return;
-    loadContent(activeTab);
-  }, [isAdmin, activeTab]);
-
-  const loadContent = async (type: string) => {
+  async function loadContent(type: string) {
     if (contentMap[type]) return; // 已加载
     setContentLoading(true);
     try {
@@ -134,11 +130,18 @@ export default function AdminPushPage() {
     } finally {
       setContentLoading(false);
     }
-  };
+  }
+
+  /* ─── 加载内容列表 ─── */
+  useEffect(() => {
+    if (!canView) return undefined;
+    const timer = window.setTimeout(() => { void loadContent(activeTab); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canView, activeTab]);
 
   /* ─── 加载推送日志 ─── */
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!canView) return;
     (async () => {
       setLogsLoading(true);
       try {
@@ -152,7 +155,7 @@ export default function AdminPushPage() {
         setLogsLoading(false);
       }
     })();
-  }, [isAdmin]);
+  }, [canView]);
 
   /* ─── 过滤群列表 ─── */
   const filteredChats = useMemo(() => {
@@ -183,6 +186,7 @@ export default function AdminPushPage() {
 
   /* ─── 推送 ─── */
   const handlePush = async () => {
+    if (!canSend) { message.error('无推送权限'); return; }
     if (selectedChatIds.size === 0) { message.warning('请选择目标群聊'); return; }
     if (selected.size === 0) { message.warning('请选择要推送的内容'); return; }
 
@@ -222,7 +226,7 @@ export default function AdminPushPage() {
   };
 
   if (authLoading) return <div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>;
-  if (!isAdmin) return null;
+  if (!canView) return null;
 
   const selectedChatNames = chats.filter((c) => selectedChatIds.has(c.chat_id)).map((c) => c.name);
   const currentItems = contentMap[activeTab] ?? [];
@@ -377,15 +381,17 @@ export default function AdminPushPage() {
 
             {/* ③ 推送按钮 */}
             <div className="mt-4 flex items-center gap-3">
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                loading={pushing}
-                onClick={handlePush}
-                disabled={selectedChatIds.size === 0 || selected.size === 0}
-              >
-                推送到 {selectedChatIds.size} 个群
-              </Button>
+              {canSend && (
+                <Button
+                  type="primary"
+                  icon={<SendOutlined />}
+                  loading={pushing}
+                  onClick={handlePush}
+                  disabled={selectedChatIds.size === 0 || selected.size === 0}
+                >
+                  推送到 {selectedChatIds.size} 个群
+                </Button>
+              )}
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 共 {selected.size} 条内容 → {selectedChatNames.length > 0 ? selectedChatNames.join('、') : '未选群'}
               </span>

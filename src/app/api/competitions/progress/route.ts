@@ -2,7 +2,14 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { getTenantAccessTokenFor } from '@/lib/feishu';
 import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
-import { extractValue, type FieldMapEntry, type FieldSelectOption } from '@/lib/bitable/field-map';
+import { mapFeishuRecord } from '@/lib/bitable/field-map';
+import {
+  assignValueStarLevels,
+  collectFieldDescriptions,
+  collectFieldOptions,
+  filterExcludedBitableRecords,
+  summarizeValueMetrics,
+} from '@/lib/bitable/metrics';
 
 // ── 飞书多维表格配置 ──
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
@@ -10,21 +17,6 @@ const TABLE_ID = 'tbl9WJyxl9bbtYjb';
 const WIKI_TOKEN = 'LRROwulJciI7JYkIT55cQtdpnze';
 const ZT_APP_ID = 'cli_a84a9ed9597fd01c';
 const FEISHU_API = 'https://open.feishu.cn/open-apis';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapRecord(record: any, map: Record<string, FieldMapEntry>): Record<string, unknown> {
-  const fields = record.fields ?? {};
-  const mapped: Record<string, unknown> = {
-    id: record.record_id,
-    recordUrl: `https://ztn.feishu.cn/wiki/${WIKI_TOKEN}?table=${TABLE_ID}&record=${record.record_id}`,
-  };
-  for (const [fieldId, value] of Object.entries(fields)) {
-    const entry = map[fieldId];
-    if (!entry) continue;
-    mapped[entry.key] = extractValue(value, entry.type);
-  }
-  return mapped;
-}
 
 // GET: 从飞书实时读取大赛参赛数据（WishItem 格式，与 wish-pool API 对齐）
 export async function GET() {
@@ -67,32 +59,16 @@ export async function GET() {
     // 加载字段映射（DB 优先，fallback 硬编码）——用 wish-pool role 获取完整字段集
     const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'wish-pool');
 
-    // 字段注释 map：前端 key → 飞书字段注释（用于表头问号 tooltip）
-    const fieldDescriptions: Record<string, string> = {};
-    for (const entry of Object.values(fieldMap)) {
-      if (entry.description) fieldDescriptions[entry.key] = entry.description;
-    }
-
-    // select 字段选项列表（用于前端筛选枚举动态化）
-    const fieldOptions: Record<string, FieldSelectOption[]> = {};
-    for (const entry of Object.values(fieldMap)) {
-      if (entry.options && entry.options.length > 0) {
-        fieldOptions[entry.key] = entry.options;
-      }
-    }
-    // 永久排除"数据补充中"选项
-    for (const key of ['landingProgress', 'competitionProgress']) {
-      if (fieldOptions[key]) {
-        fieldOptions[key] = fieldOptions[key].filter(o => o.name !== '数据补充中');
-      }
-    }
+    const fieldDescriptions = collectFieldDescriptions(fieldMap);
+    const fieldOptions = collectFieldOptions(fieldMap);
 
     // 映射字段 + 过滤脏数据（排除"数据补充中"）
-    const allMapped = allRecords.map((r) => mapRecord(r, fieldMap));
-    const cleanItems = allMapped.filter((d) =>
-      (d.competitionProgress as string) !== '数据补充中' &&
-      (d.landingProgress as string) !== '数据补充中'
-    );
+    const allMapped = allRecords.map((record) => mapFeishuRecord(
+      record,
+      (recordId) => `https://ztn.feishu.cn/wiki/${WIKI_TOKEN}?table=${TABLE_ID}&record=${recordId}`,
+      fieldMap,
+    ));
+    const cleanItems = filterExcludedBitableRecords(allMapped);
 
     // 过滤参赛方案（只上岛：评审中 + 终审通过 + 有评审周期）
     const items = cleanItems.filter((d) => {
@@ -102,20 +78,7 @@ export async function GET() {
     });
 
     // ── 价值星级计算（同 wish-pool API）──
-    const withScore = items.filter((d) => d.finalValueScore != null && (d.finalValueScore as number) > 0);
-    withScore.sort((a, b) => ((b.finalValueScore as number) ?? 0) - ((a.finalValueScore as number) ?? 0));
-    const scoreTotal = withScore.length;
-    withScore.forEach((d, idx) => {
-      const percentile = (idx + 1) / scoreTotal;
-      if (percentile <= 0.2) d.valueStarLevel = 5;
-      else if (percentile <= 0.4) d.valueStarLevel = 4;
-      else if (percentile <= 0.6) d.valueStarLevel = 3;
-      else if (percentile <= 0.8) d.valueStarLevel = 2;
-      else d.valueStarLevel = 1;
-    });
-    // 无 finalValueScore 的不评级
-    items.filter((d) => !d.finalValueScore || (d.finalValueScore as number) <= 0)
-      .forEach((d) => { d.valueStarLevel = null; });
+    assignValueStarLevels(items);
 
     // ── 复用价值系数数值提取 ──
     items.forEach((d) => {
@@ -149,27 +112,7 @@ export async function GET() {
     // ── 5指标 summary（口径与 ChoDashboard 对齐）──
     // 注意：summary 基于 items（当前期数据），随前端 selectedPeriod 变化会重新计算
     const computeSummary = (list: Record<string, unknown>[]) => {
-      const count = list.length;
-      const totalPeople = list.reduce((sum, d) => sum + ((d.beforePeopleCount as number) ?? 0), 0);
-      // 月均提效节省工时：monthlySavedHours 飞书公式字段求和
-      const totalSavedEfficiency = Math.round(list.reduce((sum, d) => sum + ((d.monthlySavedHours as number) ?? 0), 0) * 10) / 10;
-      // 月均降本费用：monthlySavedCost 解析数值求和
-      const totalMonthlySavedCost = list.reduce((sum, d) => {
-        const cost = d.monthlySavedCost as number | string | null;
-        if (!cost) return sum;
-        const num = typeof cost === 'number' ? cost : parseFloat(String(cost).replace(/[^0-9.\-]/g, ''));
-        return sum + (num > 0 ? num : 0);
-      }, 0);
-      const totalMonthlySavedCostDisplay = totalMonthlySavedCost > 0 ? `¥${Math.round(totalMonthlySavedCost)}` : '—';
-      // 月均节省总工时：totalSavedHours 飞书公式字段求和
-      const totalMonthlySavedHoursSum = Math.round(list.reduce((sum, d) => sum + ((d.totalSavedHours as number) ?? 0), 0) * 10) / 10;
-      return {
-        count,
-        totalPeople,
-        totalSavedEfficiency,
-        totalMonthlySavedCostDisplay,
-        totalMonthlySavedHoursSum,
-      };
+      return summarizeValueMetrics(list);
     };
 
     // 当前期的 summary

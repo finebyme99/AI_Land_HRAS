@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { calcNextSendAt } from '@/lib/reminder-service';
 
 async function requireAdmin(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
-  const { data: user } = await getSupabaseAdmin()
-    .from('users').select('id, roles').eq('id', userId).single();
-  if (!user || !user.roles?.includes('admin')) return null;
-  return user;
+  if (!(await hasPermission(userId, 'admin.reminders'))) return null;
+  return { id: userId };
+}
+
+interface ReminderTargetInput {
+  user_id?: string | null;
+  recipient_type?: string | null;
+  recipient_id?: string | null;
 }
 
 // GET — 列表（含对象和最近日志）
@@ -72,9 +77,9 @@ export async function POST(request: NextRequest) {
 
   // 创建对象关联
   if (targets && Array.isArray(targets) && targets.length > 0) {
-    const rows = targets
-      .filter((t: any) => t && (t.user_id || t.recipient_id))
-      .map((t: any) => ({
+    const rows = (targets as ReminderTargetInput[])
+      .filter((t) => t && (t.user_id || t.recipient_id))
+      .map((t) => ({
         reminder_id: reminder.id,
         user_id: t.user_id ?? null,
         recipient_type: t.recipient_type ?? 'user',

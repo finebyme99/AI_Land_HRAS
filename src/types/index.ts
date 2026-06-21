@@ -72,9 +72,6 @@ export interface Resource {
   updated_at?: string;
 }
 
-/** @deprecated 兼容旧代码，等同于 Resource */
-export type AppRecommendation = Resource;
-
 // ============ 课程 ============
 export type CourseDifficulty = '初阶' | '进阶' | '高阶';
 export type ContentType = 'video' | 'doc';

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantAccessToken } from '@/lib/feishu';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin, ensureBucket, uploadToStorage } from '@/lib/supabase-admin';
 import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
 import { FALLBACK_FIELD_MAP, type FieldMapEntry } from '@/lib/bitable/field-map';
@@ -13,18 +14,16 @@ const LEGACY_TABLE_ID = 'tbl12tkH7lOR9rrq';  // 旧"方案提交"表 — 用于�
 const FEISHU_API = 'https://open.feishu.cn/open-apis';
 const BUCKET = 'competition-attachments';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 // 确保值是数组（数据库 TEXT[] 列需要）
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toArray(val: any): string[] | null {
+function toArray(val: unknown): string[] | null {
   if (val == null) return null;
   if (Array.isArray(val)) return val.filter(Boolean);
   return [String(val)];
 }
 
-function errMsg(err: any): string {
+function errMsg(err: unknown): string {
   if (err instanceof Error) return err.message;
-  if (err?.message) return err.message;
+  if (err && typeof err === 'object' && 'message' in err) return String(err.message);
   if (typeof err === 'string') return err;
   try { return JSON.stringify(err); } catch { return String(err); }
 }
@@ -264,7 +263,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: 从飞书同步到 Supabase（任何登录用户可触发）
+// POST: 从飞书同步到 Supabase
 export async function POST(request: NextRequest) {
   const period = request.nextUrl.searchParams.get('period') ?? '2605';
 
@@ -272,10 +271,11 @@ export async function POST(request: NextRequest) {
     // 校验登录
     const userId = request.cookies.get('feishu_user_id')?.value;
     if (!userId) return NextResponse.json({ error: '未登录' }, { status: 401 });
+    if (!(await hasPermission(userId, 'competition.sync'))) {
+      return NextResponse.json({ error: '仅有大赛同步权限的用户可同步' }, { status: 403 });
+    }
 
     const supabase = getSupabaseAdmin();
-    const { data: user } = await supabase.from('users').select('id').eq('id', userId).single();
-    if (!user) return NextResponse.json({ error: '用户不存在' }, { status: 401 });
 
     // 确保 Storage bucket 存在
     await ensureBucket(BUCKET);

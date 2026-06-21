@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import type { ReviewerRole, ReviewScores } from '@/types';
 import { SCORE_DIMENSIONS } from '@/types';
@@ -18,11 +19,13 @@ async function requireReviewer(request: NextRequest) {
 
   const { data: user } = await getSupabaseAdmin()
     .from('users')
-    .select('id, roles, name')
+    .select('id, roles, reviewer_roles, name')
     .eq('id', userId)
     .single();
 
-  if (!user || !user.roles?.some((r: string) => ['reviewer', 'admin', 'moderator'].includes(r))) return null;
+  if (!user) return null;
+  const hasReviewerRole = (user.reviewer_roles?.length ?? 0) > 0;
+  if (!hasReviewerRole && !(await hasPermission(userId, 'review.score'))) return null;
   return user;
 }
 
@@ -179,20 +182,14 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/competitions/reviews?reviewer_id=xxx
-// 清空指定评委的全部评分（仅 admin/moderator）
+// 清空指定评委的全部评分（需要 review.clear-reviewer）
 export async function DELETE(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
 
-  const { data: user } = await getSupabaseAdmin()
-    .from('users')
-    .select('id, roles')
-    .eq('id', userId)
-    .single();
-
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) {
+  if (!(await hasPermission(userId, 'review.clear-reviewer'))) {
     return NextResponse.json({ error: '仅管理员可清空评分' }, { status: 403 });
   }
 

@@ -73,15 +73,17 @@ function statusBadge(s: DiffStatus): { color: string; label: string; tip: string
 export default function BitableFieldMapPage() {
   const router = useRouter();
   const { message } = App.useApp();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
+  const canView = hasPermission('admin.bitable-field-map');
+  const canSync = hasPermission('fieldmap.sync');
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [previewRecord, setPreviewRecord] = useState<FieldRecord | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !isAdmin) router.replace('/');
-  }, [authLoading, isAdmin, router]);
+    if (!authLoading && !canView) router.replace('/');
+  }, [authLoading, canView, router]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -96,7 +98,11 @@ export default function BitableFieldMapPage() {
     }
   }, [message]);
 
-  useEffect(() => { if (isAdmin) fetchData(); }, [isAdmin, fetchData]);
+  useEffect(() => {
+    if (!canView) return undefined;
+    const timer = window.setTimeout(() => { void fetchData(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canView, fetchData]);
 
   // 按 group 分组（必须在早返回之前：React Rules of Hooks 要求所有 hook 无条件按相同顺序调用）
   const groupedRecords = useMemo(() => {
@@ -142,7 +148,7 @@ export default function BitableFieldMapPage() {
   if (authLoading || loading) {
     return <div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>;
   }
-  if (!isAdmin) return null;
+  if (!canView) return null;
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -156,9 +162,11 @@ export default function BitableFieldMapPage() {
         </div>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={fetchData}>刷新</Button>
-          <Button type="primary" icon={<SyncOutlined spin={syncing} />} loading={syncing} onClick={handleSyncFromFeishu}>
-            从飞书拉取新字段
-          </Button>
+          {canSync && (
+            <Button type="primary" icon={<SyncOutlined spin={syncing} />} loading={syncing} onClick={handleSyncFromFeishu}>
+              从飞书拉取新字段
+            </Button>
+          )}
         </Space>
       </div>
 

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { calcNextSendAt } from '@/lib/reminder-service';
 
 async function requireAdmin(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
-  const { data: user } = await getSupabaseAdmin()
-    .from('users').select('id, roles').eq('id', userId).single();
-  if (!user || !user.roles?.includes('admin')) return null;
-  return user;
+  if (!(await hasPermission(userId, 'admin.reminders'))) return null;
+  return { id: userId };
 }
 
 // GET — 单条详情

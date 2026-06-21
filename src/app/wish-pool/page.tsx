@@ -1,33 +1,30 @@
 'use client';
 
 import { Suspense, useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Spin, Tag, App, Tabs } from 'antd';
 import {
   SyncOutlined,
-  StarOutlined,
   RocketOutlined,
   BarChartOutlined,
   RiseOutlined,
   ThunderboltOutlined,
-  TeamOutlined,
-  ClockCircleOutlined,
   DownloadOutlined,
   EyeOutlined,
   HourglassOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
-import { fieldOptionsToFilterItems, type FilterItem } from '@/lib/bitable/filter-options';
 import type { FieldSelectOption } from '@/lib/bitable/field-map';
+import { FIELD_LABELS } from '@/lib/bitable/labels';
+import { summarizeValueMetrics } from '@/lib/bitable/metrics';
 import {
-  isLandedState, partitionProgressStates, buildProgressColorMap,
-  buildCategoryColorMap, reuseLevelStyle, FALLBACK_COLOR,
+  partitionProgressStates, buildProgressColorMap,
+  buildCategoryColorMap, FALLBACK_COLOR,
 } from '@/lib/bitable/enums';
 import {
   DetailListBlock,
   WishItem,
-  fmt, fmtF, numOrDash, fmtCost,
-  FilterRow,
+  fmt, fmtF, fmtCost,
 } from '@/components/DetailListBlock';
 
 // ── WishItem 类型已从 DetailListBlock 共享组件 import ──
@@ -216,11 +213,11 @@ function SceneDetailPopup({ item, categoryColors, progressColors }: { item: Wish
 
       {sectionTitle('价值计分指标', '#F27F22')}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-        {row('月均提效节省', item.monthlySavedHours ? `${fmtF(Math.round(item.monthlySavedHours))}h` : null)}
-        {row('月均降本费用', item.monthlySavedCost ? fmtCost(item.monthlySavedCost) : null)}
-        {row('降本折算工时', item.costSavedHours ? `${fmtF(Math.round(item.costSavedHours))}h` : null)}
-        {row('月均节省总工时', item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : null)}
-        {row('总降本提效', item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : null)}
+        {row(FIELD_LABELS.monthlySavedHours, item.monthlySavedHours ? `${fmtF(Math.round(item.monthlySavedHours))}h` : null)}
+        {row(FIELD_LABELS.monthlySavedCost, item.monthlySavedCost ? fmtCost(item.monthlySavedCost) : null)}
+        {row(FIELD_LABELS.costSavedHours, item.costSavedHours ? `${fmtF(Math.round(item.costSavedHours))}h` : null)}
+        {row(FIELD_LABELS.totalSavedHours, item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : null)}
+        {row(FIELD_LABELS.totalEfficiencyRate, item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : null)}
         {row('地区系数', item.regionCoefficient)}
       </div>
       <div style={{ display: 'flex', gap: 16, marginTop: 8, padding: '6px 10px', background: 'rgba(242,127,34,0.06)', borderRadius: 8, border: '1px solid rgba(242,127,34,0.15)' }}>
@@ -255,7 +252,7 @@ function SceneHoverList({ items, progressColors }: { items: WishItem[]; progress
       <table style={{ fontSize: 11, borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
         <thead>
           <tr>
-            {['场景', '提报团队', '落地进展', '月省总工时', '复用价值', '地区'].map((h) => (
+            {['场景', FIELD_LABELS.team, FIELD_LABELS.landingProgress, FIELD_LABELS.totalSavedHours, '复用价值', '地区'].map((h) => (
               <th key={h} style={{ padding: '4px 8px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.3)', textAlign: 'left' }}>{h}</th>
             ))}
           </tr>
@@ -311,7 +308,7 @@ function SceneDrillDownModal({ item, onClose }: { item: WishItem; onClose: () =>
             <div style={{ textAlign: 'center' }}><div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>最终价值计分</div><div style={{ fontSize: 28, fontWeight: 800, color: '#F27F22', fontFamily: 'SF Mono, monospace' }}>{item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '-'}</div></div>
             <div style={{ textAlign: 'center' }}><div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>价值排名</div><div style={{ fontSize: 28, fontWeight: 800, color: '#1a3a8a', fontFamily: 'SF Mono, monospace' }}>{item.valueRank ? `#${item.valueRank}` : '-'}</div></div>
             <div style={{ textAlign: 'center' }}><div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>月均节省总工时</div><div style={{ fontSize: 28, fontWeight: 800, color: '#2d5bc7', fontFamily: 'SF Mono, monospace' }}>{item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : '-'}</div></div>
-            <div style={{ textAlign: 'center' }}><div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>总降本提效</div><div style={{ fontSize: 28, fontWeight: 800, color: '#4a7de0', fontFamily: 'SF Mono, monospace' }}>{item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : '-'}</div></div>
+            <div style={{ textAlign: 'center' }}><div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>{FIELD_LABELS.totalEfficiencyRate}</div><div style={{ fontSize: 28, fontWeight: 800, color: '#4a7de0', fontFamily: 'SF Mono, monospace' }}>{item.totalEfficiencyRate ? `${(item.totalEfficiencyRate * 100).toFixed(1)}%` : '-'}</div></div>
           </div>
 
           {sectionTitle('场景信息', '#1a3a8a')}
@@ -339,10 +336,10 @@ function SceneDrillDownModal({ item, onClose }: { item: WishItem; onClose: () =>
 
           {sectionTitle('价值计分指标', '#F27F22')}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
-            {row('月均提效节省', item.monthlySavedHours ? `${fmtF(Math.round(item.monthlySavedHours))}h` : null)}
-            {row('月均降本费用', item.monthlySavedCost ? fmtCost(item.monthlySavedCost) : null)}
-            {row('降本折算工时', item.costSavedHours ? `${fmtF(Math.round(item.costSavedHours))}h` : null)}
-            {row('月均节省总工时', item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : null)}
+            {row(FIELD_LABELS.monthlySavedHours, item.monthlySavedHours ? `${fmtF(Math.round(item.monthlySavedHours))}h` : null)}
+            {row(FIELD_LABELS.monthlySavedCost, item.monthlySavedCost ? fmtCost(item.monthlySavedCost) : null)}
+            {row(FIELD_LABELS.costSavedHours, item.costSavedHours ? `${fmtF(Math.round(item.costSavedHours))}h` : null)}
+            {row(FIELD_LABELS.totalSavedHours, item.totalSavedHours ? `${fmtF(Math.round(item.totalSavedHours))}h` : null)}
             {row('地区系数', item.regionCoefficient)}{row('复用价值系数', item.reuseValue)}
           </div>
 
@@ -384,7 +381,7 @@ function FormulaSection() {
         </div>
         <div className="flex items-baseline gap-2">
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>3</span>
-          <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>月节省总工时</span>
+          <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>{FIELD_LABELS.totalSavedHours}</span>
           <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>= 月均提效节省工时 + 月均降本折算工时</span>
         </div>
         <div className="flex items-baseline gap-2">
@@ -411,8 +408,9 @@ function FormulaSection() {
 
 // ── 主页面内容 ──
 function WishPoolContent() {
-  const router = useRouter();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { hasPermission } = useAuth();
+  const canSyncFieldMap = hasPermission('fieldmap.sync');
+  const canExportImage = hasPermission('wishpool.export-image');
   const { message } = App.useApp();
 
   const [items, setItems] = useState<WishItem[]>([]);
@@ -454,8 +452,6 @@ function WishPoolContent() {
   const handleListEnter = () => { clearTimeout(listTimer.current); };
   const handleListLeave = () => { setListHover(null); };
 
-  useEffect(() => { if (!authLoading && !isAdmin) router.replace('/'); }, [authLoading, isAdmin, router]);
-
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -470,7 +466,10 @@ function WishPoolContent() {
     finally { setLoading(false); }
   }, [message]);
 
-  useEffect(() => { if (isAdmin) fetchData(); }, [isAdmin, fetchData]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchData(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchData]);
 
   const handleRefresh = async () => {
     setSyncing(true);
@@ -518,26 +517,18 @@ function WishPoolContent() {
 
   // ── Summary ──
   const overviewSummary = useMemo(() => {
-    const totalSavedEff = Math.round(items.reduce((s, d) => s + (d.monthlySavedHours ?? 0), 0) * 10) / 10;
-    const totalSavedCost = items.reduce((s, d) => {
-      if (!d.monthlySavedCost) return s;
-      const n = typeof d.monthlySavedCost === 'number' ? d.monthlySavedCost : parseFloat(String(d.monthlySavedCost).replace(/[^0-9.\-]/g, ''));
-      return s + (n > 0 ? n : 0);
-    }, 0);
+    const valueSummary = summarizeValueMetrics(items);
     return {
       total: items.length,
       landedCount: stats?.landedCount ?? 0,
-      totalSavedEff,
-      totalSavedCostDisplay: totalSavedCost > 0 ? `¥${fmtF(Math.round(totalSavedCost))}` : '—',
+      totalSavedEff: valueSummary.totalSavedEfficiency,
+      totalSavedCostDisplay: valueSummary.totalMonthlySavedCostDisplay,
     };
   }, [items, stats]);
 
   // ── 统计图 ──
   const maxCat = useMemo(() => stats ? Math.max(...Object.values(stats.categoryMap), 1) : 1, [stats]);
   const maxTeam = useMemo(() => stats ? Math.max(...Object.values(stats.teamMap), 1) : 1, [stats]);
-
-  if (authLoading) return <div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>;
-  if (!isAdmin) return null;
 
   return (
     <>
@@ -568,16 +559,20 @@ function WishPoolContent() {
           <div id="wish-pool-export">
             {/* 操作栏 */}
             <div className="flex items-center gap-2 mb-2">
-              <button onClick={handleRefresh} disabled={syncing}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #1a3a8a, #2d5bc7)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <SyncOutlined spin={syncing} /> 刷新
-              </button>
-              <button onClick={handleExportImage} disabled={exporting}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
-                style={{ background: 'white', color: '#1a3a8a', border: '1px solid #d1d5db' }}>
-                <DownloadOutlined spin={exporting} /> 导出图片
-              </button>
+              {canSyncFieldMap && (
+                <button onClick={handleRefresh} disabled={syncing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #1a3a8a, #2d5bc7)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <SyncOutlined spin={syncing} /> 刷新
+                </button>
+              )}
+              {canExportImage && (
+                <button onClick={handleExportImage} disabled={exporting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
+                  style={{ background: 'white', color: '#1a3a8a', border: '1px solid #d1d5db' }}>
+                  <DownloadOutlined spin={exporting} /> 导出图片
+                </button>
+              )}
             </div>
 
             {/* 三视图 Tabs */}
@@ -595,9 +590,9 @@ function WishPoolContent() {
                       <div className="glass rounded-2xl p-5" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           <StatCard icon={<BarChartOutlined />} label="场景总数" value={String(overviewSummary.total)} color="#1a3a8a" />
-                          <StatCard icon={<RocketOutlined />} label="已落地场景数" value={String(overviewSummary.landedCount)} sub="试点+推广+全面上线" color="#2d5bc7" />
-                          <StatCard icon={<RiseOutlined />} label="月均提效工时" value={overviewSummary.totalSavedEff > 0 ? `${overviewSummary.totalSavedEff}h` : '—'} sub="= 原月均 - 新月均" color="#1a3a8a" highlight />
-                          <StatCard icon={<ThunderboltOutlined />} label="月均降本费用" value={overviewSummary.totalSavedCostDisplay} sub="不含人力成本" color="#4a7de0" />
+                          <StatCard icon={<RocketOutlined />} label="已落地场景数" value={String(overviewSummary.landedCount)} sub="所有上线状态" color="#2d5bc7" />
+                          <StatCard icon={<RiseOutlined />} label={FIELD_LABELS.monthlySavedHours} value={overviewSummary.totalSavedEff > 0 ? `${overviewSummary.totalSavedEff}h` : '—'} sub="= 原月均 - 新月均" color="#1a3a8a" highlight />
+                          <StatCard icon={<ThunderboltOutlined />} label={FIELD_LABELS.monthlySavedCost} value={overviewSummary.totalSavedCostDisplay} sub="不含人力成本" color="#4a7de0" />
                         </div>
                       </div>
 
@@ -651,7 +646,6 @@ function WishPoolContent() {
                         fieldDescriptions={fieldDescriptions}
                         fieldOptions={fieldOptions}
                         progressColors={progressColors}
-                        categoryColors={categoryColors}
                         onRowEnter={handleRowEnter}
                         onRowLeave={handleRowLeave}
                         onSelectItem={setSelectedItem}
@@ -672,7 +666,6 @@ function WishPoolContent() {
                         fieldDescriptions={fieldDescriptions}
                         fieldOptions={fieldOptions}
                         progressColors={progressColors}
-                        categoryColors={categoryColors}
                         onRowEnter={handleRowEnter}
                         onRowLeave={handleRowLeave}
                         onSelectItem={setSelectedItem}
@@ -696,7 +689,6 @@ function WishPoolContent() {
                         fieldDescriptions={fieldDescriptions}
                         fieldOptions={fieldOptions}
                         progressColors={progressColors}
-                        categoryColors={categoryColors}
                         onRowEnter={handleRowEnter}
                         onRowLeave={handleRowLeave}
                         onSelectItem={setSelectedItem}

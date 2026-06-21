@@ -25,7 +25,9 @@ import { RESOURCE_CATEGORIES } from '@/types';
 const SCENARIO_OPTIONS = ['编程', '设计', '写作', '数据分析', '咨询搜集', '日常提效'];
 
 export default function AppsContent() {
-  const { user, isAdmin } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const canSubmitResource = hasPermission('resource.submit');
+  const canReviewResource = hasPermission('resource.review');
   const { message } = App.useApp();
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +74,10 @@ export default function AppsContent() {
     }
   }, [debouncedSearch, category, scenario]);
 
-  useEffect(() => { fetchResources(); }, [fetchResources]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchResources(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchResources]);
 
   // Fetch interaction states and counts
   useEffect(() => {
@@ -132,7 +137,7 @@ export default function AppsContent() {
 
   const canEdit = (res: Resource) => {
     if (!user) return false;
-    if (isAdmin) return true;
+    if (canReviewResource) return true;
     if (res.author?.id === user.id) return true;
     return false;
   };
@@ -186,6 +191,10 @@ export default function AppsContent() {
 
   const handleSave = async () => {
     if (!editing) return;
+    if (!canEdit(editing)) {
+      message.error('无编辑权限');
+      return;
+    }
     setSaving(true);
     try {
       const values = await form.validateFields();
@@ -272,14 +281,16 @@ export default function AppsContent() {
           ))}
         </div>
         {/* 操作按钮 */}
-        <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}>
-          <Link href="/resources/apps/create">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
-              style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', boxShadow: '0 4px 15px rgba(26,58,138,0.3)', color: '#fff' }}>
-              <PlusOutlined /> 分享好用工具
-            </button>
-          </Link>
-        </div>
+        {canSubmitResource && (
+          <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}>
+            <Link href="/resources/apps/create">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+                style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', boxShadow: '0 4px 15px rgba(26,58,138,0.3)', color: '#fff' }}>
+                <PlusOutlined /> 分享好用工具
+              </button>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Content */}

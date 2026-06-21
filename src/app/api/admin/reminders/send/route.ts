@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { executeReminders, sendOneReminderNow, sendPreviewToUser } from '@/lib/reminder-service';
 
 async function requireAdmin(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
+  if (!(await hasPermission(userId, 'reminder.send'))) return null;
   const { data: user } = await getSupabaseAdmin()
-    .from('users').select('id, name, roles, feishu_open_id').eq('id', userId).single();
-  if (!user || !user.roles?.includes('admin')) return null;
+    .from('users').select('id, name, feishu_open_id').eq('id', userId).single();
+  if (!user) return null;
   return user;
 }
 

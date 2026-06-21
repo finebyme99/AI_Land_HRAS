@@ -71,7 +71,10 @@ function ToolReviewTab() {
     }
   };
 
-  useEffect(() => { fetchResources(); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchResources(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const handleReview = async (id: string, status: 'published' | 'rejected') => {
     try {
@@ -178,14 +181,15 @@ function ToolReviewTab() {
 // ========== 主页面 ==========
 export default function AdminReviewPage() {
   const router = useRouter();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
+  const canView = hasPermission('admin.review');
 
   useEffect(() => {
-    if (!authLoading && !isAdmin) router.replace('/');
-  }, [authLoading, isAdmin, router]);
+    if (!authLoading && !canView) router.replace('/');
+  }, [authLoading, canView, router]);
 
   if (authLoading) return <div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>;
-  if (!isAdmin) return null;
+  if (!canView) return null;
 
   const tabItems = [
     {

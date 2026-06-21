@@ -29,6 +29,11 @@ interface ChatOption {
   description?: string;
 }
 
+interface RoleOption {
+  key: string;
+  label: string;
+}
+
 interface ReminderTargetRow {
   id: string;
   user_id: string | null;
@@ -53,6 +58,12 @@ interface ReminderItem {
   reminder_logs?: Array<{ id: string; status: string; sent_at: string }>;
 }
 
+interface SendDetail {
+  status: string;
+  title: string;
+  error?: string | null;
+}
+
 const FREQUENCY_OPTIONS = [
   { value: 'once', label: '仅一次' },
   { value: 'daily', label: '每天' },
@@ -71,10 +82,13 @@ const WEEKDAY_OPTIONS = [
 
 export default function AdminRemindersPage() {
   const router = useRouter();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
+  const canView = hasPermission('admin.reminders');
+  const canSend = hasPermission('reminder.send');
   const { message } = App.useApp();
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [chats, setChats] = useState<ChatOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -89,8 +103,8 @@ export default function AdminRemindersPage() {
   const cardTemplateId = Form.useWatch('card_template_id', form) as string | undefined;
 
   useEffect(() => {
-    if (!authLoading && !isAdmin) router.replace('/');
-  }, [authLoading, isAdmin, router]);
+    if (!authLoading && !canView) router.replace('/');
+  }, [authLoading, canView, router]);
 
   const fetchReminders = useCallback(async () => {
     try {
@@ -111,6 +125,7 @@ export default function AdminRemindersPage() {
       if (!res.ok) throw new Error('获取失败');
       const data = await res.json();
       setUsers(data.users || []);
+      setRoleOptions(data.roles || []);
     } catch {
       message.error('获取用户列表失败');
     }
@@ -128,12 +143,14 @@ export default function AdminRemindersPage() {
   }, []);
 
   useEffect(() => {
-    if (isAdmin) {
-      fetchReminders();
-      fetchUsers();
-      fetchChats();
-    }
-  }, [isAdmin, fetchReminders, fetchUsers, fetchChats]);
+    if (!canView) return undefined;
+    const timer = window.setTimeout(() => {
+      void fetchReminders();
+      void fetchUsers();
+      void fetchChats();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canView, fetchReminders, fetchUsers, fetchChats]);
 
   const openCreate = () => {
     setEditing(null);
@@ -293,9 +310,9 @@ export default function AdminRemindersPage() {
       }
 
       // 显示失败详情
-      const failedDetails = data.details?.filter((d: any) => d.status === 'failed') || [];
+      const failedDetails = (data.details as SendDetail[] | undefined)?.filter((d) => d.status === 'failed') || [];
       if (failedDetails.length > 0) {
-        const errors = failedDetails.map((d: any) => `${d.title}: ${d.error || '未知错误'}`).join('\n');
+        const errors = failedDetails.map((d) => `${d.title}: ${d.error || '未知错误'}`).join('\n');
         Modal.error({ title: '发送失败详情', content: <pre className="text-xs whitespace-pre-wrap">{errors}</pre> });
       } else {
         message.success(parts.join('，'));
@@ -340,7 +357,7 @@ export default function AdminRemindersPage() {
       title: '发送时间',
       key: 'time',
       width: 140,
-      render: (_: any, record: ReminderItem) => {
+      render: (_: unknown, record: ReminderItem) => {
         if (record.frequency === 'once') {
           return <span>{record.send_date} {record.send_time?.slice(0, 5)}</span>;
         }
@@ -351,7 +368,7 @@ export default function AdminRemindersPage() {
     {
       title: '提醒对象',
       key: 'targets',
-      render: (_: any, record: ReminderItem) => {
+      render: (_: unknown, record: ReminderItem) => {
         const targets = record.reminder_targets || [];
         if (targets.length === 0) return <span style={{ color: 'var(--text-muted)' }}>未设置</span>;
         const names = targets.map((t) => t.users?.name || t.recipient_id || t.user_id?.slice(0, 8) || '—').join(', ');
@@ -376,11 +393,13 @@ export default function AdminRemindersPage() {
       title: '操作',
       key: 'action',
       width: 240,
-      render: (_: any, record: ReminderItem) => (
+      render: (_: unknown, record: ReminderItem) => (
         <Space size="small">
-          <Button type="link" size="small" icon={<SendOutlined />} onClick={() => handleSend(record.id)} loading={sending}>
-            立即发送
-          </Button>
+          {canSend && (
+            <Button type="link" size="small" icon={<SendOutlined />} onClick={() => handleSend(record.id)} loading={sending}>
+              立即发送
+            </Button>
+          )}
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>编辑</Button>
           <Popconfirm title="确认删除？" onConfirm={() => handleDelete(record.id)}>
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
@@ -391,7 +410,7 @@ export default function AdminRemindersPage() {
   ];
 
   if (authLoading) return <div className="flex justify-center items-center min-h-[60vh]">加载中...</div>;
-  if (!isAdmin) return null;
+  if (!canView) return null;
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -412,9 +431,11 @@ export default function AdminRemindersPage() {
             <Button icon={<ExperimentOutlined />} onClick={handlePreview} loading={previewing}>
               预览（发给自己）
             </Button>
-            <Button icon={<SendOutlined />} onClick={() => handleSend()} loading={sending}>
-              扫发到期
-            </Button>
+            {canSend && (
+              <Button icon={<SendOutlined />} onClick={() => handleSend()} loading={sending}>
+                扫发到期
+              </Button>
+            )}
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
               创建提醒
             </Button>
@@ -507,18 +528,12 @@ export default function AdminRemindersPage() {
             {recipientType === 'role' && (
               <Form.Item name="role_ids" label="角色" rules={[{ required: true, message: '请选择至少一个角色' }]}>
                 <Select
-                  mode="multiple"
-                  placeholder="选择角色（多选）"
-                  options={[
-                    { value: 'admin', label: '管理员' },
-                    { value: 'moderator', label: '版主' },
-                    { value: 'reviewer', label: '评委' },
-                    { value: 'course_admin', label: 'AI 课程管理员' },
-                    { value: 'contributor', label: '贡献者' },
-                  ]}
-                />
-              </Form.Item>
-            )}
+	                  mode="multiple"
+	                  placeholder="选择角色（多选）"
+	                  options={roleOptions.map((role) => ({ value: role.key, label: role.label }))}
+	                />
+	              </Form.Item>
+	            )}
             {recipientType === 'chat_id' && (
               <Form.Item name="chat_id" label="飞书群聊" rules={[{ required: true, message: '请选择群聊' }]}>
                 <Select

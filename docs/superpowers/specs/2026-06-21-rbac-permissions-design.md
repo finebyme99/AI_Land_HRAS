@@ -156,14 +156,13 @@ export function getPermissionsByGroup(): Record<string, PermissionDef[]> { /* ..
 | `nav.competitions` | AI大赛 | 前台导航 |
 | `nav.resources` | 课程资源 | 前台导航 |
 
-#### 管理后台页面（10 个）
+#### 管理后台页面（9 个）
 
 > 每个 admin 页面对应一个权限点，同时控制「菜单可见」和「页面守卫」两处。
 
 | key | label | group | 现 fallback |
 |---|---|---|---|
 | `admin.reviews` | 评审管理 | 管理后台 | isReviewer |
-| `admin.reviews-overview` | 评审一览 | 管理后台 | isAdmin |
 | `admin.review` | 内容审核 | 管理后台 | isAdmin |
 | `admin.users` | 用户授权 | 管理后台 | isAdmin |
 | `admin.bitable-field-map` | 字段映射配置 | 管理后台 | isAdmin |

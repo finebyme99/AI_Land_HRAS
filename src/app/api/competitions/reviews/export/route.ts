@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import type { ReviewScores, ReviewerRole } from '@/types';
 import { SCORE_DIMENSIONS } from '@/types';
@@ -15,14 +16,8 @@ async function requireAdmin(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
 
-  const { data: user } = await getSupabaseAdmin()
-    .from('users')
-    .select('id, roles')
-    .eq('id', userId)
-    .single();
-
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) return null;
-  return user;
+  if (!(await hasPermission(userId, 'review.export'))) return null;
+  return { id: userId };
 }
 
 const ROLE_LABELS: Record<ReviewerRole, string> = { user: '用户评委', business: '业务评委', tech: '技术评委' };

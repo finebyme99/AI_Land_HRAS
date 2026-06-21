@@ -16,6 +16,8 @@ import {
   DownloadOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
+import { FIELD_LABELS, VALUE_FORMULA_COPY } from '@/lib/bitable/labels';
+import { parseMetricNumber, summarizeValueMetrics } from '@/lib/bitable/metrics';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -46,6 +48,7 @@ interface ChoSubmission {
   reuseValue: string | null;
   reuseValueLevel: string | null;
   monthlySavedCost: string | null;
+  costReductionNote: string | null;
   aiCost: string | null;
   briefIntro: string | null;
   beforeFreq: number | null;
@@ -189,10 +192,12 @@ function FmtHeader({ label, tip }: { label: string; tip: string }) {
 
 export default function ChoDashboard() {
   const { message } = App.useApp();
-  const { isAdmin } = useAuth();
+  const { hasPermission } = useAuth();
+  const canSyncCompetition = hasPermission('competition.sync');
+  const canExportImage = hasPermission('dashboard.export-image');
+  const canView = canSyncCompetition || canExportImage;
   const [period, setPeriod] = useState('2605');
   const [data, setData] = useState<OverviewResponse | null>(null);
-  const [fieldDescriptions, setFieldDescriptions] = useState<Record<string, string>>({});
   const [fieldOptions, setFieldOptions] = useState<Record<string, { id: string; name: string }[]>>({});
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<string>('all');
@@ -213,7 +218,6 @@ export default function ChoDashboard() {
       if (!res.ok) throw new Error((await res.json()).error || '加载失败');
       const json = await res.json();
       setData(json);
-      setFieldDescriptions(json.fieldDescriptions ?? {});
       setFieldOptions(json.fieldOptions ?? {});
     } catch (e) {
       message.error(e instanceof Error ? e.message : '加载失败');
@@ -222,11 +226,19 @@ export default function ChoDashboard() {
     }
   }, [period, message]);
 
-  useEffect(() => { if (isAdmin) fetchData(); }, [isAdmin, fetchData]);
+  useEffect(() => {
+    if (!canView) return undefined;
+    const timer = window.setTimeout(() => { void fetchData(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canView, fetchData]);
 
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const handleExportImage = async () => {
+    if (!canExportImage) {
+      message.error('无导出权限');
+      return;
+    }
     setExporting(true);
     try {
       const html2canvas = (await import('html2canvas-pro')).default;
@@ -303,6 +315,10 @@ export default function ChoDashboard() {
     }
   };
   const handleSync = async () => {
+    if (!canSyncCompetition) {
+      message.error('无同步权限');
+      return;
+    }
     setSyncing(true);
     message.loading({ content: '正在从飞书同步…', key: 'sync', duration: 0 });
     try {
@@ -351,19 +367,6 @@ export default function ChoDashboard() {
     });
   }, [data]);
 
-  // ── Teams ──
-  const teams = useMemo(() => {
-    const set = new Set<string>();
-    enriched.forEach((s) => s.team && set.add(s.team));
-    return Array.from(set).sort();
-  }, [enriched]);
-
-  const teamCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    enriched.forEach((s) => { if (s.team) counts[s.team] = (counts[s.team] ?? 0) + 1; });
-    return counts;
-  }, [enriched]);
-
   // ── Filtered & sorted ──
   const tableData = useMemo(() => {
     let list = enriched;
@@ -381,8 +384,8 @@ export default function ChoDashboard() {
         case 'efficiencyRate': return (b.efficiencyRate ?? -1) - (a.efficiencyRate ?? -1);
         case 'beforeHours': return (b.beforeHours ?? -1) - (a.beforeHours ?? -1);
         case 'afterHours': return (b.afterHours ?? -1) - (a.afterHours ?? -1);
-        case 'monthlySavedCost': return (parseFloat(String(b.monthlySavedCost).replace(/[^0-9.\-]/g, '')) ?? -1) - (parseFloat(String(a.monthlySavedCost).replace(/[^0-9.\-]/g, '')) ?? -1);
-        case 'aiCost': return (parseFloat(String(b.aiCost).replace(/[^0-9.\-]/g, '')) ?? -1) - (parseFloat(String(a.aiCost).replace(/[^0-9.\-]/g, '')) ?? -1);
+        case 'monthlySavedCost': return (parseMetricNumber(b.monthlySavedCost) ?? -1) - (parseMetricNumber(a.monthlySavedCost) ?? -1);
+        case 'aiCost': return (parseMetricNumber(b.aiCost) ?? -1) - (parseMetricNumber(a.aiCost) ?? -1);
         case 'reuseValueCoefficient': return (b.reuseValueCoefficient ?? -1) - (a.reuseValueCoefficient ?? -1);
         default: return 0;
       }
@@ -392,28 +395,13 @@ export default function ChoDashboard() {
 
   // ── Summary（基于筛选后的数据）──
   const summary = useMemo(() => {
-    const totalPeople = tableData.reduce((sum, s) => sum + (s.beforePeopleCount ?? 0), 0);
-    const totalSaved = tableData.reduce((sum, s) => sum + (s.savedHours ?? 0), 0);
-    // 月均提效节省工时（飞书公式字段 monthlySavedHours 求和）
-    const totalSavedEfficiency = Math.round(tableData.reduce((sum, s) => sum + (s.savedHours ?? 0), 0) * 10) / 10;
-    // 月均降本费用（monthlySavedCost 是 string 如"¥3000"或"3000"，解析数值求和）
-    const totalMonthlySavedCost = tableData.reduce((sum, s) => {
-      if (!s.monthlySavedCost) return sum;
-      const num = parseFloat(String(s.monthlySavedCost).replace(/[^0-9.\-]/g, ''));
-      return sum + (num > 0 ? num : 0);
-    }, 0);
-    const totalMonthlySavedCostDisplay = totalMonthlySavedCost > 0 ? `¥${Math.round(totalMonthlySavedCost)}` : '—';
-    // 月均节省总工时（飞书公式字段 totalMonthlySavedHours 求和）
-    const totalMonthlySavedHoursSum = Math.round(tableData.reduce((sum, s) => sum + (s.totalMonthlySavedHours ?? 0), 0) * 10) / 10;
-    return {
-      count: tableData.length,
-      totalPeople,
-      totalSaved: Math.round(totalSaved * 10) / 10,
-      totalSavedEfficiency,
-      totalMonthlySavedCostDisplay,
-      totalMonthlySavedHoursSum,
-    };
+    return summarizeValueMetrics(tableData, {
+      monthlySavedHoursKey: 'savedHours',
+      totalSavedHoursKey: 'totalMonthlySavedHours',
+    });
   }, [tableData]);
+
+  type DashboardRow = (typeof tableData)[number];
 
   // ── Table columns ──
   const columns: TableColumnsType<typeof tableData[number]> = [
@@ -441,7 +429,7 @@ export default function ChoDashboard() {
         style: { position: 'relative' },
         children: (
           <div className="flex items-center justify-between">
-            <span>标题</span>
+            <span>{FIELD_LABELS.title}</span>
             <div
               className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-300"
               style={{ zIndex: 10 }}
@@ -528,9 +516,9 @@ export default function ChoDashboard() {
       className: 'cho-group-result',
       children: [
         {
-          title: <FmtHeader label="月节省工时" tip="= 原月均耗时 − 新月均耗时" />,
+          title: <FmtHeader label={FIELD_LABELS.monthlySavedHours} tip={VALUE_FORMULA_COPY.monthlySavedHours} />,
           dataIndex: 'savedHours', key: 'sh', width: 110, align: 'center' as const, className: 'cho-col-result',
-          render: (v: number | null, record: any) => {
+          render: (v: number | null, record: DashboardRow) => {
             const dir = changeDir(record.beforeMonthlyHours, record.afterMonthlyHours);
             return (
               <span className="inline-flex items-center gap-1">
@@ -541,14 +529,14 @@ export default function ChoDashboard() {
           },
         },
         {
-          title: <FmtHeader label="提效比例" tip="总降本提效比例（飞书公式字段）" />,
+          title: <FmtHeader label={FIELD_LABELS.efficiencyRate} tip="总降本提效比例（飞书公式字段）" />,
           dataIndex: 'efficiencyRate', key: 'eff', width: 100, align: 'center' as const, className: 'cho-col-result',
           render: (v: number | null) => <span className="font-mono text-xs font-medium" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{fmtPct(v)}</span>,
         },
         {
-          title: <FmtHeader label="降本折算工时" tip="= 月均降本费用 / (50 × 地区系数)" />,
+          title: <FmtHeader label={FIELD_LABELS.costSavedHours} tip="= 月均降本费用 / (50 × 地区系数)" />,
           dataIndex: 'monthlyCostSavingHours', key: 'mcsh', width: 110, align: 'center' as const, className: 'cho-col-result',
-          render: (v: number | null, record: any) => {
+          render: (v: number | null, record: DashboardRow) => {
             const cost = record.monthlySavedCost;
             const note = record.costReductionNote;
             const hasDetail = v != null && v > 0 && (cost || note);
@@ -575,7 +563,7 @@ export default function ChoDashboard() {
           },
         },
         {
-          title: <FmtHeader label="节省总工时" tip="= 月均提效节省工时 + 月均降本折算工时" />,
+          title: <FmtHeader label={FIELD_LABELS.totalMonthlySavedHours} tip={VALUE_FORMULA_COPY.totalSavedHours} />,
           dataIndex: 'totalMonthlySavedHours', key: 'tmsh', width: 110, align: 'center' as const, className: 'cho-col-result',
           render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span>,
         },
@@ -591,7 +579,7 @@ export default function ChoDashboard() {
         {
           title: <FmtHeader label="复用价值系数" tip="跨团队/BU 复用范围" />,
           dataIndex: 'reuseValue', key: 'rm', width: 200, align: 'center' as const, className: 'cho-col-reuse',
-          render: (v: string | null, record: any) => {
+          render: (v: string | null, record: DashboardRow) => {
             if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
             const level = record.reuseValueLevel;
             const ls = reuseLevelStyle(level);
@@ -643,7 +631,7 @@ export default function ChoDashboard() {
   ];
 
   // ── Guard ──
-  if (!isAdmin) return null;
+  if (!canView) return null;
 
   return (
     <>
@@ -727,22 +715,26 @@ export default function ChoDashboard() {
       <div className="py-2 sm:py-3">
         {/* 操作栏（按钮放左侧，无标题） */}
         <div className="glass rounded-xl px-4 py-3 mb-2 flex items-center gap-2" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, #d46b08, #f27f22)', boxShadow: '0 4px 15px rgba(242,127,34,0.3)' }}
-          >
-            <SyncOutlined spin={syncing} /> 从飞书同步
-          </button>
-          <button
-            onClick={handleExportImage}
-            disabled={exporting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
-            style={{ background: 'rgba(255,255,255,0.7)', color: '#b3540e', border: '1px solid rgba(242,127,34,0.3)' }}
-          >
-            <DownloadOutlined spin={exporting} /> 导出图片
-          </button>
+          {canSyncCompetition && (
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #d46b08, #f27f22)', boxShadow: '0 4px 15px rgba(242,127,34,0.3)' }}
+            >
+              <SyncOutlined spin={syncing} /> 从飞书同步
+            </button>
+          )}
+          {canExportImage && (
+            <button
+              onClick={handleExportImage}
+              disabled={exporting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
+              style={{ background: 'rgba(255,255,255,0.7)', color: '#b3540e', border: '1px solid rgba(242,127,34,0.3)' }}
+            >
+              <DownloadOutlined spin={exporting} /> 导出图片
+            </button>
+          )}
         </div>
 
         {/* 筛选 + 排序（不参与导出） */}
@@ -793,9 +785,9 @@ export default function ChoDashboard() {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               <StatCard icon={<BarChartOutlined />} label="参赛方案数" value={String(summary.count)} color="var(--primary)" />
               <StatCard icon={<TeamOutlined />} label="覆盖人数" value={summary.totalPeople > 0 ? `${summary.totalPeople}` : '—'} sub="执行人数合计" color="#0891b2" />
-              <StatCard icon={<RiseOutlined />} label="月均提效节省工时" value={summary.totalSavedEfficiency > 0 ? `${summary.totalSavedEfficiency}h` : '—'} sub="= 原月均 - 新月均" color="#16a34a" />
-              <StatCard icon={<ThunderboltOutlined />} label="月均降本费用" value={summary.totalMonthlySavedCostDisplay} sub="不含内部人力成本" color="#d97706" />
-              <StatCard icon={<ClockCircleOutlined />} label="月均节省总工时" value={summary.totalMonthlySavedHoursSum > 0 ? `${summary.totalMonthlySavedHoursSum}h` : '—'} sub="提效 + 降本折算" color="#7c3aed" highlight />
+              <StatCard icon={<RiseOutlined />} label={FIELD_LABELS.monthlySavedHours} value={summary.totalSavedEfficiency > 0 ? `${summary.totalSavedEfficiency}h` : '—'} sub={VALUE_FORMULA_COPY.monthlySavedHours} color="#16a34a" />
+              <StatCard icon={<ThunderboltOutlined />} label={FIELD_LABELS.monthlySavedCost} value={summary.totalMonthlySavedCostDisplay} sub="不含人力成本" color="#d97706" />
+              <StatCard icon={<ClockCircleOutlined />} label={FIELD_LABELS.totalMonthlySavedHours} value={summary.totalMonthlySavedHoursSum > 0 ? `${summary.totalMonthlySavedHoursSum}h` : '—'} sub="提效 + 降本折算" color="#7c3aed" highlight />
             </div>
           </div>
 
@@ -820,7 +812,7 @@ export default function ChoDashboard() {
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>3</span>
-                <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>月节省总工时</span>
+                <span className="text-[11px] font-semibold" style={{ color: '#991b1b' }}>{FIELD_LABELS.totalMonthlySavedHours}</span>
                 <span className="text-[11px] font-mono" style={{ color: '#b91c1c' }}>= 月均提效节省工时 + 月均降本折算工时</span>
               </div>
               <div className="flex items-baseline gap-2">
@@ -961,11 +953,11 @@ function SubmissionDetailModal({ record, onClose }: { record: any | null; onClos
             <div className="text-lg font-bold font-mono" style={{ color: '#16a34a' }}>{numOrDash(r.savedHours, 'h')}</div>
           </div>
           <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
-            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>② 降本折算工时</div>
+            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>② {FIELD_LABELS.costSavedHours}</div>
             <div className="text-lg font-bold font-mono" style={{ color: '#d97706' }}>{numOrDash(r.monthlyCostSavingHours, 'h')}</div>
           </div>
           <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(26,58,138,0.04)', border: '1px solid rgba(26,58,138,0.1)' }}>
-            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>③ 月节省总工时</div>
+            <div className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>③ {FIELD_LABELS.totalMonthlySavedHours}</div>
             <div className="text-lg font-bold font-mono" style={{ color: 'var(--primary)' }}>{numOrDash(r.totalMonthlySavedHours, 'h')}</div>
           </div>
           <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.12)' }}>

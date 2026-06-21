@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { insertCourseRow } from '@/lib/courses-insert';
 
-// 验证课程编辑权限：admin / moderator / course_admin
 async function requireCourseEditor(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
   const { data: user } = await getSupabaseAdmin()
     .from('users').select('id, roles').eq('id', userId).single();
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator', 'course_admin'].includes(r))) return null;
+  if (!user || !(await hasPermission(user.id, 'course.publish'))) return null;
   return user;
 }
 
@@ -28,7 +28,7 @@ export async function GET() {
   }
 }
 
-// POST /api/courses — 创建课程（admin / course_admin）
+// POST /api/courses — 创建课程（需要 course.publish）
 export async function POST(request: NextRequest) {
   const editor = await requireCourseEditor(request);
   if (!editor) {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH /api/courses?id=xxx — 更新课程（admin / course_admin）
+// PATCH /api/courses?id=xxx — 更新课程（需要 course.publish）
 export async function PATCH(request: NextRequest) {
   const editor = await requireCourseEditor(request);
   if (!editor) {

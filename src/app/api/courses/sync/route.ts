@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantAccessToken } from '@/lib/feishu';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
 const BASE_TOKEN = 'Wsj0bXtWcaxOtRsfXAYcvNXQnOa';
@@ -123,11 +124,10 @@ function mapRecord(record: any) {
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return NextResponse.json({ error: '未登录' }, { status: 401 });
-  const supabase = getSupabaseAdmin();
-  const { data: user } = await supabase.from('users').select('roles').eq('id', userId).single();
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator', 'course_admin'].includes(r))) {
+  if (!(await hasPermission(userId, 'course.sync'))) {
     return NextResponse.json({ error: '无权限' }, { status: 403 });
   }
+  const supabase = getSupabaseAdmin();
 
   try {
     const token = await getTenantAccessToken();

@@ -41,9 +41,6 @@ function buildAdminMenu(hasPermission: (key: string) => boolean, onNavigate?: ()
   if (hasPermission('admin.reviews')) {
     items.push({ key: '/admin/reviews', label: link('/admin/reviews', '评审管理') });
   }
-  if (hasPermission('admin.reviews-overview')) {
-    items.push({ key: '/admin/reviews-overview', label: link('/admin/reviews-overview', '评审一览') });
-  }
   if (hasPermission('admin.review')) {
     items.push({ key: '/admin/review', label: link('/admin/review', '内容审核') });
   }

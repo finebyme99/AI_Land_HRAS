@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { syncFieldMapFromFeishu } from '@/lib/bitable/sync-field-map';
 
 // ── 飞书多维表格配置（同 wish-pool/route.ts）──
@@ -12,7 +13,13 @@ const TABLE_ID = 'tbl9WJyxl9bbtYjb';
  * 供 wish-pool「刷新」按钮调用，确保筛选枚举跟随飞书最新配置。
  * ChoDashboard 的 sync 按钮已有此联动（作为副作用），此端点补齐 wish-pool 的缺失。
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const userId = request.cookies.get('feishu_user_id')?.value;
+  if (!userId) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  if (!(await hasPermission(userId, 'fieldmap.sync'))) {
+    return NextResponse.json({ error: '仅有字段映射同步权限的用户可同步' }, { status: 403 });
+  }
+
   const result = await syncFieldMapFromFeishu(BASE_APP, TABLE_ID, { fillKnownOnly: false });
 
   if (!result.ok) {

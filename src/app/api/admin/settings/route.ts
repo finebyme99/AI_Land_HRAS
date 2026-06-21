@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
-// 验证 admin 权限
-async function requireAdmin(request: NextRequest) {
+async function requireSettingsEditor(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
-  const { data: user } = await getSupabaseAdmin()
-    .from('users').select('id, roles').eq('id', userId).single();
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) return null;
-  return user;
+  if (!(await hasPermission(userId, 'settings.save'))) return null;
+  return { id: userId };
 }
 
 // GET /api/admin/settings — 获取平台设置
@@ -43,8 +41,8 @@ export async function GET(request: NextRequest) {
 
 // PUT /api/admin/settings — 更新平台设置（admin only）
 export async function PUT(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (!admin) {
+  const editor = await requireSettingsEditor(request);
+  if (!editor) {
     return NextResponse.json({ error: '无权限' }, { status: 403 });
   }
 

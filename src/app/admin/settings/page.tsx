@@ -8,18 +8,20 @@ import { useAuth } from '@/lib/auth-context';
 
 export default function AdminSettingsPage() {
   const router = useRouter();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
+  const canView = hasPermission('admin.settings');
+  const canSave = hasPermission('settings.save');
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !isAdmin) router.replace('/');
-  }, [authLoading, isAdmin, router]);
+    if (!authLoading && !canView) router.replace('/');
+  }, [authLoading, canView, router]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (canView) {
       fetch('/api/admin/settings')
         .then((r) => r.json())
         .then((data) => {
@@ -32,7 +34,7 @@ export default function AdminSettingsPage() {
         .catch(() => message.error('加载设置失败'))
         .finally(() => setLoading(false));
     }
-  }, [isAdmin, form]);
+  }, [canView, form, message]);
 
   const handleSave = async (values: { saved_hours: number; participant_count: number; award_count: number }) => {
     setSaving(true);
@@ -51,7 +53,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  if (authLoading || !isAdmin) {
+  if (authLoading || !canView) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
         <Spin size="large" />
@@ -112,17 +114,19 @@ export default function AdminSettingsPage() {
             />
           </Form.Item>
 
-          <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              icon={<SaveOutlined />}
-              loading={saving}
-              size="large"
-            >
-              保存设置
-            </Button>
-          </Form.Item>
+          {canSave && (
+            <Form.Item>
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<SaveOutlined />}
+                loading={saving}
+                size="large"
+              >
+                保存设置
+              </Button>
+            </Form.Item>
+          )}
         </Form>
       </div>
     </div>

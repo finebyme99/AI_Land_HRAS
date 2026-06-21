@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { SCORE_DIMENSIONS, type ReviewScores, type ReviewerRole } from '@/types';
 import { pinyin } from 'pinyin-pro';
 import { getActiveFieldMap, type FieldSelectOption } from '@/lib/bitable/field-map-reader';
+import {
+  collectFieldDescriptions,
+  collectFieldOptions,
+  EXCLUDED_BITABLE_OPTION_NAME,
+  summarizeValueMetrics,
+} from '@/lib/bitable/metrics';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
@@ -19,16 +26,27 @@ function computeWeightedScore(scores: ReviewScores, role: ReviewerRole): number 
 async function requireAdmin(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
-  const { data: user } = await getSupabaseAdmin()
-    .from('users').select('id, roles').eq('id', userId).single();
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) return null;
-  return user;
+  const allowed = await hasPermission(userId, 'competition.sync')
+    || await hasPermission(userId, 'dashboard.export-image');
+  if (!allowed) return null;
+  return { id: userId };
+}
+
+interface ReviewRow {
+  id: string;
+  submission_id: string;
+  reviewer_id: string;
+  reviewer_role: ReviewerRole | null;
+  decision: string | null;
+  reason: string | null;
+  scores: ReviewScores | null;
+  reviewer: { name?: string | null } | { name?: string | null }[] | null;
 }
 
 /**
  * GET /api/admin/competitions/overview?period=2605
  *
- * 评审一览：聚合本期 submissions + 所有 reviews，给管理端页用。
+ * 成效看板：聚合本期 submissions + 所有 reviews，给 ChoDashboard 用。
  * 返回：{ period, summary, submissions[] }
  *   submissions[i].roleScores = { user, business, tech } — 该角色已评审人次的平均加权分
  *   submissions[i].totalScore  — 跨角色所有已评审人次的加权分平均
@@ -44,23 +62,8 @@ export async function GET(request: NextRequest) {
   try {
     // 字段注释（从 bitable_field_map 读取，用于前端 tooltip 动态化）
     const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'sync');
-    const fieldDescriptions: Record<string, string> = {};
-    for (const e of Object.values(fieldMap)) {
-      if (e.description) fieldDescriptions[e.key] = e.description;
-    }
-    // select 字段选项列表（用于前端筛选枚举动态化）
-    const fieldOptions: Record<string, FieldSelectOption[]> = {};
-    for (const e of Object.values(fieldMap)) {
-      if (e.options && e.options.length > 0) {
-        fieldOptions[e.key] = e.options;
-      }
-    }
-    // 永久排除"数据补充中"选项（落地进展、大赛进展均不展示此枚举）
-    for (const key of ['landingProgress', 'competitionProgress']) {
-      if (fieldOptions[key]) {
-        fieldOptions[key] = fieldOptions[key].filter(o => o.name !== '数据补充中');
-      }
-    }
+    const fieldDescriptions = collectFieldDescriptions(fieldMap);
+    const fieldOptions: Record<string, FieldSelectOption[]> = collectFieldOptions(fieldMap);
 
     // 1. 拉本期 submissions（只看"评审中"）
     const { data: subs, error: sErr } = await supabase
@@ -68,22 +71,21 @@ export async function GET(request: NextRequest) {
       .select('id, proposal_no, title, team, submitter, status, monthly_saved_hours, created_at, period, track, scene_category, ai_tools, efficiency_rate, before_process, pain_points, after_process, demo_link, record_url, ai_cost, extra_value, team_members, implementation, verifier, before_hours_per_person, before_people_count, after_hours_per_person, after_people_count, old_operation_count, new_operation_count, old_hours_per_task, new_duration, old_people_count, new_people_count, old_frequency, new_frequency, reuse_value, reuse_value_level, monthly_saved_cost, cost_reduction_note, implementation_link, final_value_score, brief_intro, before_freq, after_freq, before_monthly_hours, after_monthly_hours, scene_region_coefficient_value, monthly_cost_saving_hours, total_monthly_saved_hours, reuse_value_coefficient, region_coefficient, scene_source, landing_progress')
       .eq('period', period)
       .eq('status', '评审中')
-      .neq('landing_progress', '数据补充中')
+      .neq('landing_progress', EXCLUDED_BITABLE_OPTION_NAME)
       .order('proposal_no', { ascending: true });
     if (sErr) throw sErr;
     const submissions = subs ?? [];
     const subIds = submissions.map((s) => s.id);
 
     // 2. 拉这些 submissions 的所有 reviews（含 reviewer 名字）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let reviews: any[] = [];
+    let reviews: ReviewRow[] = [];
     if (subIds.length > 0) {
       const { data: r, error: rErr } = await supabase
         .from('competition_reviews')
         .select('id, submission_id, reviewer_id, reviewer_role, decision, reason, scores, reviewer:reviewer_id(name)')
         .in('submission_id', subIds);
       if (rErr) throw rErr;
-      reviews = (r ?? []) as any[];
+      reviews = (r ?? []) as ReviewRow[];
     }
 
     // 3. 聚合：按 submission 分组
@@ -135,9 +137,10 @@ export async function GET(request: NextRequest) {
       const reviewsOut = subReviews
         .map((r) => {
           const role = r.reviewer_role;
+          const reviewer = Array.isArray(r.reviewer) ? r.reviewer[0] : r.reviewer;
           return {
             id: r.id,
-            reviewerName: r.reviewer?.name ?? '匿名',
+            reviewerName: reviewer?.name ?? '匿名',
             reviewerRole: role,
             decision: r.decision,
             scores: r.scores ?? {},
@@ -239,10 +242,8 @@ export async function GET(request: NextRequest) {
       if (!desc) continue;
       reuseValueDistribution[desc] = (reuseValueDistribution[desc] ?? 0) + 1;
     }
-    // 总节省工时
-    const totalSavedHours = Math.round(
-      enriched.reduce((s, x) => s + (x.monthlySavedHours ?? 0), 0) * 10,
-    ) / 10;
+    const valueSummary = summarizeValueMetrics(enriched, { totalSavedHoursKey: 'totalMonthlySavedHours' });
+    const totalSavedHours = valueSummary.totalSavedEfficiency;
     // 平均提效比例
     const withRate = enriched.filter((s) => s.efficiencyRate != null);
     const avgEfficiencyRate = withRate.length > 0

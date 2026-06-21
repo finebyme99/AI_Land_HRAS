@@ -2,7 +2,7 @@
  * 布局配置 API
  *
  * GET  /api/layouts/[key]         任何登录用户可读（含 fallback 默认）
- * PUT  /api/layouts/[key]         仅 admin / moderator
+ * PUT  /api/layouts/[key]         需要 layout.edit 权限
  *
  * 读取场景：competitions 页面渲染 hover 卡片时，全员可读 → 走 GET 拿最新 layout
  * 写入场景：admin 在 /admin/layouts/[key] 配置面板保存 → 走 PUT
@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { DEFAULT_ENTRY_CARD_LAYOUT, type EntryCardLayout } from '@/lib/entry-card-layout';
 
@@ -21,16 +22,11 @@ const DEFAULTS: Record<string, EntryCardLayout> = {
   'competitions-entry-card': DEFAULT_ENTRY_CARD_LAYOUT,
 };
 
-async function requireAdmin(request: NextRequest) {
+async function requireLayoutEditor(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
-  const { data: user } = await getSupabaseAdmin()
-    .from('users')
-    .select('id, roles')
-    .eq('id', userId)
-    .single();
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) return null;
-  return user;
+  if (!(await hasPermission(userId, 'layout.edit'))) return null;
+  return { id: userId };
 }
 
 async function getCurrentUserId(request: NextRequest): Promise<string | null> {
@@ -93,8 +89,8 @@ export async function PUT(
     return NextResponse.json({ error: `未知的 layout key: ${key}` }, { status: 404 });
   }
 
-  const admin = await requireAdmin(request);
-  if (!admin) {
+  const editor = await requireLayoutEditor(request);
+  if (!editor) {
     return NextResponse.json({ error: '仅管理员可修改布局' }, { status: 403 });
   }
 
@@ -127,7 +123,7 @@ export async function PUT(
         scope: 'global',
         key,
         config,
-        updated_by: admin.id,
+      updated_by: editor.id,
       },
       { onConflict: 'scope,key' },
     )

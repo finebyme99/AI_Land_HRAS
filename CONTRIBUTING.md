@@ -43,14 +43,14 @@ npx vercel deploy --prod --yes
 - **落地进展分组**用 `isLandedState(name)`（`name.includes('上线')`）动态判断，不硬编码已落地/待实现列表
 - **筛选枚举构建**统一用 `fieldOptionsToFilterItems`（`lib/bitable/filter-options.ts`），优先 DB options，fallback 数据聚合，count=0 不显示
 - 例外：`SORT_OPTIONS`（排序维度）、`PERIOD_OPTIONS`（评审周期）是前端 UI 逻辑不涉及飞书选项，可各自定义
-- **"数据补充中"永久排除**：落地进展和大赛进展的"数据补充中"选项从 fieldOptions 和记录数据双重排除（API 层 `.neq`/filter + `fieldOptions.filter`），前端永远不展示此枚举值
+- **"数据补充中"永久排除**：落地进展和大赛进展的"数据补充中"选项从 fieldOptions 和记录数据双重排除。API 层优先用 `.neq`，内存数据用 `filterExcludedBitableRecords`，选项集合用 `collectFieldOptions`
 
 ### 字段命名一致性（强制）
 
 - **同一数据源 = 同一显示标签**：如果多个页面/视图引用同一个飞书字段（同一个 `dataIndex`），用户可见的列标题必须完全一致。例如 `dataIndex: 'title'` 在所有表格中统一显示为"名称"，不能一个叫"标题"另一个叫"名称"
 - **同一语义 = 同一字段名**：同一个业务概念（如"月均提效节省工时"）在不同页面应该使用相同的 `dataIndex` 和相同的显示标签，不能出现 ChoDashboard 用 `savedHours` / "月节省工时" 而 wish-pool 用 `monthlySavedHours` / "提效工时" 的分歧
 - **差异允许**：不同页面因业务视角不同需要展示不同字段（如 ChoDashboard 有"降本折算工时"而 wish-pool 没有），这是允许的。但只要出现了，标签必须对齐飞书字段注释（`fieldDescriptions`）
-- **新增字段时**：先查 `lib/bitable/field-map-reader.ts` 的映射表确认已有 key，复用已有 key 和标签，不要自己起新名字
+- **新增字段时**：先查 `lib/bitable/field-map.ts` / `field-map-reader.ts` 确认已有 key；用户可见标签写进 `lib/bitable/labels.ts`，价值汇总和格式化逻辑写进 `lib/bitable/metrics.ts`
 
 ### 文件结构
 
@@ -72,7 +72,6 @@ src/
 │   │   ├── roles/         # 用户权限（角色列表 / 权限矩阵 / 用户授权）
 │   │   ├── users/         # 兼容旧入口，重定向到 /admin/roles?tab=users
 │   │   ├── reviews/       # 评审管理
-│   │   ├── reviews-overview/  # 旧版评审看板（未删）
 │   │   ├── push/          # 飞书推送
 │   │   ├── reminders/     # 提醒管理
 │   │   ├── feishu-apps/   # 飞书多租户应用配置
@@ -136,6 +135,8 @@ src/
 │   │   ├── sync-field-map.ts      # syncFieldMapFromFeishu() 共享同步函数
 │   │   ├── filter-options.ts      # 篮选枚举构建（fieldOptionsToFilterItems + aggregateOptions）
 │   │   ├── enums.ts               # 动态枚举（色板分配+isLandedState+reuseLevelStyle）
+│   │   ├── labels.ts              # 飞书字段用户可见标签 + 公式文案单一来源
+│   │   ├── metrics.ts             # 价值指标解析/汇总/格式化 + "数据补充中"过滤
 │   │   └── page-usage.ts          # 字段使用页面枚举
 │   ├── permissions/       # RBAC 权限点注册表 + 服务端权限解析
 │   └── db/               # 数据库访问层

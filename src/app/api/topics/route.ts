@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
-// 验证 admin 权限
-async function requireAdmin(request: NextRequest) {
+async function requirePermission(request: NextRequest, permission: string) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
-  const { data: user } = await getSupabaseAdmin()
-    .from('users').select('id, roles').eq('id', userId).single();
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) return null;
-  return user;
+  if (!(await hasPermission(userId, permission))) return null;
+  return { id: userId };
 }
 
 // POST /api/topics — 创建话题
@@ -16,6 +14,9 @@ export async function POST(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) {
     return NextResponse.json({ error: '请先登录' }, { status: 401 });
+  }
+  if (!(await hasPermission(userId, 'case.submit'))) {
+    return NextResponse.json({ error: '无提交案例权限' }, { status: 403 });
   }
 
   try {
@@ -44,9 +45,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH /api/topics — 更新话题（admin: 精选/取消精选）
+// PATCH /api/topics — 更新话题精选状态
 export async function PATCH(request: NextRequest) {
-  const admin = await requireAdmin(request);
+  const admin = await requirePermission(request, 'case.feature');
   if (!admin) {
     return NextResponse.json({ error: '无权限' }, { status: 403 });
   }

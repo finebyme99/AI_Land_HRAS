@@ -16,6 +16,7 @@ import {
 } from '@ant-design/icons';
 import type { ReviewScores, ReviewerRole } from '@/types';
 import { SCORE_DIMENSIONS } from '@/types';
+import { useAuth } from '@/lib/auth-context';
 
 export interface Submission {
   id: string;
@@ -116,13 +117,17 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
   const [comment, setComment] = useState(existingReview?.reason ?? '');
   const [scores, setScores] = useState<ReviewScores>(existingReview?.scores ?? {});
   const { message } = App.useApp();
+  const { hasPermission } = useAuth();
+  const canScore = hasPermission('review.score') || !!isReviewer;
 
   // existingReview 异步加载到达后，同步评分与评语到本地状态
   useEffect(() => {
-    if (existingReview) {
+    if (!existingReview) return undefined;
+    const timer = window.setTimeout(() => {
       setScores(existingReview.scores ?? {});
       setComment(existingReview.reason ?? '');
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(existingReview?.scores), existingReview?.reason]);
 
@@ -420,7 +425,7 @@ export default function CompetitionCard({ data, isReviewer, reviewerRole, existi
       )}
 
       {/* 评委评审区域 */}
-      {isReviewer && (
+      {canScore && (
         <div className="mt-4 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 px-5 sm:px-6 pt-4 pb-5 rounded-b-2xl"
           style={{ background: 'rgba(26,58,138,0.03)', borderTop: '1px solid rgba(26,58,138,0.08)' }}>
           {/* 评分表单 */}

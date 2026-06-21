@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { sendFeishuCardMessage } from '@/lib/feishu-message';
 import { buildCourseCard, buildResourceCard, buildSubmissionCard } from '@/lib/feishu-cards';
@@ -25,14 +26,12 @@ export async function GET(request: NextRequest) {
 // POST: 执行推送
 export async function POST(request: NextRequest) {
   try {
-    // 校验管理员
     const userId = request.cookies.get('feishu_user_id')?.value;
     if (!userId) return NextResponse.json({ error: '未登录' }, { status: 401 });
-    const supabase = getSupabaseAdmin();
-    const { data: user } = await supabase.from('users').select('roles').eq('id', userId).single();
-    if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) {
+    if (!(await hasPermission(userId, 'push.send'))) {
       return NextResponse.json({ error: '无权限' }, { status: 403 });
     }
+    const supabase = getSupabaseAdmin();
 
     const body = await request.json();
     const { chat_id, chat_name, items } = body as {

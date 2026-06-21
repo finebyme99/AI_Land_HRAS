@@ -23,7 +23,7 @@ export const PAGE_LABELS: Record<PageKey, string> = {
 /** 成效看板（/competitions 页面 → ChoDashboard 组件）的明细表用到的字段 key */
 const CHO_DASHBOARD_KEYS: ReadonlySet<string> = new Set([
   // 基础信息
-  'title',           // 场景名称 → 「标题」列
+  'title',           // 场景名称 → 「名称」列
   'team',            // 提报团队 → 标题下方副文本
   'sceneCategory',   // 场景分类
   'aiTools',         // AI 工具
@@ -47,7 +47,7 @@ const CHO_DASHBOARD_KEYS: ReadonlySet<string> = new Set([
   'sceneRegionCoefficientValue',                        // 场景归属地区系数值
   // 最终价值计分
   'finalValueScore',
-  // 月均 Token 费用（间接参与月节省总工时公式）
+  // 月均 Token 费用（间接参与月均节省总工时公式）
   'aiCost',
   // 一句话简介（点击标题进弹窗）
   'briefIntro',
@@ -90,8 +90,8 @@ const WISH_POOL_CARD_KEYS: ReadonlySet<string> = new Set([
   'title',                 // 场景
   'team',                  // 提报团队
   'landingProgress',       // 落地进展
-  'totalSavedHours',       // 月省总工时
-  'monthlySavedHours',     // 月省总工时（fallback）
+  'totalSavedHours',       // 月均节省总工时
+  'monthlySavedHours',     // 月均节省总工时（fallback）
   'reuseValueLevel',       // 复用价值
   'regionCoefficient',     // 地区
 ]);

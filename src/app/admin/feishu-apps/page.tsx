@@ -1,10 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { App, Button, Card, Checkbox, Form, Input, Modal, Space, Table } from 'antd';
+import { useRouter } from 'next/navigation';
+import { App, Button, Card, Checkbox, Form, Input, Modal, Space, Spin, Table } from 'antd';
 import { PlusOutlined, ThunderboltOutlined, EditOutlined } from '@ant-design/icons';
+import { useAuth } from '@/lib/auth-context';
 import type { FeishuApp } from '@/types';
 
 export default function FeishuAppsPage() {
+  const router = useRouter();
+  const { hasPermission, loading: authLoading } = useAuth();
+  const canView = hasPermission('admin.feishu-apps');
+  const canManage = hasPermission('feishu-app.manage');
   const { message: msgApi } = App.useApp();
   const [apps, setApps] = useState<FeishuApp[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,9 +29,18 @@ export default function FeishuAppsPage() {
       else msgApi.error(j.error);
     } finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (!authLoading && !canView) router.replace('/');
+  }, [authLoading, canView, router]);
+
+  useEffect(() => {
+    if (!canView) return undefined;
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canView]);
 
   const onCreate = async () => {
+    if (!canManage) { msgApi.error('无管理权限'); return; }
     const values = await form.validateFields();
     const r = await fetch('/api/feishu-apps', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -37,6 +52,7 @@ export default function FeishuAppsPage() {
   };
 
   const onToggleStatus = async (a: FeishuApp) => {
+    if (!canManage) { msgApi.error('无管理权限'); return; }
     const next = a.status === 'active' ? 'disabled' : 'active';
     const r = await fetch('/api/feishu-apps', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -46,6 +62,7 @@ export default function FeishuAppsPage() {
   };
 
   const onTest = async (a: FeishuApp) => {
+    if (!canManage) { msgApi.error('无管理权限'); return; }
     const r = await fetch('/api/feishu-apps', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: a.id }),
@@ -56,6 +73,7 @@ export default function FeishuAppsPage() {
   };
 
   const openEdit = (a: FeishuApp) => {
+    if (!canManage) { msgApi.error('无管理权限'); return; }
     setEditing(a);
     editForm.setFieldsValue({
       extra_redirect_uris_text: (a.extra_redirect_uris ?? []).join('\n'),
@@ -64,6 +82,7 @@ export default function FeishuAppsPage() {
   };
 
   const onSaveExtra = async () => {
+    if (!canManage) { msgApi.error('无管理权限'); return; }
     if (!editing) return;
     const values = await editForm.validateFields();
     const list = String(values.extra_redirect_uris_text || '')
@@ -79,11 +98,16 @@ export default function FeishuAppsPage() {
     else msgApi.error(j.error);
   };
 
+  if (authLoading) {
+    return <div className="flex justify-center items-center min-h-[60vh]"><Spin size="large" /></div>;
+  }
+  if (!canView) return null;
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">飞书应用配置</h1>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>新增企业</Button>
+        {canManage && <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>新增企业</Button>}
       </div>
       <Card className="glass" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
         <Table
@@ -110,9 +134,13 @@ export default function FeishuAppsPage() {
             {
               title: '操作', render: (_, a) => (
                 <Space>
-                  <Button size="small" icon={<ThunderboltOutlined />} onClick={() => onTest(a)}>测试</Button>
-                  <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(a)}>额外回调</Button>
-                  <Button size="small" onClick={() => onToggleStatus(a)}>{a.status === 'active' ? '禁用' : '启用'}</Button>
+                  {canManage && (
+                    <>
+                      <Button size="small" icon={<ThunderboltOutlined />} onClick={() => onTest(a)}>测试</Button>
+                      <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(a)}>额外回调</Button>
+                      <Button size="small" onClick={() => onToggleStatus(a)}>{a.status === 'active' ? '禁用' : '启用'}</Button>
+                    </>
+                  )}
                 </Space>
               ),
             },

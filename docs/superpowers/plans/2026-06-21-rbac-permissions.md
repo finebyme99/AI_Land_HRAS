@@ -232,7 +232,6 @@ export const PERMISSIONS: PermissionDef[] = [
 
   // ===== 管理后台页面 =====
   { key: 'admin.reviews', label: '评审管理', group: '管理后台' },
-  { key: 'admin.reviews-overview', label: '评审一览', group: '管理后台' },
   { key: 'admin.review', label: '内容审核', group: '管理后台' },
   { key: 'admin.users', label: '用户管理', group: '管理后台' },
   { key: 'admin.bitable-field-map', label: '字段映射配置', group: '管理后台' },
@@ -1039,10 +1038,6 @@ function buildAdminMenu(hasPermission: (key: string) => boolean, onNavigate?: ()
   if (hasPermission('admin.reviews')) {
     items.push({ key: '/admin/reviews', label: link('/admin/reviews', '评审管理') });
   }
-  if (hasPermission('admin.reviews-overview')) {
-    items.push({ key: '/admin/reviews-overview', label: link('/admin/reviews-overview', '评审一览') });
-  }
-
   // 管理类
   const adminItems: { key: string; label: React.ReactNode }[] = [];
   if (hasPermission('admin.review')) adminItems.push({ key: '/admin/review', label: link('/admin/review', '内容审核') });
@@ -1118,7 +1113,6 @@ git commit -m "feat: Navigation 管理后台菜单改用 hasPermission + 提取 
 
 **Files:**
 - Modify: `src/app/admin/reviews/page.tsx`
-- Modify: `src/app/admin/reviews-overview/page.tsx`
 - Modify: `src/app/admin/review/page.tsx`
 - Modify: `src/app/admin/users/page.tsx`
 - Modify: `src/app/admin/bitable-field-map/page.tsx`
@@ -1163,7 +1157,6 @@ if (authLoading || !canView) {
 | 页面 | 权限点 |
 |---|---|
 | admin/reviews | `admin.reviews` |
-| admin/reviews-overview | `admin.reviews-overview` |
 | admin/review | `admin.review` |
 | admin/users | `admin.users` |
 | admin/bitable-field-map | `admin.bitable-field-map` |

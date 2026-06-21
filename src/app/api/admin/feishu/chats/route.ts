@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { hasPermission } from '@/lib/permissions';
 import { getTenantAccessToken } from '@/lib/feishu';
 
 async function requireAdmin(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
-  const { data: user } = await getSupabaseAdmin()
-    .from('users').select('id, roles').eq('id', userId).single();
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) return null;
-  return user;
+  if (!(await hasPermission(userId, 'admin.reminders'))) return null;
+  return { id: userId };
 }
 
 /**

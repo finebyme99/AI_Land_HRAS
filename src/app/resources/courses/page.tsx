@@ -31,7 +31,9 @@ function seasonSortValue(name: string): number {
 }
 
 export default function CoursesContent() {
-  const { user, canManageCourses } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const canSyncCourses = hasPermission('course.sync');
+  const canPublishCourses = hasPermission('course.publish');
   const { message } = App.useApp();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +83,10 @@ export default function CoursesContent() {
     }
   }, [debouncedSearch, contentTypes]);
 
-  useEffect(() => { fetchCourses(); }, [fetchCourses]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchCourses(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchCourses]);
 
   // Fetch interaction states and counts for all courses
   useEffect(() => {
@@ -157,6 +162,10 @@ export default function CoursesContent() {
   };
 
   const handleSave = async () => {
+    if (!canPublishCourses) {
+      message.error('无课程编辑权限');
+      return;
+    }
     if (!editing) return;
     setSaving(true);
     try {
@@ -317,36 +326,39 @@ export default function CoursesContent() {
             >{opt}</button>
           ))}
         </div>
-        {/* 操作按钮 - 仅管理员可见 */}
-        {canManageCourses && (
+        {(canSyncCourses || canPublishCourses) && (
           <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}>
-            <button
-              onClick={async () => {
-                setSyncing(true);
-                try {
-                  const res = await fetch('/api/courses/sync', { method: 'POST' });
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.error || '同步失败');
-                  message.success(`同步完成：新增 ${data.inserted} 条，更新 ${data.updated} 条`);
-                  fetchCourses();
-                } catch (e) {
-                  message.error(e instanceof Error ? e.message : '同步失败');
-                } finally {
-                  setSyncing(false);
-                }
-              }}
-              disabled={syncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105 disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', boxShadow: '0 4px 15px rgba(26,58,138,0.3)', color: '#fff' }}
-            >
-              <SyncOutlined spin={syncing} /> {syncing ? '同步中...' : '同步课程'}
-            </button>
-            <Link href="/resources/courses/create">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105"
-                style={{ background: 'rgba(255,255,255,0.7)', color: '#1a3a8a', border: '1px solid rgba(26,58,138,0.3)' }}>
-                <PlusOutlined /> 发布课程
+            {canSyncCourses && (
+              <button
+                onClick={async () => {
+                  setSyncing(true);
+                  try {
+                    const res = await fetch('/api/courses/sync', { method: 'POST' });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || '同步失败');
+                    message.success(`同步完成：新增 ${data.inserted} 条，更新 ${data.updated} 条`);
+                    fetchCourses();
+                  } catch (e) {
+                    message.error(e instanceof Error ? e.message : '同步失败');
+                  } finally {
+                    setSyncing(false);
+                  }
+                }}
+                disabled={syncing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', boxShadow: '0 4px 15px rgba(26,58,138,0.3)', color: '#fff' }}
+              >
+                <SyncOutlined spin={syncing} /> {syncing ? '同步中...' : '同步课程'}
               </button>
-            </Link>
+            )}
+            {canPublishCourses && (
+              <Link href="/resources/courses/create">
+                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105"
+                  style={{ background: 'rgba(255,255,255,0.7)', color: '#1a3a8a', border: '1px solid rgba(26,58,138,0.3)' }}>
+                  <PlusOutlined /> 发布课程
+                </button>
+              </Link>
+            )}
           </div>
         )}
       </div>
@@ -386,7 +398,7 @@ export default function CoursesContent() {
                       style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
                       <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 hover:opacity-100 transition-opacity" style={{ background: 'var(--gradient-primary)' }} />
                       {/* 管理员编辑按钮 */}
-                      {canManageCourses && (
+                      {canPublishCourses && (
                         <button
                           onClick={() => openEdit(course)}
                           className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 hover:opacity-100 transition-all"

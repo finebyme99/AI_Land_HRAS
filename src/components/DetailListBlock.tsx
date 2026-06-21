@@ -10,6 +10,8 @@ import {
 import { fieldOptionsToFilterItems, type FilterItem } from '@/lib/bitable/filter-options';
 import { reuseLevelStyle, FALLBACK_COLOR } from '@/lib/bitable/enums';
 import type { FieldSelectOption } from '@/lib/bitable/field-map';
+import { FIELD_LABELS, VALUE_FORMULA_COPY } from '@/lib/bitable/labels';
+import { formatCurrency, parseMetricNumber, summarizeValueMetrics } from '@/lib/bitable/metrics';
 
 // ── WishItem 类型定义（与 wish-pool/competitions 共用）──
 export interface WishItem {
@@ -94,10 +96,7 @@ export function numOrDash(v: number | null | undefined, unit: string, decimals =
   return `${n}${unit}`;
 }
 export function fmtCost(v: number | string | null | undefined): string {
-  if (v == null || v === '') return '—';
-  const num = typeof v === 'number' ? v : parseFloat(String(v).replace(/[^0-9.\-]/g, ''));
-  if (!num || num <= 0) return '—';
-  return `¥${fmtF(Math.round(num))}`;
+  return formatCurrency(v);
 }
 
 // ── FmtHeader（带问号 tooltip 的表头）──
@@ -149,7 +148,6 @@ export function DetailListBlock({
   fieldDescriptions,
   fieldOptions,
   progressColors,
-  categoryColors,
   onRowEnter,
   onRowLeave,
   onSelectItem,
@@ -163,7 +161,6 @@ export function DetailListBlock({
   fieldDescriptions: Record<string, string>;
   fieldOptions: Record<string, FieldSelectOption[]>;
   progressColors: Record<string, string>;
-  categoryColors: Record<string, string>;
   onRowEnter: (item: WishItem) => void;
   onRowLeave: () => void;
   onSelectItem: (item: WishItem) => void;
@@ -194,8 +191,8 @@ export function DetailListBlock({
         case 'monthlySavedHours': return (b.monthlySavedHours ?? -1) - (a.monthlySavedHours ?? -1);
         case 'totalSavedHours': return (b.totalSavedHours ?? -1) - (a.totalSavedHours ?? -1);
         case 'monthlySavedCost': {
-          const aC = typeof a.monthlySavedCost === 'number' ? a.monthlySavedCost : parseFloat(String(a.monthlySavedCost || '0').replace(/[^0-9.\-]/g, '')) || 0;
-          const bC = typeof b.monthlySavedCost === 'number' ? b.monthlySavedCost : parseFloat(String(b.monthlySavedCost || '0').replace(/[^0-9.\-]/g, '')) || 0;
+          const aC = parseMetricNumber(a.monthlySavedCost) ?? 0;
+          const bC = parseMetricNumber(b.monthlySavedCost) ?? 0;
           return bC - aC;
         }
         case 'reuseValueNumber': return (b.reuseValueNumber ?? -1) - (a.reuseValueNumber ?? -1);
@@ -206,13 +203,7 @@ export function DetailListBlock({
 
   // Summary
   const summary = useMemo(() => {
-    const eff = Math.round(filteredData.reduce((s, d) => s + (d.monthlySavedHours ?? 0), 0) * 10) / 10;
-    const cost = filteredData.reduce((s, d) => {
-      if (!d.monthlySavedCost) return s;
-      const n = typeof d.monthlySavedCost === 'number' ? d.monthlySavedCost : parseFloat(String(d.monthlySavedCost).replace(/[^0-9.\-]/g, ''));
-      return s + (n > 0 ? n : 0);
-    }, 0);
-    return { count: filteredData.length, eff, costDisplay: cost > 0 ? `¥${fmtF(Math.round(cost))}` : '—' };
+    return summarizeValueMetrics(filteredData);
   }, [filteredData]);
 
   // 待实现视图额外列：预计启动日、预计试点上线（仅 showPendingDates 时插入落地进展后面）
@@ -230,12 +221,12 @@ export function DetailListBlock({
       render: (seq: number) => <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{seq}</span>,
     },
     {
-      title: '名称', dataIndex: 'title', key: 'title', width: titleWidth, ellipsis: true,
+      title: FIELD_LABELS.title, dataIndex: 'title', key: 'title', width: titleWidth, ellipsis: true,
       onHeaderCell: () => ({
         style: { position: 'relative' },
         children: (
           <div className="flex items-center justify-between">
-            <span>名称</span>
+            <span>{FIELD_LABELS.title}</span>
             <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-300" style={{ zIndex: 10 }}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -289,11 +280,11 @@ export function DetailListBlock({
       title: <FmtHeader label="改造成效" tip="量化改造效果" />,
       key: 'result-group', className: 'cho-group-result',
       children: [
-        { title: <FmtHeader label="提效工时" tip={fieldDescriptions.monthlySavedHours || '月均提效节省工时'} />, dataIndex: 'monthlySavedHours', key: 'sh', width: 80, align: 'center', className: 'cho-col-result',
+        { title: <FmtHeader label={FIELD_LABELS.monthlySavedHours} tip={fieldDescriptions.monthlySavedHours || FIELD_LABELS.monthlySavedHours} />, dataIndex: 'monthlySavedHours', key: 'sh', width: 80, align: 'center', className: 'cho-col-result',
           render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span> },
-        { title: <FmtHeader label="降本费用" tip={fieldDescriptions.monthlySavedCost || '月均降本费用（不含人力成本）'} />, dataIndex: 'monthlySavedCost', key: 'mc', width: 80, align: 'center', className: 'cho-col-result',
-          render: (v: number | string | null) => <span className="font-mono text-xs" style={{ color: (typeof v === 'number' ? v : parseFloat(String(v || '0').replace(/[^0-9.\-]/g, ''))) > 0 ? '#d97706' : 'var(--text-muted)' }}>{fmtCost(v)}</span> },
-        { title: <FmtHeader label="月均节省总工时" tip={fieldDescriptions.totalSavedHours || '提效+降本折算'} />, dataIndex: 'totalSavedHours', key: 'tsh', width: 90, align: 'center', className: 'cho-col-result',
+        { title: <FmtHeader label={FIELD_LABELS.monthlySavedCost} tip={fieldDescriptions.monthlySavedCost || '月均降本费用（不含人力成本）'} />, dataIndex: 'monthlySavedCost', key: 'mc', width: 80, align: 'center', className: 'cho-col-result',
+          render: (v: number | string | null) => <span className="font-mono text-xs" style={{ color: (parseMetricNumber(v) ?? 0) > 0 ? '#d97706' : 'var(--text-muted)' }}>{fmtCost(v)}</span> },
+        { title: <FmtHeader label={FIELD_LABELS.totalSavedHours} tip={fieldDescriptions.totalSavedHours || VALUE_FORMULA_COPY.totalSavedHours} />, dataIndex: 'totalSavedHours', key: 'tsh', width: 90, align: 'center', className: 'cho-col-result',
           render: (v: number | null) => <span className="font-mono text-xs font-bold" style={{ color: v != null && v > 0 ? '#16a34a' : 'var(--text-muted)' }}>{numOrDash(v, 'h')}</span> },
       ],
     },
@@ -339,8 +330,8 @@ export function DetailListBlock({
       {showMetrics ? (
         <div className="flex items-center gap-4 text-xs px-2" style={{ color: 'var(--text-muted)' }}>
           <span>共 <strong style={{ color: labelColor }}>{summary.count}</strong> 个{label}</span>
-          <span>月均提效 <strong style={{ color: labelColor }}>{summary.eff > 0 ? `${summary.eff}h` : '—'}</strong></span>
-          <span>月均降本 <strong style={{ color: '#4a7de0' }}>{summary.costDisplay}</strong></span>
+          <span>{FIELD_LABELS.monthlySavedHours} <strong style={{ color: labelColor }}>{summary.totalSavedEfficiency > 0 ? `${summary.totalSavedEfficiency}h` : '—'}</strong></span>
+          <span>{FIELD_LABELS.monthlySavedCost} <strong style={{ color: '#4a7de0' }}>{summary.totalMonthlySavedCostDisplay}</strong></span>
         </div>
       ) : (
         <div className="flex items-center gap-4 text-xs px-2" style={{ color: 'var(--text-muted)' }}>

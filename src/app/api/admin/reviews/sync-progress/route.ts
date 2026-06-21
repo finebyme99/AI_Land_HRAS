@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getTenantAccessToken } from '@/lib/feishu';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { computeWeightedScore } from '@/types';
 import type { CompetitionReview, ReviewerRole } from '@/types';
@@ -79,7 +80,13 @@ async function ensureTable(appToken: string, token: string): Promise<string> {
   return createData.table_id;
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const userId = request.cookies.get('feishu_user_id')?.value;
+  if (!userId) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  if (!(await hasPermission(userId, 'review.sync-feishu'))) {
+    return NextResponse.json({ error: '仅有评审同步权限的用户可同步' }, { status: 403 });
+  }
+
   try {
     const token = await getTenantAccessToken();
 

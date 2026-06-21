@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
 type ResourceCategory = string;
@@ -28,6 +29,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const userId = req.cookies.get('feishu_user_id')?.value;
   if (!userId) return NextResponse.json({ error: '请先登录' }, { status: 401 });
+  if (!(await hasPermission(userId, 'resource.submit'))) {
+    return NextResponse.json({ error: '无提交权限' }, { status: 403 });
+  }
 
   const body = await req.json();
   const { name, description, content, category, scenarios, official_url, logo } = body;
@@ -38,9 +42,7 @@ export async function POST(req: NextRequest) {
 
   const db = getSupabaseAdmin();
 
-  // 管理员提交直接发布
-  const { data: user } = await db.from('users').select('roles').eq('id', userId).single();
-  const isAdmin = user?.roles?.some((r: string) => ['admin', 'moderator'].includes(r));
+  const canReview = await hasPermission(userId, 'resource.review');
 
   const { data, error } = await db
     .from('apps')
@@ -52,7 +54,7 @@ export async function POST(req: NextRequest) {
       scenarios: scenarios || [],
       official_url: official_url || '',
       logo: logo || '',
-      status: isAdmin ? 'published' : 'pending',
+      status: canReview ? 'published' : 'pending',
       author_id: userId,
     })
     .select()
@@ -67,11 +69,11 @@ export async function PATCH(req: NextRequest) {
   const userId = req.cookies.get('feishu_user_id')?.value;
   if (!userId) return NextResponse.json({ error: '请先登录' }, { status: 401 });
 
-  const db = getSupabaseAdmin();
-  const { data: user } = await db.from('users').select('roles').eq('id', userId).single();
-  const isAdmin = user?.roles?.some((r: string) => ['admin', 'moderator'].includes(r));
-  if (!isAdmin) return NextResponse.json({ error: '无权限' }, { status: 403 });
+  if (!(await hasPermission(userId, 'resource.review'))) {
+    return NextResponse.json({ error: '无权限' }, { status: 403 });
+  }
 
+  const db = getSupabaseAdmin();
   const body = await req.json();
   const { id, status } = body;
   if (!id || !['published', 'rejected'].includes(status)) {

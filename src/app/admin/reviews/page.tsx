@@ -214,7 +214,7 @@ function ScoreCalculation({ reviews, submissions, loading, selectedStatuses }: {
 }
 
 /* ─── 评审明细（原有内容） ─── */
-function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search, setSearch, selectedStatuses, setSelectedStatuses, reviewStatusFilter, setReviewStatusFilter, isAdmin, clearingReviewerId, syncing, onClearReviewer, onExport, onSync, fetchReviews }: {
+function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search, setSearch, selectedStatuses, setSelectedStatuses, reviewStatusFilter, setReviewStatusFilter, canClearReviewer, clearingReviewerId, syncing, onClearReviewer, onExport, onSync, fetchReviews }: {
   reviews: CompetitionReview[];
   submissions: { id: string; reviewers?: string[]; status?: string }[];
   totalSubmissions: number;
@@ -225,7 +225,7 @@ function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search,
   setSelectedStatuses: (v: string[] | ((prev: string[]) => string[])) => void;
   reviewStatusFilter: string;
   setReviewStatusFilter: (v: string) => void;
-  isAdmin: boolean;
+  canClearReviewer: boolean;
   clearingReviewerId: string | null;
   syncing: boolean;
   onClearReviewer: (id: string, name: string) => void;
@@ -412,7 +412,7 @@ function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search,
                         </Tag>
                       )}
                       <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{rv.department}</span>
-                      {isAdmin && (
+                      {canClearReviewer && (
                         <Popconfirm
                           title={`确认清空 ${rv.name} 的全部评分？`}
                           description="此操作不可撤销，该评委的所有评审记录将被删除。"
@@ -486,7 +486,11 @@ function ReviewDetail({ reviews, submissions, totalSubmissions, loading, search,
 /* ─── 主页面 ─── */
 export default function AdminReviewsPage() {
   const router = useRouter();
-  const { isAdmin, isReviewer, loading: authLoading } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
+  const canView = hasPermission('admin.reviews');
+  const canExport = hasPermission('review.export');
+  const canSyncFeishu = hasPermission('review.sync-feishu');
+  const canClearReviewer = hasPermission('review.clear-reviewer');
   const { message } = App.useApp();
   const [reviews, setReviews] = useState<CompetitionReview[]>([]);
   const [totalSubmissions, setTotalSubmissions] = useState(0);
@@ -499,18 +503,18 @@ export default function AdminReviewsPage() {
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !isReviewer) {
+    if (!authLoading && !canView) {
       router.replace('/');
     }
-  }, [authLoading, isReviewer, router]);
+  }, [authLoading, canView, router]);
 
   useEffect(() => {
-    if (isReviewer) {
-      fetchReviews();
-    }
-  }, [isReviewer]);
+    if (!canView) return undefined;
+    const timer = window.setTimeout(() => { void fetchReviews(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canView]);
 
-  const fetchReviews = async () => {
+  async function fetchReviews() {
     setLoading(true);
     try {
       const [reviewsRes, syncRes] = await Promise.all([
@@ -528,7 +532,7 @@ export default function AdminReviewsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleClearReviewer = async (reviewerId: string, reviewerName: string) => {
     setClearingReviewerId(reviewerId);
@@ -584,7 +588,7 @@ export default function AdminReviewsPage() {
     );
   }
 
-  if (!isReviewer) return null;
+  if (!canView) return null;
 
   return (
     <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -604,8 +608,7 @@ export default function AdminReviewsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isAdmin && (
-              <>
+            {canExport && (
                 <Button
                   icon={<DownloadOutlined />}
                   onClick={handleExport}
@@ -614,6 +617,8 @@ export default function AdminReviewsPage() {
                 >
                   导出 CSV
                 </Button>
+            )}
+            {canSyncFeishu && (
                 <Button
                   icon={<SyncOutlined spin={syncing} />}
                   onClick={handleSyncToFeishu}
@@ -623,7 +628,6 @@ export default function AdminReviewsPage() {
                 >
                   同步到飞书
                 </Button>
-              </>
             )}
           </div>
         </div>
@@ -675,7 +679,7 @@ export default function AdminReviewsPage() {
                   setSelectedStatuses={setSelectedStatuses}
                   reviewStatusFilter={reviewStatusFilter}
                   setReviewStatusFilter={setReviewStatusFilter}
-                  isAdmin={isAdmin}
+                  canClearReviewer={canClearReviewer}
                   clearingReviewerId={clearingReviewerId}
                   syncing={syncing}
                   onClearReviewer={handleClearReviewer}

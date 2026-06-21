@@ -19,7 +19,6 @@ export const PERMISSIONS: PermissionDef[] = [
 
   // ===== 管理后台页面 =====
   { key: 'admin.reviews', label: '评审管理', group: '管理后台', kind: 'menu' },
-  { key: 'admin.reviews-overview', label: '评审一览', group: '管理后台', kind: 'menu' },
   { key: 'admin.review', label: '内容审核', group: '管理后台', kind: 'menu' },
   { key: 'admin.users', label: '用户授权', group: '管理后台', kind: 'menu' },
   { key: 'admin.bitable-field-map', label: '字段映射配置', group: '管理后台', kind: 'menu' },

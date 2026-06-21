@@ -1,10 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getTenantAccessToken } from '@/lib/feishu';
+import { hasPermission } from '@/lib/permissions';
 
 const FEISHU_API = 'https://open.feishu.cn/open-apis';
 
 // GET: 获取机器人所在的群列表
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const userId = request.cookies.get('feishu_user_id')?.value;
+  if (!userId) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  if (!(await hasPermission(userId, 'admin.push'))) {
+    return NextResponse.json({ error: '无权限' }, { status: 403 });
+  }
+
   try {
     const token = await getTenantAccessToken();
     const chats: { chat_id: string; name: string; chat_type: string; avatar: string }[] = [];
