@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, Drawer, Avatar, Dropdown } from 'antd';
@@ -32,10 +32,51 @@ const userMenuItems = [
   { key: '/profile/settings', label: '个人设置' },
 ];
 
+function buildAdminMenu(hasPermission: (key: string) => boolean, onNavigate?: () => void) {
+  const link = (href: string, label: string) => (
+    <Link href={href} onClick={onNavigate}>{label}</Link>
+  );
+  const items: { key: string; label: ReactNode }[] = [];
+
+  if (hasPermission('admin.reviews')) {
+    items.push({ key: '/admin/reviews', label: link('/admin/reviews', '评审管理') });
+  }
+  if (hasPermission('admin.reviews-overview')) {
+    items.push({ key: '/admin/reviews-overview', label: link('/admin/reviews-overview', '评审一览') });
+  }
+  if (hasPermission('admin.review')) {
+    items.push({ key: '/admin/review', label: link('/admin/review', '内容审核') });
+  }
+  if (hasPermission('admin.roles') || hasPermission('admin.users')) {
+    items.push({ key: '/admin/roles', label: link('/admin/roles', '用户权限') });
+  }
+  if (hasPermission('admin.bitable-field-map')) {
+    items.push({ key: '/admin/bitable-field-map', label: link('/admin/bitable-field-map', '字段映射配置') });
+  }
+  if (hasPermission('admin.layouts')) {
+    items.push({ key: '/admin/layouts/competitions-entry-card', label: link('/admin/layouts/competitions-entry-card', '方案卡片布局') });
+  }
+  if (hasPermission('admin.reminders')) {
+    items.push({ key: '/admin/reminders', label: link('/admin/reminders', '提醒管理') });
+  }
+  if (hasPermission('admin.push')) {
+    items.push({ key: '/admin/push', label: link('/admin/push', '飞书推送') });
+  }
+  if (hasPermission('admin.feishu-apps')) {
+    items.push({ key: '/admin/feishu-apps', label: link('/admin/feishu-apps', '飞书应用配置') });
+  }
+  if (hasPermission('admin.settings')) {
+    items.push({ key: '/admin/settings', label: link('/admin/settings', '平台设置') });
+  }
+
+  return items;
+}
+
 export default function Navigation() {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { user, loading, isAdmin, isReviewer, signOut } = useAuth();
+  const { user, loading, isAdmin, permissions, hasPermission, signOut } = useAuth();
+  const hasAdminPermissions = [...permissions].some((key) => key.startsWith('admin.'));
 
   // 根据权限过滤导航项
   const filteredNavItems = navItems.filter((item) => {
@@ -117,25 +158,12 @@ export default function Navigation() {
                       key: item.key,
                       label: <Link href={item.key}>{item.label}</Link>,
                     })),
-                    ...(isAdmin || isReviewer ? [
+                    ...(hasAdminPermissions ? [
                       {
                         key: 'admin',
                         label: '管理后台',
                         icon: <TeamOutlined />,
-                        children: [
-                          ...(isReviewer ? [{ key: '/admin/reviews', label: <Link href="/admin/reviews">评审管理</Link> }] : []),
-...(isAdmin ? [{ key: '/admin/reviews-overview', label: <Link href="/admin/reviews-overview">评审一览</Link> }] : []),
-                        ...(isAdmin ? [
-                            { key: '/admin/review', label: <Link href="/admin/review">内容审核</Link> },
-                            { key: '/admin/users', label: <Link href="/admin/users">用户管理</Link> },
-                            { key: '/admin/bitable-field-map', label: <Link href="/admin/bitable-field-map">字段映射配置</Link> },
-                            { key: '/admin/layouts/competitions-entry-card', label: <Link href="/admin/layouts/competitions-entry-card">方案卡片布局</Link> },
-                            { key: '/admin/reminders', label: <Link href="/admin/reminders">提醒管理</Link> },
-                            { key: '/admin/push', label: <Link href="/admin/push">飞书推送</Link> },
-                            { key: '/admin/feishu-apps', label: <Link href="/admin/feishu-apps">飞书应用配置</Link> },
-                            { key: '/admin/settings', label: <Link href="/admin/settings">平台设置</Link> },
-                          ] : []),
-                        ],
+                        children: buildAdminMenu(hasPermission),
                       },
                     ] : []),
                     { type: 'divider' as const },
@@ -229,25 +257,12 @@ export default function Navigation() {
                     key: item.key,
                     label: <Link href={item.key} onClick={() => setDrawerOpen(false)}>{item.label}</Link>,
                   })),
-                  ...(isAdmin || isReviewer ? [
+                  ...(hasAdminPermissions ? [
                     {
                       key: 'admin',
                       label: '管理后台',
                       icon: <TeamOutlined />,
-                      children: [
-                        ...(isReviewer ? [{ key: '/admin/reviews', label: <Link href="/admin/reviews" onClick={() => setDrawerOpen(false)}>评审管理</Link> }] : []),
-...(isAdmin ? [{ key: '/admin/reviews-overview', label: <Link href="/admin/reviews-overview" onClick={() => setDrawerOpen(false)}>评审一览</Link> }] : []),
-                        ...(isAdmin ? [
-                            { key: '/admin/review', label: <Link href="/admin/review" onClick={() => setDrawerOpen(false)}>内容审核</Link> },
-                            { key: '/admin/users', label: <Link href="/admin/users" onClick={() => setDrawerOpen(false)}>用户管理</Link> },
-                            { key: '/admin/bitable-field-map', label: <Link href="/admin/bitable-field-map" onClick={() => setDrawerOpen(false)}>字段映射配置</Link> },
-                          { key: '/admin/layouts/competitions-entry-card', label: <Link href="/admin/layouts/competitions-entry-card" onClick={() => setDrawerOpen(false)}>方案卡片布局</Link> },
-                          { key: '/admin/reminders', label: <Link href="/admin/reminders" onClick={() => setDrawerOpen(false)}>提醒管理</Link> },
-                          { key: '/admin/push', label: <Link href="/admin/push" onClick={() => setDrawerOpen(false)}>飞书推送</Link> },
-                          { key: '/admin/feishu-apps', label: <Link href="/admin/feishu-apps" onClick={() => setDrawerOpen(false)}>飞书应用配置</Link> },
-                          { key: '/admin/settings', label: <Link href="/admin/settings" onClick={() => setDrawerOpen(false)}>平台设置</Link> },
-                        ] : []),
-                      ],
+                      children: buildAdminMenu(hasPermission, () => setDrawerOpen(false)),
                     },
                   ] : []),
                   { type: 'divider' as const } as const,

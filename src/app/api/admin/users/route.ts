@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { clearPermissionsCache, hasPermission } from '@/lib/permissions';
+import { withDefaultUserRole } from '@/lib/permissions/default-role';
 import bcrypt from 'bcryptjs';
 
-// 验证当前用户是否为 admin
-async function requireAdmin(request: NextRequest) {
+async function requirePermission(request: NextRequest, permissionKey: string) {
   const userId = request.cookies.get('feishu_user_id')?.value;
   if (!userId) return null;
-
-  const { data: user } = await getSupabaseAdmin()
-    .from('users')
-    .select('id, roles')
-    .eq('id', userId)
-    .single();
-
-  if (!user || !user.roles?.some((r: string) => ['admin', 'moderator'].includes(r))) return null;
-  return user;
+  if (!(await hasPermission(userId, permissionKey))) return null;
+  return { id: userId };
 }
 
 // GET /api/admin/users — 获取所有用户列表
 export async function GET(request: NextRequest) {
-  const admin = await requireAdmin(request);
+  const admin = await requirePermission(request, 'admin.users');
   if (!admin) {
     return NextResponse.json({ error: '无权限' }, { status: 403 });
   }
@@ -40,13 +34,13 @@ export async function GET(request: NextRequest) {
 
 // PATCH /api/admin/users — 修改用户角色
 export async function PATCH(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (!admin) {
-    return NextResponse.json({ error: '无权限' }, { status: 403 });
-  }
-
   try {
     const { userId, roles, reviewer_roles } = await request.json();
+
+    const admin = await requirePermission(request, roles !== undefined ? 'user.set-roles' : 'admin.users');
+    if (!admin) {
+      return NextResponse.json({ error: '无权限' }, { status: 403 });
+    }
 
     if (!userId) {
       return NextResponse.json({ error: '缺少参数' }, { status: 400 });
@@ -58,12 +52,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     const updateData: Record<string, unknown> = {};
-    if (roles) {
-      const validRoles = ['user', 'contributor', 'reviewer', 'course_admin', 'moderator', 'admin'];
-      if (!Array.isArray(roles) || !roles.every((r: string) => validRoles.includes(r))) {
+    let normalizedRoles: string[] | undefined;
+    if (roles !== undefined) {
+      const { data: existingRoles } = await getSupabaseAdmin()
+        .from('roles')
+        .select('key');
+      const validRoles = new Set((existingRoles ?? []).map((role: { key: string }) => role.key));
+      normalizedRoles = withDefaultUserRole(roles);
+      if (!Array.isArray(roles) || !normalizedRoles.every((role: string) => validRoles.has(role))) {
         return NextResponse.json({ error: '无效角色' }, { status: 400 });
       }
-      updateData.roles = roles;
+      updateData.roles = normalizedRoles;
     }
     if (reviewer_roles !== undefined) {
       const validReviewerRoles = ['user', 'business', 'tech'];
@@ -82,6 +81,27 @@ export async function PATCH(request: NextRequest) {
 
     if (error) throw error;
 
+    if (normalizedRoles !== undefined) {
+      await getSupabaseAdmin()
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (user.roles?.length > 0) {
+        const { error: insertError } = await getSupabaseAdmin()
+          .from('user_roles')
+          .insert(user.roles.map((roleKey: string) => ({
+            user_id: userId,
+            role_key: roleKey,
+            granted_by: admin.id,
+          })));
+
+        if (insertError) throw insertError;
+      }
+
+      clearPermissionsCache(userId);
+    }
+
     return NextResponse.json({ user });
   } catch {
     return NextResponse.json({ error: '修改角色失败' }, { status: 500 });
@@ -90,7 +110,7 @@ export async function PATCH(request: NextRequest) {
 
 // POST /api/admin/users — 批量更新用户角色
 export async function POST(request: NextRequest) {
-  const admin = await requireAdmin(request);
+  const admin = await requirePermission(request, 'admin.users');
   if (!admin) {
     return NextResponse.json({ error: '无权限' }, { status: 403 });
   }
@@ -137,12 +157,12 @@ export async function POST(request: NextRequest) {
 
         if (action === 'add_reviewer') {
           // 兼容旧逻辑：添加 reviewer 角色
-          let newRoles = [...(userData.roles || [])];
+          const newRoles = [...(userData.roles || [])];
           if (!newRoles.includes('reviewer')) newRoles.push('reviewer');
           updateData = { roles: newRoles };
         } else if (action === 'remove_reviewer') {
           // 兼容旧逻辑：移除 reviewer 角色
-          let newRoles = (userData.roles || []).filter((r: string) => r !== 'reviewer');
+          const newRoles = (userData.roles || []).filter((r: string) => r !== 'reviewer');
           updateData = { roles: newRoles };
         } else if (action === 'set_reviewer_roles') {
           // 新逻辑：设置具体的评委角色
@@ -182,7 +202,7 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/admin/users — 重置用户密码
 export async function PUT(request: NextRequest) {
-  const admin = await requireAdmin(request);
+  const admin = await requirePermission(request, 'user.reset-password');
   if (!admin) {
     return NextResponse.json({ error: '无权限' }, { status: 403 });
   }

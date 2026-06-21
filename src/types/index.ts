@@ -41,6 +41,7 @@ export interface User {
   level: 'AI新手' | 'AI探索者' | 'AI达人' | 'AI专家';
   created_at: string;
   last_active_at?: string | null;
+  permissions?: string[];
 }
 
 // ============ 工具推荐 ============
@@ -337,4 +338,21 @@ export function computeWeightedScore(scores: ReviewScores, role: ReviewerRole): 
     const val = scores[dim.key];
     return sum + (val != null ? val * dim.weight : 0);
   }, 0);
+}
+
+// ============ RBAC 角色 ============
+export interface Role {
+  key: string;
+  label: string;
+  description: string | null;
+  is_system: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RoleWithStats extends Role {
+  permission_count: number;
+  user_count: number;
+  permissions: string[];
 }

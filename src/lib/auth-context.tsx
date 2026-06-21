@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import type { User } from '@/types';
 
 interface AuthContextType {
@@ -8,8 +8,8 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isReviewer: boolean;
-  isCourseAdmin: boolean;
-  canManageCourses: boolean;
+  permissions: Set<string>;
+  hasPermission: (key: string) => boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -19,8 +19,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isAdmin: false,
   isReviewer: false,
-  isCourseAdmin: false,
-  canManageCourses: false,
+  permissions: new Set(),
+  hasPermission: () => false,
   signOut: async () => {},
   refreshUser: async () => {},
 });
@@ -40,7 +40,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    fetchUser().finally(() => setLoading(false));
+    let cancelled = false;
+    queueMicrotask(() => {
+      fetchUser().finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [fetchUser]);
 
   const signOut = async () => {
@@ -52,15 +60,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetchUser();
   };
 
-  const isAdmin = !!user?.roles?.some((r) => ['admin', 'moderator'].includes(r));
-  // reviewer 判定：admin/moderator 继承，或 users.reviewer_roles 有分配角色
+  const permissions = useMemo(() => new Set(user?.permissions ?? []), [user?.permissions]);
+  const hasPermission = useCallback((key: string) => permissions.has(key), [permissions]);
+
+  const isAdmin = !!user?.roles?.includes('admin');
+  // reviewer 判定：admin 继承，或 users.reviewer_roles 有分配角色
   const isReviewer = isAdmin || (user?.reviewer_roles?.length ?? 0) > 0;
-  // AI 课程管理员：单独角色，用于课程模块的同步/发布/编辑
-  const isCourseAdmin = !!user?.roles?.includes('course_admin');
-  const canManageCourses = isAdmin || isCourseAdmin;
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, isReviewer, isCourseAdmin, canManageCourses, signOut, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, isReviewer, permissions, hasPermission, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
