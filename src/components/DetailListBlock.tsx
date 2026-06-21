@@ -307,9 +307,9 @@ export function DetailListBlock({
   ];
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-export-stack="compact">
       {/* 篮选+排序 */}
-      <div className="glass rounded-xl px-4 py-3" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
+      <div className="glass rounded-xl px-4 py-3" data-export-card style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>排序</span>
@@ -328,13 +328,13 @@ export function DetailListBlock({
 
       {/* 小summary */}
       {showMetrics ? (
-        <div className="flex items-center gap-4 text-xs px-2" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs px-2" data-export-card style={{ color: 'var(--text-muted)' }}>
           <span>共 <strong style={{ color: labelColor }}>{summary.count}</strong> 个{label}</span>
           <span>{FIELD_LABELS.monthlySavedHours} <strong style={{ color: labelColor }}>{summary.totalSavedEfficiency > 0 ? `${summary.totalSavedEfficiency}h` : '—'}</strong></span>
           <span>{FIELD_LABELS.monthlySavedCost} <strong style={{ color: '#4a7de0' }}>{summary.totalMonthlySavedCostDisplay}</strong></span>
         </div>
       ) : (
-        <div className="flex items-center gap-4 text-xs px-2" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs px-2" data-export-card style={{ color: 'var(--text-muted)' }}>
           <span>共 <strong style={{ color: labelColor }}>{summary.count}</strong> 个{label}</span>
         </div>
       )}

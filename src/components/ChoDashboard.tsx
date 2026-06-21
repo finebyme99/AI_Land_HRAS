@@ -18,6 +18,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { FIELD_LABELS, VALUE_FORMULA_COPY } from '@/lib/bitable/labels';
 import { parseMetricNumber, summarizeValueMetrics } from '@/lib/bitable/metrics';
+import { applyExportImageCloneLayout, getExportImageCaptureWidth } from '@/lib/export-image-style';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -254,20 +255,19 @@ export default function ChoDashboard() {
         realTableContent?.scrollWidth ?? 0,
         element.scrollWidth,
       );
+      const captureWidth = getExportImageCaptureWidth(tableNeededWidth);
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#f8fafc',
         logging: false,
-        windowWidth: tableNeededWidth,
-        windowHeight: element.scrollHeight,
+        windowWidth: captureWidth,
+        windowHeight: element.scrollHeight + 400,
         onclone: (clonedDoc) => {
           const clonedEl = clonedDoc.getElementById('cho-dashboard-export');
           if (!clonedEl) return;
-          // 1. 用真实表格所需宽度撑开 export 容器（关键：解决"复用价值列被截断"）
-          clonedEl.style.width = `${tableNeededWidth}px`;
-          clonedEl.style.maxWidth = 'none';
-          clonedEl.style.overflow = 'visible';
+          // 1. 用真实表格所需宽度撑开 export 容器，并加入导出专用留白
+          applyExportImageCloneLayout(clonedEl, { width: tableNeededWidth });
           // 2. 取消 antd Table 的横向滚动限制（content/body/wrap 三层都要打开）
           clonedEl.querySelectorAll('.ant-table-content, .ant-table-body, .ant-table-body-inner, .ant-table').forEach((c) => {
             const el = c as HTMLElement;
@@ -279,12 +279,7 @@ export default function ChoDashboard() {
             const el = c as HTMLElement;
             el.style.overflow = 'visible';
           });
-          // 3. .glass 的 backdrop-filter 在 html2canvas 下无法渲染，需替换为可渲染样式
-          clonedEl.querySelectorAll('.glass').forEach((g) => {
-            const el = g as HTMLElement;
-            el.style.backdropFilter = 'none';
-            el.style.setProperty('-webkit-backdrop-filter', 'none');
-          });
+          // 3. .glass 的 backdrop-filter 已在导出布局工具中替换为可渲染样式
           // 4. 去掉列拖拽手柄（html2canvas 把它截成黑条）
           clonedEl.querySelectorAll('.react-resizable-handle').forEach((h) => {
             (h as HTMLElement).style.display = 'none';
@@ -779,7 +774,7 @@ export default function ChoDashboard() {
         </div>
 
         {/* 导出范围：指标卡片 + 核心公式 + 数据表格 */}
-        <div id="cho-dashboard-export">
+        <div id="cho-dashboard-export" data-export-stack>
           {/* 顶部统计 */}
           <div className="glass rounded-2xl p-5 mb-2" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

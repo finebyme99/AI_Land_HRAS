@@ -17,6 +17,7 @@ import { useAuth } from '@/lib/auth-context';
 import type { FieldSelectOption } from '@/lib/bitable/field-map';
 import { FIELD_LABELS } from '@/lib/bitable/labels';
 import { summarizeValueMetrics } from '@/lib/bitable/metrics';
+import { applyExportImageCloneLayout, getExportImageCaptureWidth } from '@/lib/export-image-style';
 import {
   partitionProgressStates, buildProgressColorMap,
   buildCategoryColorMap, FALLBACK_COLOR,
@@ -365,7 +366,11 @@ function SceneDrillDownModal({ item, onClose }: { item: WishItem; onClose: () =>
 // ── 核心公式区块 ──
 function FormulaSection() {
   return (
-    <div className="glass rounded-lg px-5 py-4 my-2" style={{ borderColor: 'rgba(220, 38, 38, 0.15)', background: 'rgba(254, 242, 242, 0.6)' }}>
+    <div
+      data-export-block="formula"
+      className="glass rounded-lg px-5 py-4 my-2"
+      style={{ borderColor: 'rgba(220, 38, 38, 0.15)', background: 'rgba(254, 242, 242, 0.6)' }}
+    >
       <div className="text-[11px] font-bold mb-2" style={{ color: '#dc2626' }}>核心公式</div>
       <div className="space-y-1.5">
         <div className="flex items-baseline gap-2">
@@ -491,16 +496,25 @@ function WishPoolContent() {
       const element = document.getElementById('wish-pool-export');
       if (!element) return;
       await new Promise((r) => setTimeout(r, 100));
+      const realTable = element.querySelector('.ant-table table') as HTMLElement | null;
+      const realTableContent = element.querySelector('.ant-table-content') as HTMLElement | null;
+      const contentWidth = Math.max(
+        realTable?.scrollWidth ?? 0,
+        realTableContent?.scrollWidth ?? 0,
+        element.scrollWidth,
+      );
+      const captureWidth = getExportImageCaptureWidth(contentWidth);
       const canvas = await html2canvas(element, {
-        scale: 2, useCORS: true, backgroundColor: '#f8fafc', logging: false,
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#f8fafc',
+        logging: false,
+        windowWidth: captureWidth,
+        windowHeight: element.scrollHeight + 400,
         onclone: (clonedDoc) => {
           const clonedEl = clonedDoc.getElementById('wish-pool-export');
           if (!clonedEl) return;
-          clonedEl.querySelectorAll('.glass').forEach((g) => {
-            const el = g as HTMLElement;
-            el.style.backdropFilter = 'none';
-            el.style.setProperty('-webkit-backdrop-filter', 'none');
-          });
+          applyExportImageCloneLayout(clonedEl, { width: contentWidth });
         },
       });
       const link = document.createElement('a');
@@ -558,7 +572,7 @@ function WishPoolContent() {
         ) : stats ? (
           <div id="wish-pool-export">
             {/* 操作栏 */}
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2" data-export-exclude>
               {canSyncFieldMap && (
                 <button onClick={handleRefresh} disabled={syncing}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
@@ -585,7 +599,7 @@ function WishPoolContent() {
                   key: 'overview',
                   label: <span className="flex items-center gap-1"><EyeOutlined /> 数据总览</span>,
                   children: (
-                    <div className="space-y-4">
+                    <div className="space-y-4" data-export-stack>
                       {/* 统计卡 */}
                       <div className="glass rounded-2xl p-5" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -657,7 +671,7 @@ function WishPoolContent() {
                   key: 'landed',
                   label: <span className="flex items-center gap-1"><RocketOutlined /> 已落地场景明细</span>,
                   children: (
-                    <div className="space-y-2">
+                    <div className="space-y-2" data-export-stack>
                       <DetailListBlock
                         baseList={landedItems}
                         label="已落地场景"
@@ -678,7 +692,7 @@ function WishPoolContent() {
                   key: 'pending',
                   label: <span className="flex items-center gap-1"><HourglassOutlined /> 待实现场景明细</span>,
                   children: (
-                    <div className="space-y-2">
+                    <div className="space-y-2" data-export-stack>
                       <DetailListBlock
                         baseList={pendingItems}
                         label="待实现场景"
