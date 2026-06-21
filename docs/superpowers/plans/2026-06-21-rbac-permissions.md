@@ -1,5 +1,7 @@
 # AI岛 RBAC 权限管理体系 Implementation Plan
 
+> **状态：已实施，仅作历史参考。** 当前实现状态以 `docs/superpowers/handoff-2026-06-21-rbac.md`、`CONTRIBUTING.md` 和代码为准。不要按本文 Task 清单重复执行。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 为 AI岛 实现一套轻量 RBAC 权限体系，支持管理员自定义角色并通过权限矩阵配置每个角色可见的页面和按钮。

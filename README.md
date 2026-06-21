@@ -44,6 +44,13 @@ src/
 └── lib/              # 工具函数 (Supabase、飞书、认证、bitable映射)
 ```
 
+## 权限与管理后台
+
+- 管理后台权限使用轻量 RBAC：`roles` / `role_permissions` / `user_roles` 三表，权限点在 `src/lib/permissions/registry.ts` 声明。
+- 用户权限入口为 `/admin/roles`，包含 `角色列表`、`权限矩阵`、`用户授权` 三个视图。
+- 旧 `/admin/users` 保留为兼容跳转，自动重定向到 `/admin/roles?tab=users`。
+- `admin` 角色默认拥有全部权限；`reviewer_roles` 仍是独立的评审维度授权，不并入 RBAC。
+
 ## 详细规范
 
 见 `CONTRIBUTING.md` 和 `AGENTS.md`。

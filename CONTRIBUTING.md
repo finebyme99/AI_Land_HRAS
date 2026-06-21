@@ -69,7 +69,8 @@ src/
 │   │   └── [id]/          # 方案详情页
 │   ├── admin/             # 管理后台
 │   │   ├── review/        # 内容审核
-│   │   ├── users/         # 用户管理
+│   │   ├── roles/         # 用户权限（角色列表 / 权限矩阵 / 用户授权）
+│   │   ├── users/         # 兼容旧入口，重定向到 /admin/roles?tab=users
 │   │   ├── reviews/       # 评审管理
 │   │   ├── reviews-overview/  # 旧版评审看板（未删）
 │   │   ├── push/          # 飞书推送
@@ -102,10 +103,11 @@ src/
 │       │   ├── competitions/overview/  # 成效看板聚合（含 fieldDescriptions+fieldOptions）
 │       │   ├── bitable-field-map/      # 字段映射 CRUD + sync-from-feishu
 │       │   ├── reviews/               # 评审清理/同步
+│       │   ├── roles/                 # 角色 CRUD + 权限矩阵
 │       │   ├── push/                  # 推送日志+飞书聊天
 │       │   ├── reminders/             # 提醒 CRUD+发送
 │       │   ├── settings/              # 平台设置
-│       │   └── users/                 # 用户管理
+│       │   └── users/                 # 用户授权、评委角色授权、重置密码
 │       ├── cron/              # Vercel cron
 │       │   ├── sync-courses/        # 课程同步
 │       │   ├── feishu-apps-health/  # 飞书连通性
@@ -135,6 +137,7 @@ src/
 │   │   ├── filter-options.ts      # 篮选枚举构建（fieldOptionsToFilterItems + aggregateOptions）
 │   │   ├── enums.ts               # 动态枚举（色板分配+isLandedState+reuseLevelStyle）
 │   │   └── page-usage.ts          # 字段使用页面枚举
+│   ├── permissions/       # RBAC 权限点注册表 + 服务端权限解析
 │   └── db/               # 数据库访问层
 └── types/
     └── index.ts           # 类型定义（含 FeishuApp / AuthLog / User / FieldSelectOption）
@@ -142,13 +145,15 @@ src/
 
 ### 权限控制
 
-- `useAuth()` 提供 `{ user, isAdmin, isReviewer, isCourseAdmin, canManageCourses, loading, signOut, refreshUser }`
-- `isAdmin` 由 `user?.roles` 数组包含 `'admin'` 或 `'moderator'` 决定
-- `isReviewer` = `isAdmin` ∪ `roles.includes('reviewer')`（reviewer 角色由 `competitions/sync` 同步时回填）
-- `isCourseAdmin` = `roles.includes('course_admin')`；`canManageCourses` = `isAdmin` ∪ `isCourseAdmin`
-- 角色（DB key → 中文）：`admin` 管理员 / `moderator` 版主 / `reviewer` 评委 / `course_admin` AI 课程管理员 / `contributor` 贡献者 / `user` 普通用户
-- admin 操作：审核内容、编辑任意案例/工具/课程、标精选、管理用户
-- `course_admin` AI 课程管理员：在 /courses 模块可同步、发布、编辑课程，不能动其他后台
+- RBAC 数据表：`roles`、`role_permissions`、`user_roles`；迁移文件为 `057_rbac.sql` 和 `058_default_user_role.sql`
+- 权限点统一在 `src/lib/permissions/registry.ts` 声明，字段包含 `key`、`label`、`group`、`kind`（`menu` 菜单页面 / `button` 功能按钮）
+- `useAuth()` 提供 `{ user, isAdmin, isReviewer, permissions, hasPermission, loading, signOut, refreshUser }`
+- `hasPermission(key)` 是新代码的首选权限判断；导航、后台页面守卫、关键按钮均应使用权限点
+- `isAdmin` 只认 `user.roles.includes('admin')`，用于兼容旧语义；不要把自定义角色误判为 admin 身份
+- `isReviewer` = `isAdmin` ∪ `users.reviewer_roles` 非空；`reviewer_roles` 表示评审维度授权，独立于 RBAC
+- 系统内置角色只 seed `admin` 和 `user`；自定义角色在 `/admin/roles` 的「用户权限」模块维护
+- `/admin/roles` 包含三个视图：`角色列表`、`权限矩阵`、`用户授权`；旧 `/admin/users` 自动跳转到 `用户授权`
+- 权限矩阵按功能模块分组，模块行可批量勾选下级菜单页面和功能按钮；DB 仍只存具体权限点 key
 - 普通用户：提交案例（需审核）、提交工具（需审核）、点赞、收藏
 - 案例/工具的作者可编辑自己的内容
 

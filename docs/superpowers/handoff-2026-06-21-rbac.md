@@ -1,115 +1,51 @@
-# 会话交接文档 — AI岛 RBAC 权限体系
+# 会话交接文档 — AI岛用户权限 / RBAC
 
 **日期**：2026-06-21
 **分支**：main
-**阶段**：设计 + 实施计划已完成，**尚未开始编码实现**
+**当前状态**：RBAC 主体已实现并提交，用户管理已合并进「用户权限」模块。
 
----
+## 已实现
 
-## 一、本次完成了什么
+- 数据模型：`roles`、`role_permissions`、`user_roles` 三表，迁移为 `supabase/migrations/057_rbac.sql` 和 `058_default_user_role.sql`。
+- 权限注册表：`src/lib/permissions/registry.ts`，权限点在代码内声明，DB 只存角色与权限点 key 的关系。
+- 权限类型：每个权限点有 `kind`，`menu` 表示菜单页面，`button` 表示功能按钮；权限矩阵还展示可批量勾选的「功能模块」分组行。
+- 权限解析：`src/lib/permissions/index.ts` 提供 `getUserPermissions()`、`hasPermission()` 和缓存清理。
+- 前端认证：`useAuth()` 返回 `permissions: Set<string>` 和 `hasPermission(key)`；`isAdmin` 只认 `admin` 角色，`isReviewer` 继续基于 `reviewer_roles`。
+- 管理入口：`/admin/roles` 已更名为「用户权限」，包含 `角色列表`、`权限矩阵`、`用户授权` 三个视图。
+- 兼容入口：旧 `/admin/users` 保留为重定向，跳到 `/admin/roles?tab=users`。
+- 用户授权：原用户管理表格迁入 `src/app/admin/roles/UserAuthorizationTab.tsx`，保留系统角色授权、评委角色批量授权、重置密码。
+- 导航：管理后台菜单按 `hasPermission()` 构建，只显示当前用户有权限访问的后台入口。
+- API：新增 `/api/admin/roles`、`/api/admin/roles/[key]`、`/api/admin/roles/[key]/permissions`；`/api/admin/users` 修改角色时同步 `user_roles`。
 
-### 1. 设计 Spec（已提交）
-- `docs/superpowers/specs/2026-06-21-rbac-permissions-design.md`
-- 提交历史：`908b5dc` → `c24aca7`（按用户决策修订）
+## 当前路由与权限
 
-### 2. 实施计划（已提交）
-- `docs/superpowers/plans/2026-06-21-rbac-permissions.md`
-- 提交：`76c6441`
-- **14 个 Task，涵盖 DB → API → 前端 → 安全修复 → 自检全流程**
+| 路由 | 说明 | 主要权限 |
+|---|---|---|
+| `/admin/roles` | 用户权限模块 | `admin.roles` 或 `admin.users` 可进入页面 |
+| `/admin/roles?tab=users` | 用户授权视图 | `admin.users` |
+| `/admin/users` | 旧入口兼容跳转 | 由 `/admin/roles?tab=users` 接管 |
+| `/api/admin/roles` | 角色列表 / 创建角色；`scope=options` 返回下拉选项 | 完整角色管理仍要求 `admin` 身份；`scope=options` 允许 `admin.users` 或 `user.set-roles` |
+| `/api/admin/users` | 用户列表、角色授权、评委角色授权、重置密码 | `admin.users`、`user.set-roles`、`user.reset-password` |
 
-### 3. 关键决策（已锁定，不要改）
+## 关键设计约束
 
-| 决策 | 结论 |
-|---|---|
-| 角色模型 | 支持自定义角色（管理员可在 /admin/roles 新建） |
-| 预制角色 | **只 seed `admin` + `user`**，不预制 moderator/course_admin/reviewer/contributor |
-| 迁移策略 | 现有用户的 moderator/course_admin/reviewer/contributor **清零为 user**，只有 admin 保留。用户已知悉代价（暂时失去原有权限，待管理员手动重新分配） |
-| 权限粒度 | 页面 + 关键操作按钮级（~35 个权限点） |
-| 权限点维护 | 代码内声明（`registry.ts`），DB 只存「角色 × 权限点」配置 |
-| reviewer_roles | **保持独立不动**（语义是「评分维度授权」，与「页面可见性」正交） |
-| isAdmin 老派生值 | 只认 `admin` 角色 key（不再含 moderator），避免自定义角色被误判 |
-| /admin/roles 入口 | 仅 admin 可进（防提权） |
-| 测试方式 | **无测试框架**，用 curl 验证（遵循 CONTRIBUTING.md 自检规范） |
+- 系统角色只 seed `admin` 和 `user`；其他职能角色由管理员在「用户权限」里自定义。
+- `admin` 角色在权限解析层短路为拥有全部权限点，不依赖 `role_permissions` 表。
+- `reviewer_roles` 不并入 RBAC，它表示 AI 大赛评分维度授权（用户 / 业务 / 技术评委），与页面和按钮权限正交。
+- `users.roles` 仍保留作过渡 fallback，并与 `user_roles` 双向保活；新代码应优先使用 `hasPermission(key)`。
+- 权限矩阵的「功能模块」行不入库，只负责批量勾选该模块下的菜单页面和功能按钮；保存时仍写具体权限点 key。
 
----
+## 已知注意事项
 
-## 二、下一步：执行实施计划
+- `src/app/api/admin/roles/route.ts` 的完整角色管理 API 仍以 `admin` 身份为硬门槛，防止拥有 `admin.roles` 权限的自定义角色给自己提权。
+- `CONTRIBUTING.md` 是当前项目规范的权威入口；RBAC 详细设计见 `docs/superpowers/specs/2026-06-21-rbac-permissions-design.md`。
+- 工作区仍可能存在与 RBAC 无关的未提交改动，提交时不要使用 `git add -A`。
 
-### 执行方式
+## 自检记录
 
-计划文档头部注明了两种方式（subagent-driven 或 inline execution）。建议用 **subagent-driven**（每个 Task 派一个 agent，完成后 review 再进下一个）。
+2026-06-21 已完成：
 
-### 执行顺序
-
-**严格按 Task 1 → 14 顺序执行**，因为依赖关系：
-- Task 1（DB 迁移）是所有后续 Task 的前提
-- Task 2（registry）→ Task 3（解析层）→ Task 5（auth/me）→ Task 7（auth-context）
-- Task 4（类型）可和 Task 2/3 并行
-- Task 6（roles API）依赖 Task 1-3
-- Task 8-10（前端替换）依赖 Task 7
-- Task 11（users 动态化）依赖 Task 6
-- Task 12（新页面）依赖 Task 6
-- Task 13（安全修复）独立，可在任意时刻做
-- Task 14（全站自检）放最后
-
-### 关键文件清单
-
-**新建（8 个文件）**：
-| 文件 | 对应 Task |
-|---|---|
-| `supabase/migrations/057_rbac.sql` | Task 1 |
-| `src/lib/permissions/registry.ts` | Task 2 |
-| `src/lib/permissions/index.ts` | Task 3 |
-| `src/app/api/admin/roles/route.ts` | Task 6 |
-| `src/app/api/admin/roles/[key]/route.ts` | Task 6 |
-| `src/app/api/admin/roles/[key]/permissions/route.ts` | Task 6 |
-| `src/app/admin/roles/page.tsx` | Task 12 |
-
-**修改（~25 个文件）**：
-- `src/types/index.ts`（Task 4）
-- `src/app/api/auth/me/route.ts`（Task 5）
-- `src/lib/auth-context.tsx`（Task 7）
-- `src/components/Navigation.tsx`（Task 8）
-- 10 个 admin 页面守卫（Task 9）
-- ~15 个文件的按钮条件（Task 10）
-- `src/app/admin/users/page.tsx` + `src/app/api/admin/users/route.ts`（Task 11）
-- 3 个 API 安全修复（Task 13）
-
----
-
-## 三、项目上下文（给新 agent 的必读）
-
-### 必读文件
-1. **`CONTRIBUTING.md`** — 技术栈（Next.js 16 + React 19 + Ant Design 6 + Supabase）、样式规范（Glassmorphism）、自检方式（curl）
-2. **`AGENTS.md`** — 分支策略（main 直接开发）、Next.js 16 breaking changes 警告
-3. **本实施计划** — `docs/superpowers/plans/2026-06-21-rbac-permissions.md`（每个 Task 有完整代码，可直接复制）
-4. **本设计 Spec** — `docs/superpowers/specs/2026-06-21-rbac-permissions-design.md`（理解"为什么"）
-
-### Next.js 16 特殊注意
-- 动态路由参数用 `use(params)` 解析（不是 `params.key` 直接取）
-- App Router，所有页面都是 `'use client'`
-- 见 AGENTS.md 里 "This is NOT the Next.js you know" 的警告
-
-### `requireAdmin` 模式
-项目里没有统一的 `requireAdmin` 工具函数——每个 API route 各自定义本地版本（读 cookie → 查 users.roles → 校验含 admin）。RBAC 迁移后新 API（`/api/admin/roles/*`）沿用这个模式。
-
-### 现有工作区状态
-- `src/app/competitions/page.tsx` 有未提交的修改（价值星级显示增强，和 RBAC 无关），执行时注意不要 git add -A 误提交
-- `feishu-auth-qr.png` 是未跟踪文件，不要提交
-
----
-
-## 四、扩展性（本期不做，留记录）
-
-**权限申请/审批**：
-- 数据模型已预留（`permission_requests` 表 DDL 写在 spec 末尾）
-- 权限解析层不用改（审批通过写 `user_roles` 即可）
-- 未来实现：`/profile` 加申请入口 → `/admin/roles` 加审批 Tab → 通过写 `user_roles`
-
-**API 鉴权中间件化**：
-- 现有各 route 的 `requireAdmin` 是重复代码，未来可抽为统一中间件
-- 可基于 `hasPermission(userId, key)` 实现声明式鉴权（如 `withPermission('admin.users')`）
-
-**废弃 users.roles**：
-- 当前双向保活（`user_roles` + `users.roles` 同步写）
-- 过渡 2 个版本后可彻底废弃 `users.roles` 字段
+- `npx eslint` 检查本次相关文件通过，`Navigation.tsx` 仅有既有 `<img>` warning。
+- `npm run build` 通过。
+- `curl -I --cookie 'feishu_user_id=local-check' http://localhost:3000/admin/roles` 返回 `200`。
+- `curl -I --cookie 'feishu_user_id=local-check' http://localhost:3000/admin/users` 返回 `307 -> /admin/roles?tab=users`。

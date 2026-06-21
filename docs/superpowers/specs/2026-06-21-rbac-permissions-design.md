@@ -1,17 +1,17 @@
 # AI岛 权限管理体系（RBAC）设计
 
 **日期**：2026-06-21
-**状态**：待批准
+**状态**：已实现（2026-06-21），当前管理入口为「用户权限」模块 `/admin/roles`
 
 ## 背景
 
-当前权限判断**全部硬编码、分散在三处**：
+RBAC 前的权限判断**全部硬编码、分散在三处**：
 
-1. `src/lib/auth-context.tsx:55-60` —— 派生出 `isAdmin` / `isReviewer` / `isCourseAdmin` / `canManageCourses` 四个布尔值
+1. `src/lib/auth-context.tsx` —— 派生出 `isAdmin` / `isReviewer` / `isCourseAdmin` / `canManageCourses` 等布尔值
 2. `src/components/Navigation.tsx` —— 导航项、管理后台菜单用 `isAdmin`/`isReviewer`/`isCourseAdmin` 做条件渲染（Desktop + Mobile 两份对称代码）
 3. 各 admin 页面顶部 —— 重复 `if (!isAdmin) return null` 守卫
 
-**痛点**：每新增一个模块或按钮，都要同时改 `auth-context.tsx`（加一个 `isXxx` 派生值）、改 `Navigation.tsx`（加一个条件分支）、改 `admin/users` 页面（加一个角色选项），三处耦合，且管理员**无法在运行时配置**角色能看什么、不能看什么。
+**痛点**：每新增一个模块或按钮，都要同时改 `auth-context.tsx`（加一个 `isXxx` 派生值）、改 `Navigation.tsx`（加一个条件分支）、改用户授权页面（加一个角色选项），三处耦合，且管理员**无法在运行时配置**角色能看什么、不能看什么。
 
 此外，盘点中发现 **3 个后端 API 缺少权限校验**的安全洞（详见末尾"安全修复"），应在本期一并补齐。
 
@@ -102,7 +102,7 @@ CREATE TABLE user_roles (
   FROM users
   WHERE roles IS NOT NULL AND array_length(roles, 1) > 0;
   ```
-- **迁移代价（用户已知悉并接受）**：现有 moderator/course_admin/reviewer 用户会**暂时失去原有管理权限**，需要管理员后续在 `/admin/roles` 创建对应自定义角色后，再到 `/admin/users` 重新分配。
+- **迁移代价（用户已知悉并接受）**：现有 moderator/course_admin/reviewer 用户会**暂时失去原有管理权限**，需要管理员后续在 `/admin/roles` 创建对应自定义角色后，再到「用户授权」视图重新分配。
 - `users.roles` 字段**保留 1-2 个版本**作为 fallback：`/api/auth/me` 优先读 `user_roles`，空则回退到 `users.roles`
 - `admin/users` 页面后续改写 `user_roles`，同时同步写回 `users.roles`（双向保活，过渡期保险）
 - 2 个版本后再考虑彻底废弃 `users.roles`
@@ -132,8 +132,9 @@ CREATE TABLE permission_requests (
 ```ts
 export interface PermissionDef {
   key: string;              // 'admin.users'
-  label: string;            // '用户管理页'
+  label: string;            // '用户授权'
   group: string;            // '管理后台'（用于矩阵分组显示）
+  kind: 'menu' | 'button';  // 菜单页面 / 功能按钮
   description?: string;
 }
 
@@ -164,7 +165,7 @@ export function getPermissionsByGroup(): Record<string, PermissionDef[]> { /* ..
 | `admin.reviews` | 评审管理 | 管理后台 | isReviewer |
 | `admin.reviews-overview` | 评审一览 | 管理后台 | isAdmin |
 | `admin.review` | 内容审核 | 管理后台 | isAdmin |
-| `admin.users` | 用户管理 | 管理后台 | isAdmin |
+| `admin.users` | 用户授权 | 管理后台 | isAdmin |
 | `admin.bitable-field-map` | 字段映射配置 | 管理后台 | isAdmin |
 | `admin.layouts` | 方案卡片布局 | 管理后台 | isAdmin |
 | `admin.reminders` | 提醒管理 | 管理后台 | isAdmin |
@@ -187,8 +188,8 @@ export function getPermissionsByGroup(): Record<string, PermissionDef[]> { /* ..
 | `case.submit` | 提交案例 | 场景池 |
 | `resource.submit` | 提交工具 | 资源 |
 | `resource.review` | 内容审核通过/驳回 | 资源 |
-| `user.reset-password` | 重置密码 | 用户管理 |
-| `user.set-roles` | 修改他人角色 | 用户管理 |
+| `user.reset-password` | 重置密码 | 用户授权 |
+| `user.set-roles` | 修改他人角色 | 用户授权 |
 | `fieldmap.sync` | 字段映射同步飞书 | 字段映射 |
 | `reminder.send` | 提醒发送 | 提醒 |
 | `push.send` | 飞书群推送 | 推送 |
@@ -264,13 +265,11 @@ interface AuthContextType {
 
 - `user.permissions`（来自 `/api/auth/me`）初始化为 `Set`
 - `hasPermission(key)` = `permissions.has(key)`
-- **`isAdmin`/`isReviewer`/`isCourseAdmin`/`canManageCourses` 保留**，但内部重写为基于角色 key 判断（而非基于权限点，避免「自定义角色恰好有某个 admin 权限点」被误判为 admin）：
+- **当前实现保留 `isAdmin`/`isReviewer`**，新增代码应使用 `hasPermission()`；旧的 `isCourseAdmin`/`canManageCourses` 不再作为 `useAuth()` 对外字段：
   - `isAdmin` = `user.roles.includes('admin')`（不再含 moderator，因为 moderator 角色已不预制；如果未来需要 moderator 语义，由管理员建自定义角色并赋予相应权限点，但 `isAdmin` 这个老布尔值只认 `admin`）
-  - `isCourseAdmin` = `user.roles.includes('course_admin')`（迁移后现有 course_admin 用户已清零为 user，此值对他们会是 false，直到管理员重新分配）
   - `isReviewer` = `isAdmin || (user.reviewer_roles?.length ?? 0) > 0`（保持现状，reviewer_roles 独立维度，不受 roles 清零影响）
-  - `canManageCourses` = `isAdmin || isCourseAdmin`
   - **权限点判断走 `hasPermission()`**，与上述「是否 admin 身份」是两套独立机制：admin 身份用于老代码兼容，权限点用于新功能细粒度控制
-  - **迁移后过渡期提醒**：现有 moderator/course_admin 用户的老派生值会暂时为 false。受影响的老代码路径（如 `/resources/courses` 页用 `canManageCourses` 控制同步按钮）会暂时隐藏按钮，待管理员在 `/admin/roles` 建好自定义角色并分配后恢复。新代码应优先用 `hasPermission()`。
+  - **迁移后过渡期提醒**：现有 moderator/course_admin 用户已清零为 `user`，需要管理员在 `/admin/roles` 建好自定义角色并分配后恢复对应权限。
 
 ### 2. `src/components/Navigation.tsx`（修改）
 
@@ -286,9 +285,11 @@ interface AuthContextType {
 
 ### 5. 新增 `/admin/roles` 页面
 
-**路由**：`src/app/admin/roles/page.tsx`（仅 `admin` 角色可进，独立于权限矩阵）
+**路由**：`src/app/admin/roles/page.tsx`，页面名「用户权限」。
 
-**布局**：两个 Tab
+完整角色管理 API 仍要求 `admin` 身份，避免自定义角色借 `admin.roles` 给自己提权；用户授权视图由 `admin.users` 控制。
+
+**布局**：三个 Tab
 
 **Tab 1：角色列表**
 - 表格列：角色 key / 中文 label / 描述 / 权限点数 / 拥有用户数 / 操作
@@ -296,17 +297,25 @@ interface AuthContextType {
 - 顶部「新建角色」按钮 → 弹窗填 key（英文 snake_case，不可与现有重复）/ label / description
 
 **Tab 2：权限矩阵**
-- 行：权限点（按 `group` 分组，组内有分割线）
+- 行：功能模块 + 下级权限点。功能模块来自 `group`，作为批量勾选行展示，不入库
+- 权限类型列：功能模块 / 菜单页面 / 功能按钮
 - 列：每个非 admin 角色一列（admin 列固定显示全勾且禁用）
-- 单元格：Checkbox
+- 单元格：Checkbox；勾选功能模块会默认勾选该模块下全部下级权限点，部分勾选时显示半选态
 - 「保存」按钮一次性 PUT 所有变更的角色权限
 - 顶部说明：「admin 角色默认拥有全部权限；勾选变更后点击保存生效，用户下次刷新页面后看到新权限」
 
+**Tab 3：用户授权**
+- 原 `/admin/users` 用户管理能力迁入本视图
+- 支持搜索用户、分配系统角色、批量分配 / 清除评委角色、重置注册用户密码
+- 系统角色下拉通过 `/api/admin/roles?scope=options` 读取最小字段
+
+旧 `/admin/users` 保留为兼容入口，重定向到 `/admin/roles?tab=users`。
+
 **UI 风格**：遵循 Glassmorphism（`glass` 类 + `rgba(255,255,255,0.6)` 边框）、Ant Design 6、`App.useApp()` 取 message。
 
-### 6. `/admin/users` 页面（修改）
+### 6. 用户授权视图（由 `/admin/roles?tab=users` 承载）
 
-- 系统角色 `Select`：`roleOptions` 改为从 `/api/admin/roles` 动态读取（保留颜色映射，自定义角色用默认色）
+- 系统角色 `Select`：`roleOptions` 改为从 `/api/admin/roles?scope=options` 动态读取
 - 「分配评委角色」相关逻辑**保持不动**（reviewer_roles 是独立维度）
 
 ## 安全修复（顺手补齐）
@@ -337,7 +346,7 @@ interface AuthContextType {
 
 迁移刚完成时（管理员尚未配置自定义角色）：
 
-| 角色 | admin 菜单 | 课程同步 | 评审打分 | 用户管理 | 字段映射 |
+| 角色 | admin 菜单 | 课程同步 | 评审打分 | 用户授权 | 字段映射 |
 |---|---|---|---|---|---|
 | `admin` | 全部 | ✅ | ✅ | ✅ | ✅ |
 | `user`（含迁移前的 moderator/course_admin/reviewer） | ❌ | ❌ | 仅 reviewer_roles 非空时可打分 | ❌ | ❌ |
@@ -351,5 +360,5 @@ interface AuthContextType {
 - **`admin` 角色权限解析短路**：不写 `role_permissions` 表，解析时直接返回全集。避免矩阵 UI 上 admin 列那 30 个勾选框需要单独维护
 - **`permission_key` 不加 FK**：参考 `bitable_field_map`，代码删权限点后 DB 残留记录会被 `Set` 过滤，加 FK 反而要写迁移去清理
 - **`users.roles` 保留作 fallback**：避免一次性切断所有老代码读取路径，过渡 2 个版本后再废弃
-- **`/admin/roles` 仅 admin 可进**：moderator 不能进，防止其给自己提权
+- **完整角色管理 API 仅 admin 身份可写**：拥有自定义 `admin.roles` 权限的角色不能通过 API 给自己提权
 - **不做 API 鉴权中间件化**：本期保持现有 `requireAdmin` 函数模式，权限点判断先只落前端 + 关键 API，未来如有需要再抽中间件
