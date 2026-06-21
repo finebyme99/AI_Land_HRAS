@@ -138,6 +138,7 @@ src/
 │   │   ├── labels.ts              # 飞书字段用户可见标签 + 公式文案单一来源
 │   │   ├── metrics.ts             # 价值指标解析/汇总/格式化 + "数据补充中"过滤
 │   │   └── page-usage.ts          # 字段使用页面枚举
+│   ├── export-image-style.ts # html2canvas 导出图片 clone 样式修正（padding/gap/glass/table ping 阴影）
 │   ├── permissions/       # RBAC 权限点注册表 + 服务端权限解析
 │   └── db/               # 数据库访问层
 └── types/

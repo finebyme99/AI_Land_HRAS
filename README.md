@@ -41,7 +41,7 @@ src/
 │   ├── competitions/ # AI 大赛
 │   └── page.tsx      # 首页（居中Hero+5项glass指标带）
 ├── components/       # 共享组件（Navigation/ChoDashboard/DetailListBlock/HighlightSweep/SearchInput/EntryCard）
-└── lib/              # 工具函数 (Supabase、飞书、认证、bitable映射)
+└── lib/              # 工具函数 (Supabase、飞书、认证、bitable映射、导出图片样式)
 ```
 
 ## 权限与管理后台
