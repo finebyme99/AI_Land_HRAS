@@ -53,16 +53,14 @@ CREATE TABLE roles (
 );
 ```
 
-**Seed（系统内置 6 个角色）**：
+**Seed（系统内置 2 个角色）**：
 
 | key | label | is_system | 说明 |
 |---|---|---|---|
 | `admin` | 管理员 | true | 拥有全部权限点，权限矩阵中不可取消勾选 |
-| `moderator` | 版主 | true | 内容审核 + 用户管理（不含系统配置类） |
-| `course_admin` | AI 课程管理员 | true | 仅课程模块 |
-| `reviewer` | 评委 | true | 仅评审打分（注意：与 `users.reviewer_roles` 是两个概念） |
-| `contributor` | 贡献者 | true | 可提交案例/工具（其实普通用户即可，留作细分） |
 | `user` | 普通用户 | true | 默认角色 |
+
+> **不预制 moderator/course_admin/reviewer/contributor**。管理员后续在 `/admin/roles` 自行创建自定义角色并分配。现有用户 `users.roles` 里的这些 key 在迁移时清零为 `user`（详见 `user_roles` 表说明）。
 
 `admin` 在权限解析层特殊处理：**永远拥有所有权限点**，不受 `role_permissions` 表约束。
 
@@ -81,14 +79,7 @@ CREATE TABLE role_permissions (
 - `permission_key` 不加 FK：代码删除某权限点后，DB 残留的孤儿记录在 API 读取时用 `Set` 过滤掉，不报错（参考 `bitable_field_map` 的处理哲学）
 - `admin` 角色的记录不写入此表，解析时直接返回全集
 
-**Seed（默认分配）**：迁移时按现有硬编码逻辑回填，保证迁移后行为零变化：
-
-| role_key | 默认拥有 permission_key |
-|---|---|
-| `admin` | （不写入表，解析时返回全集） |
-| `moderator` | 现状继承 admin 的所有能力（含全部按钮权限点如 `case.feature`/`review.export`/`course.sync`），仅排除系统配置类页面 `admin.settings`/`admin.feishu-apps`/`admin.bitable-field-map`/`admin.layouts`/`admin.reminders`/`admin.push`。即：moderator = admin 减去「系统配置类页面权限点」 |
-| `course_admin` | `course.*` 全部 + `nav.resources` |
-| `reviewer` | `review.score` + `admin.reviews`（菜单可见） |
+**Seed（默认分配）**：因为只 seed `admin` + `user`，且 `user` 不预分配任何权限点，所以 `role_permissions` 表初始为空。`admin` 不写入（解析时返回全集）。所有细分权限由管理员后续在 `/admin/roles` 配置。
 
 ### 3. `user_roles` —— 用户 × 角色（多对多）
 
@@ -103,7 +94,15 @@ CREATE TABLE user_roles (
 ```
 
 **与现有 `users.roles` 的关系**：
-- 迁移时执行 `INSERT INTO user_roles(user_id, role_key) SELECT id, unnest(roles) FROM users WHERE roles IS NOT NULL`
+- 迁移时执行：现有用户 `users.roles` 里的 `moderator`/`course_admin`/`reviewer`/`contributor`/`user` 全部**清零映射为 `user`**，只有 `admin` 保留为 `admin`。即：
+  ```sql
+  INSERT INTO user_roles(user_id, role_key)
+  SELECT id,
+         CASE WHEN 'admin' = ANY(roles) THEN 'admin' ELSE 'user' END
+  FROM users
+  WHERE roles IS NOT NULL AND array_length(roles, 1) > 0;
+  ```
+- **迁移代价（用户已知悉并接受）**：现有 moderator/course_admin/reviewer 用户会**暂时失去原有管理权限**，需要管理员后续在 `/admin/roles` 创建对应自定义角色后，再到 `/admin/users` 重新分配。
 - `users.roles` 字段**保留 1-2 个版本**作为 fallback：`/api/auth/me` 优先读 `user_roles`，空则回退到 `users.roles`
 - `admin/users` 页面后续改写 `user_roles`，同时同步写回 `users.roles`（双向保活，过渡期保险）
 - 2 个版本后再考虑彻底废弃 `users.roles`
@@ -266,11 +265,12 @@ interface AuthContextType {
 - `user.permissions`（来自 `/api/auth/me`）初始化为 `Set`
 - `hasPermission(key)` = `permissions.has(key)`
 - **`isAdmin`/`isReviewer`/`isCourseAdmin`/`canManageCourses` 保留**，但内部重写为基于角色 key 判断（而非基于权限点，避免「自定义角色恰好有某个 admin 权限点」被误判为 admin）：
-  - `isAdmin` = `user.roles.includes('admin') || user.roles.includes('moderator')`（保持现状语义）
-  - `isCourseAdmin` = `user.roles.includes('course_admin')`
-  - `isReviewer` = `isAdmin || (user.reviewer_roles?.length ?? 0) > 0`（保持现状，reviewer_roles 独立维度）
+  - `isAdmin` = `user.roles.includes('admin')`（不再含 moderator，因为 moderator 角色已不预制；如果未来需要 moderator 语义，由管理员建自定义角色并赋予相应权限点，但 `isAdmin` 这个老布尔值只认 `admin`）
+  - `isCourseAdmin` = `user.roles.includes('course_admin')`（迁移后现有 course_admin 用户已清零为 user，此值对他们会是 false，直到管理员重新分配）
+  - `isReviewer` = `isAdmin || (user.reviewer_roles?.length ?? 0) > 0`（保持现状，reviewer_roles 独立维度，不受 roles 清零影响）
   - `canManageCourses` = `isAdmin || isCourseAdmin`
   - **权限点判断走 `hasPermission()`**，与上述「是否 admin 身份」是两套独立机制：admin 身份用于老代码兼容，权限点用于新功能细粒度控制
+  - **迁移后过渡期提醒**：现有 moderator/course_admin 用户的老派生值会暂时为 false。受影响的老代码路径（如 `/resources/courses` 页用 `canManageCourses` 控制同步按钮）会暂时隐藏按钮，待管理员在 `/admin/roles` 建好自定义角色并分配后恢复。新代码应优先用 `hasPermission()`。
 
 ### 2. `src/components/Navigation.tsx`（修改）
 
@@ -331,20 +331,19 @@ interface AuthContextType {
 6. **前端替换**：`Navigation.tsx` + 10 个 admin 页面守卫 + ~20 处按钮条件
 7. **新页面**：`/admin/roles` 角色列表 + 权限矩阵
 8. **安全修复**：3 个 API 加 `requireAdmin`
-9. **自检**：`curl` 验证 `/api/auth/me` 返回 permissions；admin/moderator/course_admin/reviewer 四种角色场景下菜单与按钮可见性符合预期
+9. **自检**：`curl` 验证 `/api/auth/me` 返回 permissions；admin 角色看到全部菜单/按钮、user 角色看不到任何 admin 菜单；新建一个自定义角色「测试版主」勾几个权限点 → 分配给某测试用户 → 刷新页面验证可见性符合矩阵配置
 
 ## 验证矩阵
 
-迁移后行为应与现状完全一致（除了新增的自定义能力）：
+迁移刚完成时（管理员尚未配置自定义角色）：
 
 | 角色 | admin 菜单 | 课程同步 | 评审打分 | 用户管理 | 字段映射 |
 |---|---|---|---|---|---|
 | `admin` | 全部 | ✅ | ✅ | ✅ | ✅ |
-| `moderator` | 内容审核+用户管理+评审 | ✅（继承） | ✅（继承） | ✅ | ❌ |
-| `course_admin` | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `reviewer` | 仅评审管理 | ❌ | ✅ | ❌ | ❌ |
-| `user` | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `user`（含迁移前的 moderator/course_admin/reviewer） | ❌ | ❌ | 仅 reviewer_roles 非空时可打分 | ❌ | ❌ |
 | 自定义角色 | 按矩阵配置 | 按矩阵配置 | 按矩阵配置 | 按矩阵配置 | 按矩阵配置 |
+
+> 管理员在 `/admin/roles` 创建并配置好自定义角色（如「课程管理员」「版主」）后，分配给相应用户，他们的 `hasPermission()` 即按矩阵返回 true。
 
 ## 取舍说明
 
