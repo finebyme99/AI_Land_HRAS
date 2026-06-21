@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { syncUserRoleLinks, withDefaultUserRole } from '@/lib/permissions/default-role';
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token');
@@ -52,11 +53,14 @@ export async function GET(request: NextRequest) {
       userId = existingUser.id;
       userName = existingUser.name;
       userAvatar = existingUser.avatar || '';
-      userRoles = existingUser.roles || ['user'];
+      userRoles = withDefaultUserRole(existingUser.roles);
       userDepartment = existingUser.department || '';
+      await supabase.from('users').update({ roles: userRoles }).eq('id', userId);
+      await syncUserRoleLinks(userId, userRoles);
     } else {
       // 新用户：用邮箱前缀作为名称
       const name = email.split('@')[0];
+      const defaultRoles = withDefaultUserRole(['user']);
       const { data: newUser, error: insertError } = await supabase
         .from('users')
         .insert({
@@ -64,7 +68,7 @@ export async function GET(request: NextRequest) {
           name,
           avatar: '',
           department: '',
-          roles: ['user'],
+          roles: defaultRoles,
           feishu_open_id: null,
         })
         .select('id, name, avatar, roles, department')
@@ -78,8 +82,9 @@ export async function GET(request: NextRequest) {
       userId = newUser.id;
       userName = newUser.name;
       userAvatar = newUser.avatar || '';
-      userRoles = newUser.roles || ['user'];
+      userRoles = withDefaultUserRole(newUser.roles);
       userDepartment = newUser.department || '';
+      await syncUserRoleLinks(userId, userRoles);
     }
 
     // 清理过期 token

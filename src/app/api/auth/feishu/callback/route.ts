@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFeishuUserToken, getFeishuUserInfo, getFeishuUserContactInfo } from '@/lib/feishu';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { getFeishuAppByAppId, getAppSecret, logAuth } from '@/lib/feishu-app-store';
+import { syncUserRoleLinks, withDefaultUserRole } from '@/lib/permissions/default-role';
 import { cookies } from 'next/headers';
 
 // GET /api/auth/feishu/callback — 飞书 OAuth 回调（多租户）
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     if (existingUser) {
       userId = existingUser.id;
-      userRoles = existingUser.roles || ['user'];
+      userRoles = withDefaultUserRole(existingUser.roles);
       userDept = Array.isArray(contactInfo.department) ? contactInfo.department.join(' / ') : (contactInfo.department || existingUser.department || '');
       userEmpId = contactInfo.employee_no || existingUser.employee_id || '';
       await admin.from('users').update({
@@ -81,13 +82,16 @@ export async function GET(request: NextRequest) {
         avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
         department: userDept,
         employee_id: userEmpId,
+        roles: userRoles,
         last_active_at: new Date().toISOString(),
       }).eq('id', userId);
+      await syncUserRoleLinks(userId, userRoles);
     } else {
       // 兜底：第一个 admin 提升
       const { count } = await admin.from('users').select('id', { count: 'exact', head: true }).contains('roles', ['admin']);
       const isFirstAdmin = (count || 0) === 0;
       const newDept = Array.isArray(contactInfo.department) ? contactInfo.department.join(' / ') : (contactInfo.department || '');
+      const defaultRoles = withDefaultUserRole(isFirstAdmin ? ['admin'] : ['user']);
       const { data: newUser, error } = await admin.from('users').insert({
         feishu_open_id: feishuUser.open_id,
         feishu_tenant_key: feishuUser.tenant_key,
@@ -95,14 +99,15 @@ export async function GET(request: NextRequest) {
         avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
         department: newDept,
         employee_id: contactInfo.employee_no || '',
-        roles: isFirstAdmin ? ['admin'] : ['user'],
+        roles: defaultRoles,
         last_active_at: new Date().toISOString(),
       }).select('id').single();
       if (error) throw error;
       userId = newUser.id;
-      userRoles = isFirstAdmin ? ['admin'] : ['user'];
+      userRoles = defaultRoles;
       userDept = newDept;
       userEmpId = contactInfo.employee_no || '';
+      await syncUserRoleLinks(userId, userRoles);
     }
 
     // 8. 写 cookie
@@ -125,9 +130,10 @@ export async function GET(request: NextRequest) {
       open_id: feishuUser.open_id, success: true,
     });
     return response;
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
     console.error('飞书登录失败:', e);
-    await logAuth({ app_id: appId, error: String(e?.message || e), success: false });
+    await logAuth({ app_id: appId, error: errorMessage, success: false });
     return NextResponse.redirect(new URL('/login?error=auth_failed', request.url));
   }
 }

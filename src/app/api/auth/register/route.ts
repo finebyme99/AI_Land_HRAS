@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { syncUserRoleLinks, withDefaultUserRole } from '@/lib/permissions/default-role';
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
 
     // 创建用户
     const passwordHash = await bcrypt.hash(password, 10);
+    const defaultRoles = withDefaultUserRole(['user']);
     const { data: newUser, error } = await supabase
       .from('users')
       .insert({
@@ -40,7 +42,7 @@ export async function POST(request: NextRequest) {
         name: username,
         avatar: '',
         department: '',
-        roles: ['user'],
+        roles: defaultRoles,
       })
       .select('id, name, avatar, roles, department')
       .single();
@@ -49,6 +51,8 @@ export async function POST(request: NextRequest) {
       console.error('注册失败:', error);
       return NextResponse.json({ error: '注册失败，请稍后重试' }, { status: 500 });
     }
+
+    await syncUserRoleLinks(newUser.id, newUser.roles);
 
     // 设置 cookie session（和飞书登录一致）
     const response = NextResponse.json({ ok: true });

@@ -48,7 +48,7 @@ export async function upsertUser(userData: {
 
   const { data, error } = await getSupabase()
     .from('users')
-    .insert(userData)
+    .insert({ ...userData, roles: ['user'] })
     .select()
     .single();
 
