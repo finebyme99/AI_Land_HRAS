@@ -8,6 +8,8 @@
 - 提醒框架 — `2026-06-05-scheduled-sync-and-reminders-design.md`
 - 多租户 SSO — `2026-06-05-feishu-external-sso-design.md`
 
+> 角色说明已过期：2026-06-21 RBAC 已取代硬编码 `course_admin` 方案。本文的卡片、回调、定时提醒设计可继续参考；涉及课程运营授权时，使用 `course.sync` / `course.publish` 权限点和 `/admin/roles` 自定义角色，不再修改 `/admin/users` 增加固定 `course_admin` 选项。
+
 ---
 
 ## 1. 背景与目标

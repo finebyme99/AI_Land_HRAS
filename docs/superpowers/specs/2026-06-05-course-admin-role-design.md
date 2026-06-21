@@ -1,7 +1,9 @@
 # 公开管理员（course_admin）角色设计
 
 **日期**：2026-06-05
-**状态**：已批准，待实现
+**状态**：已被 2026-06-21 RBAC 方案取代，仅作历史参考
+
+> 当前实现不再新增硬编码 `course_admin` 角色，也不要再修改 `AuthContextType` 增加 `isCourseAdmin` / `canManageCourses`。课程同步和发布/编辑能力由 RBAC 权限点 `course.sync`、`course.publish` 控制；如需"AI 课程管理员"，在 `/admin/roles` 创建自定义角色并勾选对应权限点。现行规则见 `docs/superpowers/handoff-2026-06-21-rbac.md` 和 `CONTRIBUTING.md`。
 
 ## 背景
 
