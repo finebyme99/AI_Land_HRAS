@@ -48,17 +48,20 @@ function EntryDrillDownModal({ item, categoryColors, statusColors, fieldDescript
   const arr = (v: string[] | undefined) => v?.length ? v.join('、') : null;
   const members = [...new Set([...(item.submitter || []), ...(item.teamMembers || [])])];
 
-  // 带问号tooltip的字段标签
+  // 带问号tooltip的字段标签（zIndex高于弹窗，防止被遮挡）
   const labelWithTip = (label: string, fieldKey: string) => (
     <span className="inline-flex items-center gap-1" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
       {label}
       {fieldDescriptions[fieldKey] && (
-        <Tooltip title={fieldDescriptions[fieldKey]} placement="top">
+        <Tooltip title={fieldDescriptions[fieldKey]} placement="top" overlayStyle={{ zIndex: 99999 }}>
           <QuestionCircleOutlined style={{ fontSize: 10, color: '#9ca3af', cursor: 'help' }} />
         </Tooltip>
       )}
     </span>
   );
+
+  // 价值星级专属tooltip（AI岛计算逻辑，不走飞书fieldDescriptions）
+  const STAR_TOOLTIP = '按最终价值计分排名百分位：前20%=5★，前40%=4★，前60%=3★，前80%=2★，后20%=1★';
 
   // 分组标题
   const groupHeader = (title: string, accentColor: string) => (
@@ -68,19 +71,19 @@ function EntryDrillDownModal({ item, categoryColors, statusColors, fieldDescript
     </div>
   );
 
-  // 标签-值行（2列grid内，左对齐）
+  // 标签-值行（2列grid内，值紧跟标签左对齐）
   const fieldRow = (label: string | React.ReactNode, value: React.ReactNode) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-      <div>{typeof label === 'string' ? <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</span> : label}</div>
-      <span style={{ fontSize: 12, color: 'var(--foreground)', fontWeight: 500, textAlign: 'left', wordBreak: 'break-word', maxWidth: 240 }}>{value || '—'}</span>
+    <div style={{ display: 'flex', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', gap: 8 }}>
+      <div style={{ flexShrink: 0 }}>{typeof label === 'string' ? <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</span> : label}</div>
+      <span style={{ fontSize: 12, color: 'var(--foreground)', fontWeight: 500, textAlign: 'left', wordBreak: 'break-word' }}>{value || '—'}</span>
     </div>
   );
 
-  // 宽值行（跨列，左对齐）
+  // 宽值行（跨列，值紧跟标签左对齐）
   const wideRow = (label: string | React.ReactNode, value: React.ReactNode) => (
-    <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-      <div>{typeof label === 'string' ? <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</span> : label}</div>
-      <span style={{ fontSize: 12, color: 'var(--foreground)', fontWeight: 500, textAlign: 'left', wordBreak: 'break-word', maxWidth: 400 }}>{value || '—'}</span>
+    <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', gap: 8 }}>
+      <div style={{ flexShrink: 0 }}>{typeof label === 'string' ? <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</span> : label}</div>
+      <span style={{ fontSize: 12, color: 'var(--foreground)', fontWeight: 500, textAlign: 'left', wordBreak: 'break-word' }}>{value || '—'}</span>
     </div>
   );
 
@@ -99,7 +102,7 @@ function EntryDrillDownModal({ item, categoryColors, statusColors, fieldDescript
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <div style={{ width: '92%', maxWidth: 680, maxHeight: '85vh', background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(24px)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', animation: 'slideUp 0.3s ease-out' }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ width: '92%', maxWidth: 680, maxHeight: '85vh', background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(24px)', borderRadius: 16, overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', animation: 'slideUp 0.3s ease-out' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={{ background: 'linear-gradient(135deg, #0F2057 0%, #1a3a8a 40%, #F27F22 100%)', padding: '16px 24px', color: 'white', position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
@@ -112,7 +115,7 @@ function EntryDrillDownModal({ item, categoryColors, statusColors, fieldDescript
         </div>
 
         {/* Body */}
-        <div style={{ padding: '12px 24px 24px', maxHeight: 'calc(85vh - 80px)', overflowY: 'auto' }}>
+        <div style={{ padding: '12px 24px 24px' }}>
 
           {/* ── 分组一：参赛信息 ── */}
           {groupHeader('参赛信息', '#1a3a8a')}
@@ -175,7 +178,15 @@ function EntryDrillDownModal({ item, categoryColors, statusColors, fieldDescript
             {fieldRow(labelWithTip('推广复用价值系数', 'reuseValue'), item.reuseValue || (item.reuseValueNumber ? `×${item.reuseValueNumber}` : null))}
             {fieldRow(labelWithTip('场景归属地区系数', 'regionCoefficient'), item.regionCoefficient || (item.regionCoefficientValue ? `${item.regionCoefficientValue}` : null))}
             {fieldRow(labelWithTip('最终价值计分', 'finalValueScore'), item.finalValueScore ? fmtF(Math.round(item.finalValueScore)) : '—')}
-            {fieldRow(labelWithTip('价值星级', 'valueStarLevel'), item.valueStarLevel ? `${'★'.repeat(item.valueStarLevel)}${'☆'.repeat(5 - item.valueStarLevel)}` : '—')}
+            {fieldRow(
+              <span className="inline-flex items-center gap-1" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                价值星级
+                <Tooltip title={STAR_TOOLTIP} placement="top" overlayStyle={{ zIndex: 99999 }}>
+                  <QuestionCircleOutlined style={{ fontSize: 10, color: '#9ca3af', cursor: 'help' }} />
+                </Tooltip>
+              </span>,
+              item.valueStarLevel ? `${'★'.repeat(item.valueStarLevel)}${'☆'.repeat(5 - item.valueStarLevel)}` : '—'
+            )}
           </div>
 
           {item.recordUrl && (
@@ -443,39 +454,52 @@ function CompetitionsPageInner() {
                   <div className="flex justify-center py-16"><Spin size="large" /></div>
                 ) : (<>
 
-                  {/* ── 单列紧凑 Banner ── */}
-                  <div className="glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)', padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    {/* 主标题 */}
-                    <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.2 }}>
-                      <span>AI 重构效率 </span>
-                      <span className="gradient-text">创意定义价值</span>
-                    </div>
-
-                    {/* 副标题 */}
-                    <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                      欢迎每一位勇于拥抱变化、重塑流程、迎击时代浪潮的探索者
-                    </div>
-
-                    {/* 管理员按钮 */}
-                    {isAdmin && (
-                      <div className="flex items-center gap-2">
-                        <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer"
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:opacity-90"
-                          style={{ background: 'var(--primary)' }}>
-                          <TrophyOutlined /> 立即提报
-                        </a>
-                        <a href="https://ztn.feishu.cn/share/base/form/shrcnPYqHe7ySrBxA9DbXijzhUb" target="_blank" rel="noopener noreferrer"
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
-                          style={{ color: 'var(--primary)', border: '1px solid var(--primary)' }}>
-                          <StarOutlined /> AI许愿
-                        </a>
-                        <button onClick={handleSync} disabled={syncing}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                          style={{ color: syncing ? 'var(--text-muted)' : 'var(--accent)', border: `1px solid ${syncing ? 'var(--text-muted)' : 'var(--accent)'}`, opacity: syncing ? 0.5 : 1 }}>
-                          <SyncOutlined spin={syncing} /> {syncing ? '同步中…' : '同步数据'}
-                        </button>
+                  {/* ── Banner ── */}
+                  <div className="glass rounded-2xl" style={{ borderColor: 'rgba(255,255,255,0.6)', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 24 }}>
+                    {/* 左侧：标题+副标题+按钮 */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.2 }}>
+                        <span>AI 重构效率 </span>
+                        <span className="gradient-text">创意定义价值</span>
                       </div>
-                    )}
+                      <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                        欢迎每一位勇于拥抱变化、重塑流程、迎击时代浪潮的探索者
+                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-2">
+                          <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all hover:opacity-90"
+                            style={{ background: '#1a3a8a' }}>
+                            <TrophyOutlined /> 立即提报
+                          </a>
+                          <a href="https://ztn.feishu.cn/share/base/form/shrcnPYqHe7ySrBxA9DbXijzhUb" target="_blank" rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
+                            style={{ color: '#1a3a8a', border: '1px solid #1a3a8a' }}>
+                            <StarOutlined /> AI许愿
+                          </a>
+                          <button onClick={handleSync} disabled={syncing}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                            style={{ color: syncing ? 'var(--text-muted)' : '#F27F22', border: `1px solid ${syncing ? 'var(--text-muted)' : '#F27F22'}`, opacity: syncing ? 0.5 : 1 }}>
+                            <SyncOutlined spin={syncing} /> {syncing ? '同步中…' : '同步数据'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 右侧：4项信息横向排列 */}
+                    <div style={{ display: 'flex', gap: 16, flexShrink: 0 }}>
+                      {[
+                        { label: '赛事目标', value: '全员AI落地降本提效', accent: '#1a3a8a' },
+                        { label: '覆盖范围', value: 'HRAS 全体', accent: '#2d5bc7' },
+                        { label: '提报时间', value: '不限时', accent: '#16a34a' },
+                        { label: '评审节奏', value: '每月26日-月底', accent: '#F27F22' },
+                      ].map((info) => (
+                        <div key={info.label} style={{ textAlign: 'center', padding: '8px 12px', background: `${info.accent}08`, borderRadius: 8 }}>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 2 }}>{info.label}</div>
+                          <div style={{ fontSize: 12, color: info.accent, fontWeight: 700 }}>{info.value}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {/* ── 5 指标卡 ── */}
