@@ -1,116 +1,43 @@
-# AI Land Field Management Implementation Plan
+# AI Land 字段管理交接
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+## 当前状态
 
-**Goal:** Convert `/admin/bitable-field-map` from a Feishu-field list into an AI Land-field-centered management view.
+`/admin/bitable-field-map` 已从“飞书字段底层映射编辑页”收敛为业务侧的 **AI Land 字段管理** 页。
 
-**Architecture:** Keep `bitable_field_map` as the source-binding table and add a pure aggregation layer that groups rows by AI Land key. The admin API returns AI Land field assets plus a Feishu unused-field inbox; the page renders business-facing columns while preserving current edit/sync controls.
+页面以 AI Land 字段为基准展示：
 
-**Tech Stack:** Next.js 16 App Router, React 19, Ant Design 6, Supabase, Node `node:test`.
+- `AI Land 字段`：标准 key、用户可见字段名、不同页面/视图中的别名
+- `使用位置`：成效看板、场景池、场景池卡片等消费位置
+- `数据源 / 处理逻辑`：飞书多维表字段、AI Land 计算字段、AI Land 系统字段
+- `字段状态`：已使用、已绑定未展示、飞书已改名、已停用等
+- `依赖字段 / 说明`：计算字段的上游字段或来源说明
+- `飞书新增未使用字段`：飞书多维表已拉取，但 AI Land 暂未消费的字段池
 
----
+旧版 `key/type/API/启停/删除` 底层编辑表、操作列和字段预览弹窗已从页面移除。相关后端 CRUD 路由仍保留，避免破坏已有 API 兼容性。
 
-### Task 1: Field Asset Aggregation
+## 关键实现
 
-**Files:**
-- Create: `src/lib/bitable/field-assets.ts`
-- Test: `test/bitable-field-assets.test.mjs`
+- `src/lib/bitable/field-assets.ts`
+  - 纯函数聚合层，把 `bitable_field_map` 行聚合成 AI Land 字段资产。
+  - 将 `unknown_` key 归入 `unusedFeishuFields`。
+  - 根据 `field_id` 和 `previous_field_name` 标识飞书字段改名。
+- `src/app/api/admin/bitable-field-map/route.ts`
+  - GET 继续返回旧 `records`，同时返回 `assets`、`unusedFeishuFields`、`assetStats`。
+- `src/app/admin/bitable-field-map/page.tsx`
+  - 只渲染业务口径字段资产表和飞书未使用字段池。
+  - 保留 `刷新` 和 `从飞书拉取新字段`。
+- `supabase/migrations/061_bitable_field_map_field_id_identity.sql`
+  - 让字段映射以 `field_id` 作为稳定身份，支持飞书字段更名。
 
-- [ ] **Step 1: Write failing tests**
+## 验证记录
 
-Test that rows with the same AI Land key are grouped into one asset, aliases keep page context, renamed Feishu fields are tagged, and `unknown_` keys become Feishu unused fields.
+已验证：
 
-- [ ] **Step 2: Run tests and verify red**
+- `node --test test/bitable-field-assets.test.mjs test/bitable-field-map-identity.test.mjs`
+- `node --test test/*.mjs`
+- `npx tsc --noEmit`
+- `npm run build`
+- `npx eslint src/app/admin/bitable-field-map/page.tsx`
+- 浏览器打开 `localhost:3000/admin/bitable-field-map`，确认页面无横向溢出，旧底层映射区和操作列已消失。
 
-Run: `node --test test/bitable-field-assets.test.mjs`
-Expected: fail because `src/lib/bitable/field-assets.ts` does not exist.
-
-- [ ] **Step 3: Implement aggregation helper**
-
-Create a pure helper that accepts field-map rows and returns:
-- `assets`: AI Land fields keyed by canonical key
-- `unusedFeishuFields`: Feishu fields not bound to AI Land
-- `stats`: counts for used, pending, inactive, renamed, unused
-
-- [ ] **Step 4: Run tests and verify green**
-
-Run: `node --test test/bitable-field-assets.test.mjs`
-Expected: pass.
-
-### Task 2: Admin API Response Shape
-
-**Files:**
-- Modify: `src/app/api/admin/bitable-field-map/route.ts`
-
-- [ ] **Step 1: Extend GET response**
-
-Return the existing `records` for backward compatibility plus new `assets` and `unusedFeishuFields`.
-
-- [ ] **Step 2: Verify typecheck**
-
-Run: `npx tsc --noEmit`
-Expected: pass.
-
-### Task 3: Admin UI List
-
-**Files:**
-- Modify: `src/app/admin/bitable-field-map/page.tsx`
-
-- [ ] **Step 1: Replace table columns with AI Land field columns**
-
-Columns:
-- AI Land 字段
-- 使用位置
-- 数据来源
-- 来源详情
-- 改名状态
-- 字段状态
-- 依赖字段
-- 操作
-
-- [ ] **Step 2: Preserve edit/sync actions**
-
-Keep sync, refresh, preview, enable/disable, API roles, edit key/type for bound Feishu fields.
-
-- [ ] **Step 3: Verify build**
-
-Run: `npm run build`
-Expected: pass.
-
-### Task 4: Metadata Migration
-
-**Files:**
-- Create: `supabase/migrations/062_bitable_field_map_asset_metadata.sql`
-
-- [ ] **Step 1: Add status/notes columns**
-
-Add lightweight metadata columns to support management workflow without blocking current mapping:
-- `asset_status text`
-- `asset_note text`
-
-- [ ] **Step 2: Verify SQL is additive**
-
-Migration must be `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` only.
-
-### Task 5: Final Verification
-
-- [ ] **Step 1: Run focused tests**
-
-Run: `node --test test/bitable-field-assets.test.mjs test/bitable-field-map-identity.test.mjs`
-Expected: pass.
-
-- [ ] **Step 2: Run all mjs tests**
-
-Run: `node --test test/*.mjs`
-Expected: pass.
-
-- [ ] **Step 3: Run typecheck and build**
-
-Run: `npx tsc --noEmit`
-Run: `npm run build`
-Expected: both pass.
-
-- [ ] **Step 4: Run lint and report existing blockers**
-
-Run: `npm run lint`
-Expected: current repo may still fail on unrelated `src/app/login/page.tsx:78`; report exact output.
+已知全局 lint 遗留：`npm run lint` 仍受既有 `src/app/login/page.tsx:78` 的 `react-hooks/immutability` 阻塞；字段管理页面单独 lint 通过。

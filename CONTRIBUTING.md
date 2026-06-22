@@ -135,6 +135,7 @@ src/
 │   │   ├── field-map.ts           # FALLBACK_FIELD_MAP + 类型定义（含 FieldSelectOption）
 │   │   ├── field-map-reader.ts    # getActiveFieldMap()（DB优先+fallback，5min缓存）
 │   │   ├── sync-field-map.ts      # syncFieldMapFromFeishu() 共享同步函数
+│   │   ├── field-assets.ts        # AI Land 字段资产聚合（字段别名/使用位置/未使用飞书字段）
 │   │   ├── filter-options.ts      # 篮选枚举构建（fieldOptionsToFilterItems + aggregateOptions）
 │   │   ├── enums.ts               # 动态枚举（色板分配+isLandedState+reuseLevelStyle）
 │   │   ├── labels.ts              # 飞书字段用户可见标签 + 公式文案单一来源
