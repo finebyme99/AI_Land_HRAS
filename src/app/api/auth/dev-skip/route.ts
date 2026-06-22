@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { getAuthSessionCookieOptions } from '@/lib/auth-session';
 
 export async function POST(request: NextRequest) {
   if (process.env.NODE_ENV === 'production') {
@@ -46,10 +47,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ ok: true, user });
     response.cookies.set('feishu_user_id', user.id, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
+      ...getAuthSessionCookieOptions({ httpOnly: true, secure: false }),
     });
     response.cookies.set('feishu_user_info', JSON.stringify({
       id: user.id,
@@ -58,10 +56,7 @@ export async function POST(request: NextRequest) {
       roles: user.roles,
       department: user.department,
     }), {
-      httpOnly: false,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
+      ...getAuthSessionCookieOptions({ httpOnly: false, secure: false }),
     });
     return response;
   } catch (err) {

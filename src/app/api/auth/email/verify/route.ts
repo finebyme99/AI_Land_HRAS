@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { syncUserRoleLinks, withDefaultUserRole } from '@/lib/permissions/default-role';
+import { getAuthSessionCookieOptions } from '@/lib/auth-session';
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token');
@@ -94,10 +95,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(new URL('/', request.url));
 
     response.cookies.set('feishu_user_id', userId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
+      ...getAuthSessionCookieOptions({ httpOnly: true }),
     });
 
     response.cookies.set('feishu_user_info', JSON.stringify({
@@ -107,10 +105,7 @@ export async function GET(request: NextRequest) {
       roles: userRoles,
       department: userDepartment,
     }), {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
+      ...getAuthSessionCookieOptions({ httpOnly: false }),
     });
 
     return response;

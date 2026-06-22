@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { syncUserRoleLinks, withDefaultUserRole } from '@/lib/permissions/default-role';
+import { getAuthSessionCookieOptions } from '@/lib/auth-session';
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,10 +59,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ ok: true });
 
     response.cookies.set('feishu_user_id', newUser.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
+      ...getAuthSessionCookieOptions({ httpOnly: true }),
     });
 
     response.cookies.set('feishu_user_info', JSON.stringify({
@@ -71,10 +69,7 @@ export async function POST(request: NextRequest) {
       roles: newUser.roles,
       department: newUser.department,
     }), {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
+      ...getAuthSessionCookieOptions({ httpOnly: false }),
     });
 
     return response;
