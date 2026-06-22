@@ -6,7 +6,7 @@
 
 ## 已实现
 
-- 数据模型：`roles`、`role_permissions`、`user_roles` 三表，迁移为 `supabase/migrations/057_rbac.sql` 和 `058_default_user_role.sql`。
+- 数据模型：`roles`、`role_permissions`、`user_roles` 三表，迁移为 `supabase/migrations/057_rbac.sql` 和 `058_default_user_role.sql`；后续 `062_default_resource_card_permission.sql` 默认给 `user` 角色授权工具卡片自发能力。
 - 权限注册表：`src/lib/permissions/registry.ts`，权限点在代码内声明，DB 只存角色与权限点 key 的关系。
 - 权限类型：每个权限点有 `kind`，`menu` 表示菜单页面，`button` 表示功能按钮；权限矩阵还展示可批量勾选的「功能模块」分组行。
 - 权限解析：`src/lib/permissions/index.ts` 提供 `getUserPermissions()`、`hasPermission()` 和缓存清理。
@@ -26,11 +26,13 @@
 | `/admin/users` | 旧入口兼容跳转 | 由 `/admin/roles?tab=users` 接管 |
 | `/api/admin/roles` | 角色列表 / 创建角色；`scope=options` 返回下拉选项 | 完整角色管理仍要求 `admin` 身份；`scope=options` 允许 `admin.users` 或 `user.set-roles` |
 | `/api/admin/users` | 用户列表、角色授权、评委角色授权、重置密码 | `admin.users`、`user.set-roles`、`user.reset-password` |
+| `/api/resources/card-to-me` | 当前登录用户把工具推荐生成飞书卡片发给自己 | `resource.generate-feishu-card` |
 
 ## 关键设计约束
 
 - 系统角色只 seed `admin` 和 `user`；其他职能角色由管理员在「用户权限」里自定义。
 - `admin` 角色在权限解析层短路为拥有全部权限点，不依赖 `role_permissions` 表。
+- `user` 角色可通过迁移获得默认权限点；`resource.generate-feishu-card` 是全员默认开放的按钮权限，不需要管理员手动逐人授权。
 - `reviewer_roles` 不并入 RBAC，它表示 AI 大赛评分维度授权（用户 / 业务 / 技术评委），与页面和按钮权限正交。
 - `users.roles` 仍保留作过渡 fallback，并与 `user_roles` 双向保活；新代码应优先使用 `hasPermission(key)`。
 - 权限矩阵的「功能模块」行不入库，只负责批量勾选该模块下的菜单页面和功能按钮；保存时仍写具体权限点 key。

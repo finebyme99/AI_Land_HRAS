@@ -90,6 +90,7 @@ src/
 │       ├── courses/           # 课程管理
 │       │   └── sync/          # 课程飞书同步
 │       ├── resources/         # 工具推荐 API（含 departments 适用部门枚举）
+│       │   └── card-to-me     # 当前登录用户自发工具飞书卡片（open_id，非群发）
 │       ├── apps/              # 工具 API（含 logo 上传）
 │       ├── auth/              # 认证
 │       │   ├── feishu/ + callback/  # 飞书 OAuth
@@ -151,7 +152,7 @@ src/
 
 ### 权限控制
 
-- RBAC 数据表：`roles`、`role_permissions`、`user_roles`；迁移文件为 `057_rbac.sql` 和 `058_default_user_role.sql`
+- RBAC 数据表：`roles`、`role_permissions`、`user_roles`；迁移文件从 `057_rbac.sql` 起，`062_default_resource_card_permission.sql` 默认给 `user` 角色授权工具卡片自发能力
 - 权限点统一在 `src/lib/permissions/registry.ts` 声明，字段包含 `key`、`label`、`group`、`kind`（`menu` 菜单页面 / `button` 功能按钮）
 - `useAuth()` 提供 `{ user, isAdmin, isReviewer, permissions, hasPermission, loading, signOut, refreshUser }`
 - 登录态由 `feishu_user_id` / `feishu_user_info` cookie 维持；所有登录入口必须通过 `src/lib/auth-session.ts` 的 `getAuthSessionCookieOptions()` 设置，当前有效期统一为 30 天
@@ -162,6 +163,7 @@ src/
 - `/admin/roles` 包含三个视图：`角色列表`、`权限矩阵`、`用户授权`；旧 `/admin/users` 自动跳转到 `用户授权`
 - 权限矩阵按功能模块分组，模块行可批量勾选下级菜单页面和功能按钮；DB 仍只存具体权限点 key
 - 普通用户：提交案例（需审核）、提交工具（需审核）、点赞、收藏
+- `resource.generate-feishu-card` 控制工具页「生成飞书卡片」按钮和 `/api/resources/card-to-me`，默认授予 `user` 角色；该 API 只发送给当前登录人的 `feishu_open_id`，不得改成群发或遍历用户
 - 案例/工具的作者可编辑自己的内容
 
 ## 数据库迁移

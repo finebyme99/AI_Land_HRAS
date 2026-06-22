@@ -7,6 +7,7 @@ import {
   EditOutlined,
   LikeFilled,
   LikeOutlined,
+  SendOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { RESOURCE_CATEGORY_COLORS } from '@/lib/constants';
@@ -27,6 +28,8 @@ interface ResourceCardProps {
   interactions?: { liked: boolean; bookmarked: boolean };
   counts?: { like_count: number; bookmark_count: number };
   onToggleInteraction?: (resourceId: string, action: 'like' | 'bookmark') => void;
+  onGenerateFeishuCard?: (resource: Resource) => void;
+  generatingFeishuCard?: boolean;
 }
 
 export default function ResourceCard({
@@ -43,6 +46,8 @@ export default function ResourceCard({
   interactions,
   counts,
   onToggleInteraction,
+  onGenerateFeishuCard,
+  generatingFeishuCard = false,
 }: ResourceCardProps) {
   const hasInteractions = Boolean(onToggleInteraction);
   const logoSize = compact ? 'w-11 h-11 text-lg' : 'w-12 h-12 text-xl';
@@ -147,25 +152,47 @@ export default function ResourceCard({
 
       <div className="mt-auto border-t pt-2.5" style={{ borderColor: 'rgba(255, 255, 255, 0.42)' }}>
         <div className="flex items-end justify-between gap-3">
-          {resource.official_url ? (
-            <a
-              href={resource.official_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all hover:-translate-y-0.5"
-              style={{
-                background: 'var(--primary)',
-                boxShadow: '0 6px 16px rgba(26,58,138,0.18)',
-                color: '#fff',
-              }}
-            >
-              查看详情
-            </a>
-          ) : (
-            <span aria-hidden="true" />
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {resource.official_url && (
+              <a
+                href={resource.official_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex shrink-0 items-center rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all hover:-translate-y-0.5"
+                style={{
+                  background: 'var(--primary)',
+                  boxShadow: '0 6px 16px rgba(26,58,138,0.18)',
+                  color: '#fff',
+                }}
+              >
+                查看详情
+              </a>
+            )}
+            {onGenerateFeishuCard && (
+              <button
+                type="button"
+                disabled={generatingFeishuCard}
+                onClick={() => onGenerateFeishuCard(resource)}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                style={{
+                  background: 'rgba(255,255,255,0.92)',
+                  border: '1px solid rgba(255,255,255,0.72)',
+                  boxShadow: '0 6px 16px rgba(26,58,138,0.08)',
+                  color: 'var(--primary)',
+                }}
+              >
+                <SendOutlined /> {generatingFeishuCard ? '发送中' : '生成飞书卡片'}
+              </button>
+            )}
+            {!resource.official_url && !onGenerateFeishuCard && (
+              <span aria-hidden="true" />
+            )}
+          </div>
           {hasInteractions ? (
-            <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <div
+              className="flex shrink-0 items-center gap-3 text-xs"
+              style={{ color: 'var(--text-muted)' }}
+            >
               <button
                 type="button"
                 className="inline-flex items-center gap-1 transition-colors hover:text-red-500"

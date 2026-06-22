@@ -50,6 +50,14 @@ src/
 - 用户权限入口为 `/admin/roles`，包含 `角色列表`、`权限矩阵`、`用户授权` 三个视图。
 - 旧 `/admin/users` 保留为兼容跳转，自动重定向到 `/admin/roles?tab=users`。
 - `admin` 角色默认拥有全部权限；`reviewer_roles` 仍是独立的评审维度授权，不并入 RBAC。
+- `user` 角色默认拥有基础前台/投稿能力；工具卡片自发飞书能力由 `resource.generate-feishu-card` 控制，默认授予所有普通用户。
+
+## 资源与飞书卡片
+
+- 工具页支持把单个工具生成飞书可视化卡片并发送给当前登录用户本人。
+- API：`POST /api/resources/card-to-me`，body 为 `{ "resourceId": "<apps.id>" }`。
+- 服务端按 `feishu_user_id` cookie 查询当前用户的 `feishu_open_id`，使用 `receive_id_type=open_id` 发送，不会群发到群聊。
+- 卡片模板复用 `src/lib/feishu-cards.ts#buildResourceCard`，工具列表入口为 `/resources?tab=apps`。
 
 ## 详细规范
 

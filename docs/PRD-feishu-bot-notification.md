@@ -163,7 +163,17 @@ content_type = 'submission' → 大赛方案卡片模板（Phase 2）
 | name | `apps.name` | 工具名称 |
 | category | `apps.category` | 工具分类 |
 | description | `apps.description` | 工具描述，截取前120字 |
-| link | `{APP_URL}/apps` | AI岛工具页 |
+| link | `{APP_URL}/resources?tab=apps` | AI岛工具页 |
+
+### 4.2.1 个人自发工具卡片
+
+工具页支持普通用户点击「生成飞书卡片」，把某个工具推荐生成飞书可视化卡片并发送给自己，方便复制、转发或收藏。
+
+- API：`POST /api/resources/card-to-me`
+- 入参：`{ "resourceId": "<apps.id>" }`
+- 权限：`resource.generate-feishu-card`，默认授予 `user` 角色
+- 接收人：当前登录用户的 `users.feishu_open_id`（`receive_id_type=open_id`），不是群聊 `chat_id`
+- 模板：复用工具推荐卡片模板 `buildResourceCard`
 
 ### 4.3 公开课卡片（Phase 1）
 

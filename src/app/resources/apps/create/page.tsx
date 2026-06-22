@@ -6,7 +6,7 @@ import { Form, Input, Select, App, Spin } from 'antd';
 import { ArrowLeftOutlined, PlusOutlined, AppstoreOutlined, CameraOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import DepartmentSelect from '@/components/resources/DepartmentSelect';
-import { RESOURCE_CATEGORIES } from '@/types';
+import { RESOURCE_CATEGORIES, ZONGTENG_SKILLS_CATEGORY } from '@/types';
 
 export default function CreateResourcePage() {
   const { user, hasPermission } = useAuth();
@@ -17,6 +17,10 @@ export default function CreateResourcePage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
+  const [isZongtengSkill] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('category') === ZONGTENG_SKILLS_CATEGORY;
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -40,6 +44,11 @@ export default function CreateResourcePage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isZongtengSkill) return;
+    form.setFieldValue('category', ZONGTENG_SKILLS_CATEGORY);
+  }, [form, isZongtengSkill]);
 
   const handleLogoClick = () => {
     fileInputRef.current?.click();
@@ -148,11 +157,27 @@ export default function CreateResourcePage() {
 
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-3">
         <span className="w-9 h-9 rounded-lg flex items-center justify-center text-base"
-          style={{ background: 'rgba(120, 80, 160, 0.08)', color: '#7850a0' }}>
+          style={{
+            background: isZongtengSkill ? 'rgba(242, 127, 34, 0.12)' : 'rgba(120, 80, 160, 0.08)',
+            color: isZongtengSkill ? 'var(--accent)' : '#7850a0',
+          }}>
           <AppstoreOutlined />
         </span>
-        提交工具
+        {isZongtengSkill ? '投稿纵腾人专属 Skills' : '提交工具'}
       </h1>
+
+      {isZongtengSkill && (
+        <div
+          className="mb-5 rounded-2xl px-4 py-3 text-sm"
+          style={{
+            background: 'rgba(242,127,34,0.1)',
+            border: '1px solid rgba(242,127,34,0.22)',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          推荐提交已经在真实业务里跑通过的提示词、Agent、自动化流程或可复用方法，审核通过后会进入首页专属专区。
+        </div>
+      )}
 
       <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>

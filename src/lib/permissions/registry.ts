@@ -48,6 +48,7 @@ export const PERMISSIONS: PermissionDef[] = [
 
   // ===== 资源 =====
   { key: 'resource.submit', label: '提交工具', group: '资源', kind: 'button' },
+  { key: 'resource.generate-feishu-card', label: '生成飞书卡片', group: '资源', kind: 'button' },
   { key: 'resource.review', label: '内容审核通过/驳回', group: '资源', kind: 'button' },
 
   // ===== 用户授权 =====

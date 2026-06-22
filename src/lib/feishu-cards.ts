@@ -305,7 +305,7 @@ export function buildResourceCard(resource: {
         width: 'fill',
         size: 'medium',
         icon: { tag: 'standard_icon', token: 'search_outlined' },
-        url: `${APP_URL}/apps`,
+        url: `${APP_URL}/resources?tab=apps`,
         margin: '0px 0px 0px 0px',
       },
     ],

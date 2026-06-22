@@ -79,7 +79,7 @@ CREATE TABLE role_permissions (
 - `permission_key` 不加 FK：代码删除某权限点后，DB 残留的孤儿记录在 API 读取时用 `Set` 过滤掉，不报错（参考 `bitable_field_map` 的处理哲学）
 - `admin` 角色的记录不写入此表，解析时直接返回全集
 
-**Seed（默认分配）**：因为只 seed `admin` + `user`，且 `user` 不预分配任何权限点，所以 `role_permissions` 表初始为空。`admin` 不写入（解析时返回全集）。所有细分权限由管理员后续在 `/admin/roles` 配置。
+**Seed（默认分配）**：`admin` 不写入（解析时返回全集）。`user` 角色允许通过后续迁移获得全员默认开放的基础权限点；例如 `supabase/migrations/062_default_resource_card_permission.sql` 默认授予 `resource.generate-feishu-card`，让普通用户可在工具页把工具卡片发送给自己的飞书。其他细分权限由管理员在 `/admin/roles` 配置。
 
 ### 3. `user_roles` —— 用户 × 角色（多对多）
 
@@ -186,6 +186,7 @@ export function getPermissionsByGroup(): Record<string, PermissionDef[]> { /* ..
 | `case.feature` | 标精选 | 场景池 |
 | `case.submit` | 提交案例 | 场景池 |
 | `resource.submit` | 提交工具 | 资源 |
+| `resource.generate-feishu-card` | 生成飞书卡片 | 资源 |
 | `resource.review` | 内容审核通过/驳回 | 资源 |
 | `user.reset-password` | 重置密码 | 用户授权 |
 | `user.set-roles` | 修改他人角色 | 用户授权 |

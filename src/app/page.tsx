@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Tag, Spin } from 'antd';
+import { Tag, Spin, Tooltip } from 'antd';
 import {
   BookOutlined,
   BookFilled,
@@ -233,6 +233,22 @@ export default function Home() {
                 <TrophyOutlined /> 参加大赛
               </button>
             </a>
+            <Tooltip
+              title="把你做过、验证过的纵腾业务 Skills 分享出来，让更多同事直接拿来用、拿来改。"
+              placement="bottom"
+            >
+              <Link href={`/resources/apps/create?category=${encodeURIComponent(ZONGTENG_SKILLS_CATEGORY)}`}>
+                <button
+                  className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5"
+                  style={{
+                    background: 'linear-gradient(135deg, #F27F22, #e8650a)',
+                    boxShadow: '0 10px 24px rgba(242,127,34,0.28)',
+                  }}
+                >
+                  <ApiOutlined /> 投稿专属 Skills
+                </button>
+              </Link>
+            </Tooltip>
             <Link href="/resources/apps/create">
               <button className="pill-btn">
                 <ApiOutlined /> 分享工具
