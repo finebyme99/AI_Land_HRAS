@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import type { FieldType } from '@/lib/bitable/field-map';
+import { invalidateFieldMapCache } from '@/lib/bitable/field-map-reader';
 
 const VALID_TYPES: FieldType[] = ['text', 'number', 'select', 'multi_select', 'person', 'formula', 'date', 'url'];
 
@@ -54,6 +55,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (error.code === '23505') return NextResponse.json({ error: '该字段名或 key 已被另一条记录占用' }, { status: 409 });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  invalidateFieldMapCache();
   return NextResponse.json({ record: data });
 }
 
@@ -69,5 +71,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const supabase = getSupabaseAdmin();
   const { error } = await supabase.from('bitable_field_map').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  invalidateFieldMapCache();
   return NextResponse.json({ ok: true });
 }

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hasPermission } from '@/lib/permissions';
+import { hasDepartmentSelection, normalizeDepartmentInput } from '@/lib/resources/departments';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-
-type ResourceCategory = string;
 
 /** GET /api/resources?category=AI工具&search=xxx */
 export async function GET(req: NextRequest) {
@@ -34,9 +33,9 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, description, content, category, scenarios, official_url, logo } = body;
+  const { name, description, content, category, scenarios, applicable_departments, official_url, logo } = body;
 
-  if (!name || !description || !category) {
+  if (!name || !description || !category || !hasDepartmentSelection(applicable_departments)) {
     return NextResponse.json({ error: '缺少必填字段' }, { status: 400 });
   }
 
@@ -52,6 +51,7 @@ export async function POST(req: NextRequest) {
       content: content || '',
       category,
       scenarios: scenarios || [],
+      applicable_departments: normalizeDepartmentInput(applicable_departments),
       official_url: official_url || '',
       logo: logo || '',
       status: canReview ? 'published' : 'pending',

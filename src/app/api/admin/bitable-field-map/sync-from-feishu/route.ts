@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hasPermission } from '@/lib/permissions';
-import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { syncFieldMapFromFeishu } from '@/lib/bitable/sync-field-map';
 
 async function requireAdmin(request: NextRequest) {

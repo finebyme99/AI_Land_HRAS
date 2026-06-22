@@ -585,6 +585,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFeishuUserToken, getFeishuUserInfo } from '@/lib/feishu';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { getFeishuAppByAppId, decryptAppSecret, logAuth } from '@/lib/feishu-app-store';
+import { getAuthSessionCookieOptions } from '@/lib/auth-session';
 import { cookies } from 'next/headers';
 
 // GET /api/auth/feishu/callback — 飞书 OAuth 回调（多租户）
@@ -677,14 +678,14 @@ export async function GET(request: NextRequest) {
 
     // 8. 写 cookie
     const response = NextResponse.redirect(new URL('/', request.url));
-    response.cookies.set('feishu_user_id', userId, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 7 });
+    response.cookies.set('feishu_user_id', userId, getAuthSessionCookieOptions({ httpOnly: true }));
     response.cookies.set('feishu_user_info', JSON.stringify({
       id: userId,
       name: feishuUser.name,
       avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
       roles: userRoles,
       department: userDept,
-    }), { secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 7 });
+    }), getAuthSessionCookieOptions({ httpOnly: false }));
 
     // 清掉 oauth 临时 cookie
     response.cookies.delete('feishu_oauth_state');

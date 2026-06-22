@@ -83,7 +83,7 @@ export default function ContributionsPage() {
               </span>
               <div className="flex-1">
                 <div className="font-medium text-sm">发布课程</div>
-                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>维护课程资源</div>
+                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>维护课程与资源</div>
               </div>
               <PlusOutlined className="group-hover:opacity-70 transition-opacity" style={{ color: 'var(--text-muted)', fontSize: 12 }} />
             </div>

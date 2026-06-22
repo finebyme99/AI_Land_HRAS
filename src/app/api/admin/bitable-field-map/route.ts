@@ -2,8 +2,53 @@ import { NextRequest, NextResponse } from 'next/server';
 import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { FALLBACK_FIELD_MAP, type FieldType, type FieldMapEntry } from '@/lib/bitable/field-map';
+import { FIELD_LABELS } from '@/lib/bitable/labels';
+import { PAGE_LABELS, PAGE_USAGE } from '@/lib/bitable/page-usage';
+import { buildAiLandFieldAssets } from '@/lib/bitable/field-assets';
+import { invalidateFieldMapCache } from '@/lib/bitable/field-map-reader';
+import {
+  findExistingFieldMapRow,
+  indexFieldMapRows,
+  type ExistingFieldMapRow,
+} from '@/lib/bitable/field-map-identity';
 
 const VALID_TYPES: FieldType[] = ['text', 'number', 'select', 'multi_select', 'person', 'formula', 'date', 'url'];
+
+const AI_LAND_KEY_ALIASES: Record<string, string[]> = {
+  competitionProgress: ['status'],
+  reviewPeriod: ['period'],
+  coreValue: ['extraValue'],
+  beforeOperationCount: ['oldOperationCount'],
+  afterOperationCount: ['newOperationCount'],
+  beforeHoursPerTask: ['oldHoursPerTask'],
+  afterHoursPerTask: ['newDuration'],
+  beforeFrequency: ['oldFrequency'],
+  afterFrequency: ['newFrequency'],
+  costSavedHours: ['monthlyCostSavingHours'],
+  totalSavedHours: ['totalMonthlySavedHours'],
+  totalEfficiencyRate: ['efficiencyRate'],
+  regionCoefficientValue: ['sceneRegionCoefficientValue'],
+  reuseValueNumber: ['reuseValueCoefficient'],
+};
+
+const AI_LAND_CALCULATED_FIELDS = [
+  {
+    key: 'valueStarLevel',
+    label: '价值星级',
+    logic: '按最终价值计分排名百分位分配 1-5 星',
+    dependencyKeys: ['finalValueScore'],
+    implementation: 'src/lib/bitable/metrics.ts#assignValueStarLevels',
+  },
+];
+
+const AI_LAND_SYSTEM_FIELDS = [
+  {
+    key: 'recordUrl',
+    label: '飞书记录链接',
+    logic: '根据飞书记录 ID 生成跳转链接',
+    implementation: 'src/lib/bitable/field-map.ts#mapFeishuRecord',
+  },
+];
 
 async function requireAdmin(request: NextRequest) {
   const userId = request.cookies.get('feishu_user_id')?.value;
@@ -87,17 +132,25 @@ export async function GET(request: NextRequest) {
     sort_order: number;
     created_at?: string;
     updated_at?: string;
-    status: 'synced' | 'new' | 'orphan' | 'inactive';
+    status: 'synced' | 'renamed' | 'new' | 'orphan' | 'inactive';
+    previous_field_name?: string;
     feishuType?: number;
   }> = [];
+  const rowIndexes = indexFieldMapRows((dbRows ?? []) as ExistingFieldMapRow[]);
+  const matchedDbIds = new Set<string>();
 
   // 先把飞书有的字段加进来
   for (const f of feishuSchema.fields) {
-    const dbRow = dbByFieldName.get(f.field_name);
+    const dbRow = findExistingFieldMapRow(f, rowIndexes);
     if (dbRow) {
+      if (dbRow.id) matchedDbIds.add(dbRow.id);
+      const renamed = !!dbRow.field_id && dbRow.field_id === f.field_id && dbRow.field_name !== f.field_name;
       records.push({
         ...dbRow,
-        status: dbRow.is_active ? 'synced' : 'inactive',
+        field_id: f.field_id || dbRow.field_id,
+        field_name: f.field_name,
+        previous_field_name: renamed ? dbRow.field_name : undefined,
+        status: dbRow.is_active ? (renamed ? 'renamed' : 'synced') : 'inactive',
         feishuType: f.type,
       });
     } else {
@@ -119,7 +172,7 @@ export async function GET(request: NextRequest) {
   }
   // 再把 DB 有但飞书已经删的字段标 orphan
   for (const [name, row] of dbByFieldName.entries()) {
-    if (!feishuByFieldName.has(name)) {
+    if (!feishuByFieldName.has(name) && (!row.id || !matchedDbIds.has(row.id))) {
       const existing = records.find((r) => r.field_name === name);
       if (existing) {
         existing.status = 'orphan';
@@ -132,14 +185,28 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  const assetView = buildAiLandFieldAssets({
+    rows: records,
+    fieldLabels: FIELD_LABELS,
+    pageLabels: PAGE_LABELS,
+    pageUsage: PAGE_USAGE,
+    keyAliases: AI_LAND_KEY_ALIASES,
+    calculatedFields: AI_LAND_CALCULATED_FIELDS,
+    systemFields: AI_LAND_SYSTEM_FIELDS,
+  });
+
   return NextResponse.json({
     base_app: baseApp,
     table_id: tableId,
     records,
     feishuFields: feishuSchema.fields,
+    assets: assetView.assets,
+    unusedFeishuFields: assetView.unusedFeishuFields,
+    assetStats: assetView.stats,
     stats: {
       total: records.length,
       synced: records.filter((r) => r.status === 'synced').length,
+      renamed: records.filter((r) => r.status === 'renamed').length,
       new: records.filter((r) => r.status === 'new').length,
       orphan: records.filter((r) => r.status === 'orphan').length,
       inactive: records.filter((r) => r.status === 'inactive').length,
@@ -174,6 +241,7 @@ export async function POST(request: NextRequest) {
     if (error.code === '23505') return NextResponse.json({ error: '该字段已存在（同名或同 key）' }, { status: 409 });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  invalidateFieldMapCache();
   return NextResponse.json({ record: data });
 }
 

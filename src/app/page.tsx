@@ -19,10 +19,10 @@ import {
   AppstoreOutlined,
   ApiOutlined,
   StarOutlined,
-  LinkOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
+import ResourceCard from '@/components/resources/ResourceCard';
 import type { Event, Course, Resource } from '@/types';
 import { ZONGTENG_SKILLS_CATEGORY } from '@/types';
 
@@ -87,6 +87,7 @@ export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [zongtengSkills, setZongtengSkills] = useState<Resource[]>([]);
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
   const [stats, setStats] = useState({ users: 0, courses: 0, apps: 0 });
   const [dashboard, setDashboard] = useState({ totalMonthlySavedHours: 0, totalPeople: 0, landedCount: 0 });
   const [loading, setLoading] = useState(true);
@@ -96,7 +97,7 @@ export default function Home() {
     async function fetchData() {
       setLoading(true);
       try {
-        const [eventsRes, coursesRes, skillsRes, userCount, courseCount, appCount, dashboardRes] = await Promise.all([
+        const [eventsRes, coursesRes, skillsRes, userCount, courseCount, appCount, dashboardRes, departmentsRes] = await Promise.all([
           getSupabase().from('events').select('*').in('status', ['ongoing', 'upcoming']).order('start_time', { ascending: false }),
           getSupabase().from('courses').select('*').order('created_at', { ascending: false }).limit(6),
           getSupabase()
@@ -110,11 +111,13 @@ export default function Home() {
           getSupabase().from('courses').select('id', { count: 'exact', head: true }),
           getSupabase().from('apps').select('id', { count: 'exact', head: true }).eq('status', 'published'),
           fetch('/api/dashboard-summary').then(r => r.json()).catch(() => ({ totalMonthlySavedHours: 0, totalPeople: 0, landedCount: 0 })),
+          fetch('/api/resources/departments').then(r => r.ok ? r.json() : { departments: [] }).catch(() => ({ departments: [] })),
         ]);
 
         setEvents((eventsRes.data ?? []) as Event[]);
         setCourses((coursesRes.data ?? []) as Course[]);
         setZongtengSkills((skillsRes.data ?? []) as Resource[]);
+        setDepartmentOptions(Array.isArray(departmentsRes.departments) ? departmentsRes.departments : []);
 
         setStats({
           users: userCount.count || 0,
@@ -284,33 +287,16 @@ export default function Home() {
           {zongtengSkills.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {zongtengSkills.map((skill) => (
-                <div key={skill.id} className="rounded-2xl p-4 transition-all duration-300 hover:-translate-y-1"
-                  style={{ background: 'rgba(255,255,255,0.62)', border: '1px solid rgba(255,255,255,0.7)' }}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold overflow-hidden"
-                      style={{ background: 'rgba(242, 127, 34, 0.11)', color: 'var(--accent)' }}>
-                      {skill.logo ? (
-                        <img src={skill.logo} alt={skill.name} className="w-full h-full object-cover" />
-                      ) : (
-                        skill.name[0]
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-sm font-semibold line-clamp-1">{skill.name}</h3>
-                      {skill.author?.name && (
-                        <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{skill.author.name}</p>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-sm line-clamp-2 mb-3" style={{ color: 'var(--text-secondary)' }}>{skill.description}</p>
-                  {skill.official_url && (
-                    <a href={skill.official_url} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-semibold hover:underline"
-                      style={{ color: 'var(--primary)' }}>
-                      打开指南 <LinkOutlined />
-                    </a>
-                  )}
-                </div>
+                <ResourceCard
+                  key={skill.id}
+                  resource={skill}
+                  allDepartments={departmentOptions}
+                  surface="soft"
+                  accent="orange"
+                  showCategory={false}
+                  showDates={false}
+                  compact
+                />
               ))}
             </div>
           ) : (

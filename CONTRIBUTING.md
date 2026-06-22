@@ -60,7 +60,7 @@ src/
 │   ├── page.tsx           # 首页（居中Hero+5项glass指标带）
 │   ├── wish-pool/         # 场景大全（三Tab视图：总览/已落地/待实现）
 │   │   └── page.tsx
-│   ├── resources/         # 课程资源（课程+工具 Tab页）
+│   ├── resources/         # 课程与资源（课程+工具 Tab页）
 │   │   ├── page.tsx
 │   │   ├── courses/       # 公开课子页
 │   │   └── apps/          # 工具推荐子页
@@ -89,7 +89,7 @@ src/
 │       │   └── reviews/       # 评审评分 + CSV导出
 │       ├── courses/           # 课程管理
 │       │   └── sync/          # 课程飞书同步
-│       ├── resources/         # 工具推荐 API
+│       ├── resources/         # 工具推荐 API（含 departments 适用部门枚举）
 │       ├── apps/              # 工具 API（含 logo 上传）
 │       ├── auth/              # 认证
 │       │   ├── feishu/ + callback/  # 飞书 OAuth
@@ -117,15 +117,17 @@ src/
 │       ├── user/ + users/list/ # 用户信息
 │       └── debug/             # 调试工具
 ├── components/            # 公共组件
-│   ├── Navigation.tsx     # 导航栏（4项：首页/场景大全/AI大赛/课程资源）
+│   ├── Navigation.tsx     # 导航栏（4项：首页/场景大全/AI大赛/课程与资源）
 │   ├── ChoDashboard.tsx   # 成效看板（筛选+导出+指标卡+公式）
 │   ├── DetailListBlock.tsx # 共享明细列表（WishItem类型+fmt系列+FilterRow+表格），wish-pool/competitions共用
 │   ├── HighlightSweep.tsx # 标题 shimmer 动效
 │   ├── SearchInput.tsx    # 搜索输入框
+│   ├── resources/         # 课程与资源共享组件（ResourceCard / DepartmentSelect / DepartmentTags）
 │   └── EntryCard/         # 大赛参赛卡片
 ├── lib/                   # 工具库
 │   ├── auth-context.tsx   # 认证上下文
 │   ├── supabase.ts / supabase-browser.ts / supabase-server.ts / supabase-admin.ts
+│   ├── auth-session.ts    # 登录态 cookie 配置（30 天）
 │   ├── constants.ts       # 常量枚举
 │   ├── feishu.ts          # 飞书 API + 多租户 token
 │   ├── feishu-app-store.ts / feishu-message.ts / feishu-card.ts / feishu-cards.ts / feishu-card-templates.ts
@@ -139,6 +141,7 @@ src/
 │   │   ├── metrics.ts             # 价值指标解析/汇总/格式化 + "数据补充中"过滤
 │   │   └── page-usage.ts          # 字段使用页面枚举
 │   ├── export-image-style.ts # html2canvas 导出图片 clone 样式修正（padding/gap/glass/table ping 阴影）
+│   ├── resources/         # 工具推荐字段归一化（适用部门等）
 │   ├── permissions/       # RBAC 权限点注册表 + 服务端权限解析
 │   └── db/               # 数据库访问层
 └── types/
@@ -150,6 +153,7 @@ src/
 - RBAC 数据表：`roles`、`role_permissions`、`user_roles`；迁移文件为 `057_rbac.sql` 和 `058_default_user_role.sql`
 - 权限点统一在 `src/lib/permissions/registry.ts` 声明，字段包含 `key`、`label`、`group`、`kind`（`menu` 菜单页面 / `button` 功能按钮）
 - `useAuth()` 提供 `{ user, isAdmin, isReviewer, permissions, hasPermission, loading, signOut, refreshUser }`
+- 登录态由 `feishu_user_id` / `feishu_user_info` cookie 维持；所有登录入口必须通过 `src/lib/auth-session.ts` 的 `getAuthSessionCookieOptions()` 设置，当前有效期统一为 30 天
 - `hasPermission(key)` 是新代码的首选权限判断；导航、后台页面守卫、关键按钮均应使用权限点
 - `isAdmin` 只认 `user.roles.includes('admin')`，用于兼容旧语义；不要把自定义角色误判为 admin 身份
 - `isReviewer` = `isAdmin` ∪ `users.reviewer_roles` 非空；`reviewer_roles` 表示评审维度授权，独立于 RBAC

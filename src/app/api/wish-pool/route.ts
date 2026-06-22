@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { getTenantAccessTokenFor } from '@/lib/feishu';
 import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
 import { mapFeishuRecord } from '@/lib/bitable/field-map';
+import { syncFieldMapFromFeishu } from '@/lib/bitable/sync-field-map';
 import { isLandedState } from '@/lib/bitable/enums';
 import {
   assignValueStarLevels,
@@ -59,6 +60,10 @@ export async function GET() {
       allRecords.push(...(json.data?.items ?? []));
       pageToken = json.data?.has_more ? json.data.page_token : undefined;
     } while (pageToken);
+
+    // 先同步字段 schema，再加载字段映射。字段改名时必须先用稳定 field_id 刷新 field_name。
+    const fieldMapSync = await syncFieldMapFromFeishu(BASE_APP, TABLE_ID);
+    if (!fieldMapSync.ok) console.warn('[wish-pool] 字段映射同步失败:', fieldMapSync.error);
 
     // 加载字段映射（DB 优先，fallback 硬编码）
     const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'wish-pool');

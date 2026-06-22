@@ -2,24 +2,19 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { Tag, Input, Spin, Avatar, Modal, Form, Select, App } from 'antd';
+import { Input, Spin, Modal, Form, Select, App } from 'antd';
 import {
   AppstoreOutlined,
-  LikeOutlined,
-  LikeFilled,
-  UserOutlined,
   PlusOutlined,
-  LinkOutlined,
-  BookOutlined,
-  BookFilled,
-  EditOutlined,
   CameraOutlined,
   ArrowRightOutlined,
   StarOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
-import { RESOURCE_CATEGORY_COLORS } from '@/lib/constants';
+import { normalizeDepartmentValues } from '@/lib/resources/departments';
 import { useAuth } from '@/lib/auth-context';
+import DepartmentSelect from '@/components/resources/DepartmentSelect';
+import ResourceCard from '@/components/resources/ResourceCard';
 import SearchInput from '@/components/SearchInput';
 import type { Resource, ResourceCategory } from '@/types';
 import { RESOURCE_CATEGORIES, ZONGTENG_SKILLS_CATEGORY } from '@/types';
@@ -46,7 +41,12 @@ export default function AppsContent() {
   const [form] = Form.useForm();
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const departmentSelectOptions = normalizeDepartmentValues([
+    ...departmentOptions,
+    ...(editing?.applicable_departments ?? []),
+  ]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -104,6 +104,28 @@ export default function AppsContent() {
     const timer = window.setTimeout(() => { void fetchHighlightedSkills(); }, 0);
     return () => window.clearTimeout(timer);
   }, [fetchHighlightedSkills]);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch('/api/resources/departments')
+      .then((res) => {
+        if (!res.ok) throw new Error('部门选项加载失败');
+        return res.json();
+      })
+      .then((data) => {
+        if (!active) return;
+        setDepartmentOptions(Array.isArray(data.departments) ? data.departments : []);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch department options:', err);
+        if (active) setDepartmentOptions([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Fetch interaction states and counts
   useEffect(() => {
@@ -210,6 +232,7 @@ export default function AppsContent() {
       description: res.description,
       category: res.category,
       scenarios: res.scenarios,
+      applicable_departments: res.applicable_departments ?? [],
       official_url: res.official_url,
     });
     setEditModalOpen(true);
@@ -236,7 +259,7 @@ export default function AppsContent() {
       message.success('已保存');
       setEditModalOpen(false);
       setEditing(null);
-      fetchResources();
+      await Promise.all([fetchResources(), fetchHighlightedSkills()]);
     } catch (e) {
       if (e instanceof Error) message.error(e.message);
     } finally {
@@ -258,68 +281,51 @@ export default function AppsContent() {
           className="absolute inset-x-0 top-0 h-1"
           style={{ background: 'linear-gradient(90deg, var(--primary), var(--accent))' }}
         />
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between mb-5">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold mb-3"
+        <div className="mb-5 max-w-4xl">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"
               style={{ background: 'rgba(242,127,34,0.12)', color: 'var(--accent)' }}>
               <StarOutlined /> 纵腾人专属 Skills
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold mb-2">把纵腾人的业务智慧沉淀成可复用 Skills</h2>
-            <p className="text-sm max-w-2xl" style={{ color: 'var(--text-secondary)' }}>
-              展示内部同学制作、验证过的 Skills，优先服务纵腾真实业务场景，方便团队直接拿来改、拿来用。
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setCategory(ZONGTENG_SKILLS_CATEGORY)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
-              style={{ background: 'var(--primary)', color: '#fff', boxShadow: '0 4px 15px rgba(26,58,138,0.24)' }}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all hover:-translate-y-0.5"
+              style={{ background: 'var(--primary)', color: '#fff', boxShadow: '0 4px 12px rgba(26,58,138,0.18)' }}
             >
               查看全部 <ArrowRightOutlined style={{ fontSize: 11 }} />
             </button>
             {canSubmitResource && (
               <Link href="/resources/apps/create">
                 <button
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
-                  style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 4px 15px rgba(242,127,34,0.28)' }}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all hover:-translate-y-0.5"
+                  style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 4px 12px rgba(242,127,34,0.18)' }}
                 >
                   <PlusOutlined /> 投稿 Skills
                 </button>
               </Link>
             )}
           </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">把纵腾人的业务智慧沉淀成可复用 Skills</h2>
+            <p className="text-sm max-w-2xl" style={{ color: 'var(--text-secondary)' }}>
+              展示内部同学制作、验证过的 Skills，优先服务纵腾真实业务场景，方便团队直接拿来改、拿来用。
+            </p>
+          </div>
         </div>
 
         {highlightedSkills.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {highlightedSkills.map((skill) => (
-              <div key={skill.id} className="rounded-2xl p-4 h-full"
-                style={{ background: 'rgba(255,255,255,0.68)', border: '1px solid rgba(255,255,255,0.7)' }}>
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold overflow-hidden shrink-0"
-                    style={{ background: 'rgba(242, 127, 34, 0.11)', color: 'var(--accent)' }}>
-                    {skill.logo ? (
-                      <img src={skill.logo} alt={skill.name} className="w-full h-full object-cover" />
-                    ) : (
-                      skill.name[0]
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-semibold line-clamp-1">{skill.name}</h3>
-                    {skill.author?.name && (
-                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>来自 {skill.author.name}</p>
-                    )}
-                  </div>
-                </div>
-                <p className="text-sm line-clamp-2 mb-3" style={{ color: 'var(--text-secondary)' }}>{skill.description}</p>
-                {skill.official_url && (
-                  <a href={skill.official_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[12px] font-semibold hover:underline"
-                    style={{ color: 'var(--primary)' }}>
-                    打开指南 <LinkOutlined />
-                  </a>
-                )}
-              </div>
+              <ResourceCard
+                key={skill.id}
+                resource={skill}
+                allDepartments={departmentOptions}
+                surface="soft"
+                accent="orange"
+                showCategory={false}
+                showDates={false}
+                compact
+              />
             ))}
           </div>
         ) : (
@@ -400,8 +406,8 @@ export default function AppsContent() {
         {canSubmitResource && (
           <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}>
             <Link href="/resources/apps/create">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
-                style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', boxShadow: '0 4px 15px rgba(26,58,138,0.3)', color: '#fff' }}>
+              <button className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all hover:-translate-y-0.5"
+                style={{ background: 'var(--primary)', color: '#fff' }}>
                 <PlusOutlined /> 分享好用工具
               </button>
             </Link>
@@ -420,79 +426,16 @@ export default function AppsContent() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {resources.map((res) => (
-            <div key={res.id} className="glass relative overflow-hidden rounded-[20px] p-5 h-full transition-all duration-300 hover:-translate-y-1 group"
-              style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-              <div className="absolute top-0 left-0 w-full h-[3px] opacity-0 hover:opacity-100 transition-opacity" style={{ background: 'var(--gradient-primary)' }} />
-              {/* 编辑按钮 */}
-              {canEdit(res) && (
-                <button
-                  onClick={() => openEdit(res)}
-                  className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 hover:opacity-100 transition-all"
-                  style={{ background: 'rgba(255,255,255,0.8)', color: 'var(--text-secondary)' }}
-                  title="编辑"
-                >
-                  <EditOutlined style={{ fontSize: 13 }} />
-                </button>
-              )}
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold overflow-hidden"
-                  style={{ background: 'rgba(26, 58, 138, 0.06)', color: 'var(--primary)' }}>
-                  {res.logo ? (
-                    <img src={res.logo} alt={res.name} className="w-full h-full object-cover" />
-                  ) : (
-                    res.name[0]
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold">{res.name}</h3>
-                  <Tag color={(RESOURCE_CATEGORY_COLORS as Record<string, string>)[res.category] ?? 'default'}>{res.category}</Tag>
-                </div>
-              </div>
-              <p className="text-sm mb-2 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{res.description}</p>
-              {res.official_url && (
-                <a href={res.official_url} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[12px] font-medium mb-3 hover:underline"
-                  style={{ color: 'var(--primary)' }}>
-                  <LinkOutlined /> 访问链接
-                </a>
-              )}
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                {res.scenarios.map((s) => (
-                  <Tag key={s} className="text-xs">{s}</Tag>
-                ))}
-              </div>
-              {/* 日期信息 */}
-              <div className="text-[11px] mb-2" style={{ color: 'var(--text-muted)' }}>
-                <span>发布 {new Date(res.created_at).toLocaleDateString('zh-CN')}</span>
-                {res.updated_at && res.updated_at !== res.created_at && (
-                  <span className="ml-2">更新 {new Date(res.updated_at).toLocaleDateString('zh-CN')}</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-3" style={{ color: 'var(--text-muted)' }}>
-                  <span
-                    className="flex items-center gap-1 cursor-pointer transition-colors hover:text-red-500"
-                    style={{ color: interactions[res.id]?.liked ? '#e74c3c' : undefined }}
-                    onClick={() => toggleInteraction(res.id, 'like')}
-                  >
-                    {interactions[res.id]?.liked ? <LikeFilled /> : <LikeOutlined />} {counts[res.id]?.like_count ?? 0}
-                  </span>
-                  <span
-                    className="flex items-center gap-1 cursor-pointer transition-colors hover:text-yellow-500"
-                    style={{ color: interactions[res.id]?.bookmarked ? '#f59e0b' : undefined }}
-                    onClick={() => toggleInteraction(res.id, 'bookmark')}
-                  >
-                    {interactions[res.id]?.bookmarked ? <BookFilled /> : <BookOutlined />} {counts[res.id]?.bookmark_count ?? 0}
-                  </span>
-                </span>
-                {res.author?.name && (
-                  <span className="flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                    <Avatar src={res.author.avatar || undefined} icon={<UserOutlined />} size={18} />
-                    <span className="text-[11px]">{res.author.name}</span>
-                  </span>
-                )}
-              </div>
-            </div>
+            <ResourceCard
+              key={res.id}
+              resource={res}
+              allDepartments={departmentOptions}
+              canEdit={canEdit(res)}
+              onEdit={openEdit}
+              interactions={interactions[res.id]}
+              counts={counts[res.id]}
+              onToggleInteraction={toggleInteraction}
+            />
           ))}
         </div>
       )}
@@ -558,6 +501,9 @@ export default function AppsContent() {
               { label: '咨询搜集', value: '咨询搜集' },
               { label: '日常提效', value: '日常提效' },
             ]} />
+          </Form.Item>
+          <Form.Item name="applicable_departments" label="适用部门" rules={[{ type: 'array', required: true, min: 1, message: '请选择适用部门' }]}>
+            <DepartmentSelect options={departmentSelectOptions} />
           </Form.Item>
           <Form.Item name="official_url" label="使用指南链接" rules={[
             { required: true, message: '请输入使用指南链接' },

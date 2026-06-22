@@ -149,9 +149,9 @@ const user = await upsertFeishuUser({
   avatar: feishuUser.avatar_url || feishuUser.avatar_thumb,
 });
 
-// 6. 写 cookie session（保持现有 7 天）
-setCookie('feishu_user_id', user.id, { maxAge: 7 * 24 * 3600 });
-setCookie('feishu_user_info', JSON.stringify({...}), { maxAge: 7 * 24 * 3600 });
+// 6. 写 cookie session（统一走 src/lib/auth-session.ts，当前 30 天）
+setCookie('feishu_user_id', user.id, getAuthSessionCookieOptions({ httpOnly: true }));
+setCookie('feishu_user_info', JSON.stringify({...}), getAuthSessionCookieOptions({ httpOnly: false }));
 
 await logAuth({ user_id: user.id, app_id: appId, tenant_key: feishuUser.tenant_key, open_id: feishuUser.open_id, success: true });
 return redirect('/');

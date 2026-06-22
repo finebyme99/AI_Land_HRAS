@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Form, Input, Select, App, Spin, Avatar } from 'antd';
+import { Form, Input, Select, App, Spin } from 'antd';
 import { ArrowLeftOutlined, PlusOutlined, AppstoreOutlined, CameraOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
+import DepartmentSelect from '@/components/resources/DepartmentSelect';
 import { RESOURCE_CATEGORIES } from '@/types';
 
 export default function CreateResourcePage() {
@@ -15,7 +16,30 @@ export default function CreateResourcePage() {
   const [submitting, setSubmitting] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch('/api/resources/departments')
+      .then((res) => {
+        if (!res.ok) throw new Error('部门选项加载失败');
+        return res.json();
+      })
+      .then((data) => {
+        if (!active) return;
+        setDepartmentOptions(Array.isArray(data.departments) ? data.departments : []);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch department options:', err);
+        if (active) setDepartmentOptions([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleLogoClick = () => {
     fileInputRef.current?.click();
@@ -70,6 +94,7 @@ export default function CreateResourcePage() {
           description: values.description,
           category: values.category,
           scenarios: values.scenarios || [],
+          applicable_departments: values.applicable_departments || [],
           official_url: values.official_url || '',
           logo: logoUrl || '',
         }),
@@ -183,6 +208,10 @@ export default function CreateResourcePage() {
               { label: '咨询搜集', value: '咨询搜集' },
               { label: '日常提效', value: '日常提效' },
             ]} />
+          </Form.Item>
+
+          <Form.Item name="applicable_departments" label="适用部门" rules={[{ type: 'array', required: true, min: 1, message: '请选择适用部门' }]}>
+            <DepartmentSelect options={departmentOptions} />
           </Form.Item>
 
           <Form.Item name="official_url" label="使用指南链接" rules={[

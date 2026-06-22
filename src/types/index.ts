@@ -61,6 +61,7 @@ export interface Resource {
   content: string;
   category: ResourceCategory;
   scenarios: string[];
+  applicable_departments?: string[];
   official_url: string;
   rating: number;
   user_count: number;

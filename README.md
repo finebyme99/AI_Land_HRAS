@@ -37,11 +37,11 @@ src/
 │   ├── api/          # API 路由
 │   ├── admin/        # 管理后台
 │   ├── wish-pool/    # 场景大全（三Tab视图）
-│   ├── resources/    # 课程资源（课程+工具）
+│   ├── resources/    # 课程与资源（课程+工具）
 │   ├── competitions/ # AI 大赛
 │   └── page.tsx      # 首页（居中Hero+5项glass指标带）
-├── components/       # 共享组件（Navigation/ChoDashboard/DetailListBlock/HighlightSweep/SearchInput/EntryCard）
-└── lib/              # 工具函数 (Supabase、飞书、认证、bitable映射、导出图片样式)
+├── components/       # 共享组件（Navigation/ChoDashboard/资源卡片/EntryCard 等）
+└── lib/              # 工具函数 (Supabase、飞书、认证、bitable映射、资源字段归一化、导出图片样式)
 ```
 
 ## 权限与管理后台

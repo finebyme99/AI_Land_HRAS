@@ -282,6 +282,23 @@ export async function POST(request: NextRequest) {
 
     const token = await getTenantAccessToken();
 
+    // 先同步字段 schema，再加载字段映射。字段改名时必须先用稳定 field_id 刷新 field_name。
+    let fieldDescriptions: Record<string, string> = {};
+    try {
+      const fieldMapResult = await syncFieldMapFromFeishu(BASE_APP, TABLE_ID);
+      if (fieldMapResult.ok) {
+        fieldDescriptions = fieldMapResult.fieldDescriptions;
+      } else {
+        console.warn('[sync] 字段映射同步失败:', fieldMapResult.error);
+      }
+    } catch (fmErr) {
+      console.warn('[sync] 字段映射同步异常:', fmErr);
+    }
+
+    // 加载字段映射（DB 优先，fallback 硬编码）
+    const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'sync');
+    const reviewPeriodFieldName = Object.entries(fieldMap).find(([, entry]) => entry.key === 'reviewPeriod')?.[0] ?? '评审周期';
+
     // 分页拉取飞书记录（优先服务端按评审周期过滤）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allRecords: any[] = [];
@@ -292,7 +309,7 @@ export async function POST(request: NextRequest) {
       const url = new URL(`${FEISHU_API}/bitable/v1/apps/${BASE_APP}/tables/${TABLE_ID}/records`);
       url.searchParams.set('page_size', '100');
       if (filterSupported) {
-        url.searchParams.set('filter', `AND(CurrentValue.[评审周期]="${period}")`);
+        url.searchParams.set('filter', `AND(CurrentValue.[${reviewPeriodFieldName}]="${period}")`);
       }
       if (pageToken) url.searchParams.set('page_token', pageToken);
 
@@ -318,7 +335,7 @@ export async function POST(request: NextRequest) {
       ? allRecords
       : allRecords.filter((r) => {
           const fields = r.fields ?? {};
-          const periodField = fields['评审周期'];
+          const periodField = fields[reviewPeriodFieldName];
           if (Array.isArray(periodField) && periodField.length > 0 && typeof periodField[0] === 'object' && 'text' in periodField[0]) {
             return periodField.map((v: { text?: string }) => v.text ?? '').join('') === period;
           }
@@ -327,7 +344,6 @@ export async function POST(request: NextRequest) {
 
     // 预检：从 DB 读取已存在的附件元数据（包含 file_token 用于判断文件是否被替换）
     const recordIds = periodRecords.map((r) => r.record_id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingAttachments = new Map<string, { name: string; file_token?: string; size?: number }>();
     const BATCH_SIZE = 50;
     for (let i = 0; i < recordIds.length; i += BATCH_SIZE) {
@@ -350,9 +366,6 @@ export async function POST(request: NextRequest) {
     let skippedAttachments = 0;
     let downloadedAttachments = 0;
     let replacedAttachments = 0;
-
-    // 加载字段映射（DB 优先，fallback 硬编码）
-    const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'sync');
 
     for (const record of periodRecords) {
       const mapped = mapRecord(record, fieldMap);
@@ -532,19 +545,6 @@ export async function POST(request: NextRequest) {
       }
       reviewerAutoGranted++;
       console.log(`[auto-grant] ${name} (${u.id}) → roles:`, next);
-    }
-
-    // 同步字段映射 + 清内存缓存（副作用，失败不影响主任务）
-    let fieldDescriptions: Record<string, string> = {};
-    try {
-      const fieldMapResult = await syncFieldMapFromFeishu(BASE_APP, TABLE_ID);
-      if (fieldMapResult.ok) {
-        fieldDescriptions = fieldMapResult.fieldDescriptions;
-      } else {
-        console.warn('[sync] 字段映射同步失败:', fieldMapResult.error);
-      }
-    } catch (fmErr) {
-      console.warn('[sync] 字段映射同步异常:', fmErr);
     }
 
     return NextResponse.json({
