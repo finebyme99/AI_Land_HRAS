@@ -14,13 +14,15 @@ import {
   BookFilled,
   EditOutlined,
   CameraOutlined,
+  ArrowRightOutlined,
+  StarOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { RESOURCE_CATEGORY_COLORS } from '@/lib/constants';
 import { useAuth } from '@/lib/auth-context';
 import SearchInput from '@/components/SearchInput';
 import type { Resource, ResourceCategory } from '@/types';
-import { RESOURCE_CATEGORIES } from '@/types';
+import { RESOURCE_CATEGORIES, ZONGTENG_SKILLS_CATEGORY } from '@/types';
 
 const SCENARIO_OPTIONS = ['编程', '设计', '写作', '数据分析', '咨询搜集', '日常提效'];
 
@@ -30,6 +32,7 @@ export default function AppsContent() {
   const canReviewResource = hasPermission('resource.review');
   const { message } = App.useApp();
   const [resources, setResources] = useState<Resource[]>([]);
+  const [highlightedSkills, setHighlightedSkills] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -49,6 +52,24 @@ export default function AppsContent() {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
   }, [search]);
+
+  const fetchHighlightedSkills = useCallback(async () => {
+    try {
+      const { data, error } = await getSupabase()
+        .from('apps')
+        .select('*, author:users!author_id(id, name, avatar)')
+        .eq('status', 'published')
+        .eq('category', ZONGTENG_SKILLS_CATEGORY)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) throw error;
+      setHighlightedSkills((data ?? []) as Resource[]);
+    } catch (err) {
+      console.error('Failed to fetch Zongteng skills:', err);
+      setHighlightedSkills([]);
+    }
+  }, []);
 
   const fetchResources = useCallback(async () => {
     setLoading(true);
@@ -78,6 +99,11 @@ export default function AppsContent() {
     const timer = window.setTimeout(() => { void fetchResources(); }, 0);
     return () => window.clearTimeout(timer);
   }, [fetchResources]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchHighlightedSkills(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchHighlightedSkills]);
 
   // Fetch interaction states and counts
   useEffect(() => {
@@ -220,6 +246,90 @@ export default function AppsContent() {
 
   return (
     <div className="mt-0">
+      <section
+        className="glass relative overflow-hidden rounded-[20px] p-5 sm:p-6 mb-6"
+        style={{
+          borderColor: 'rgba(242, 127, 34, 0.34)',
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.76), rgba(255,244,232,0.78))',
+          boxShadow: '0 18px 48px rgba(242,127,34,0.16)',
+        }}
+      >
+        <div
+          className="absolute inset-x-0 top-0 h-1"
+          style={{ background: 'linear-gradient(90deg, var(--primary), var(--accent))' }}
+        />
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between mb-5">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold mb-3"
+              style={{ background: 'rgba(242,127,34,0.12)', color: 'var(--accent)' }}>
+              <StarOutlined /> 纵腾人专属 Skills
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">把纵腾人的业务智慧沉淀成可复用 Skills</h2>
+            <p className="text-sm max-w-2xl" style={{ color: 'var(--text-secondary)' }}>
+              展示内部同学制作、验证过的 Skills，优先服务纵腾真实业务场景，方便团队直接拿来改、拿来用。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setCategory(ZONGTENG_SKILLS_CATEGORY)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
+              style={{ background: 'var(--primary)', color: '#fff', boxShadow: '0 4px 15px rgba(26,58,138,0.24)' }}
+            >
+              查看全部 <ArrowRightOutlined style={{ fontSize: 11 }} />
+            </button>
+            {canSubmitResource && (
+              <Link href="/resources/apps/create">
+                <button
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5"
+                  style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', color: '#fff', boxShadow: '0 4px 15px rgba(242,127,34,0.28)' }}
+                >
+                  <PlusOutlined /> 投稿 Skills
+                </button>
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {highlightedSkills.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {highlightedSkills.map((skill) => (
+              <div key={skill.id} className="rounded-2xl p-4 h-full"
+                style={{ background: 'rgba(255,255,255,0.68)', border: '1px solid rgba(255,255,255,0.7)' }}>
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold overflow-hidden shrink-0"
+                    style={{ background: 'rgba(242, 127, 34, 0.11)', color: 'var(--accent)' }}>
+                    {skill.logo ? (
+                      <img src={skill.logo} alt={skill.name} className="w-full h-full object-cover" />
+                    ) : (
+                      skill.name[0]
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold line-clamp-1">{skill.name}</h3>
+                    {skill.author?.name && (
+                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>来自 {skill.author.name}</p>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm line-clamp-2 mb-3" style={{ color: 'var(--text-secondary)' }}>{skill.description}</p>
+                {skill.official_url && (
+                  <a href={skill.official_url} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[12px] font-semibold hover:underline"
+                    style={{ color: 'var(--primary)' }}>
+                    打开指南 <LinkOutlined />
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl p-5 text-sm"
+            style={{ background: 'rgba(255,255,255,0.56)', border: '1px dashed rgba(242,127,34,0.36)', color: 'var(--text-secondary)' }}>
+            专区正在收集第一批内部 Skills。你可以用下方原有投稿入口提交，审核通过后会出现在这里。
+          </div>
+        )}
+      </section>
+
       {/* Filters */}
       <div className="glass rounded-xl p-4 mb-6 space-y-3" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
         <div className="flex flex-wrap gap-3 items-center">
@@ -242,18 +352,24 @@ export default function AppsContent() {
               border: '1px solid transparent',
             }}
           >全部</button>
-          {RESOURCE_CATEGORIES.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategory(category === c ? '' : c)}
-              className="px-3 py-1 rounded-full text-xs font-medium transition-all"
-              style={{
-                color: category === c ? '#fff' : 'var(--text-secondary)',
-                background: category === c ? 'var(--primary)' : 'rgba(255, 255, 255, 0.3)',
-                border: '1px solid transparent',
-              }}
-            >{c}</button>
-          ))}
+          {RESOURCE_CATEGORIES.map((c) => {
+            const isZongtengCategory = c === ZONGTENG_SKILLS_CATEGORY;
+            const isActive = category === c;
+            return (
+              <button
+                key={c}
+                onClick={() => setCategory(isActive ? '' : c)}
+                className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+                style={{
+                  color: isActive ? '#fff' : isZongtengCategory ? 'var(--accent)' : 'var(--text-secondary)',
+                  background: isActive
+                    ? isZongtengCategory ? 'linear-gradient(135deg, #F27F22, #e8650a)' : 'var(--primary)'
+                    : isZongtengCategory ? 'rgba(242,127,34,0.1)' : 'rgba(255, 255, 255, 0.3)',
+                  border: isZongtengCategory ? '1px solid rgba(242,127,34,0.2)' : '1px solid transparent',
+                }}
+              >{c}</button>
+            );
+          })}
         </div>
         {/* 适用场景筛选 - 标签式按钮 */}
         <div className="flex flex-wrap items-center gap-2">

@@ -1,5 +1,5 @@
 import type { ResourceCategory, CourseDifficulty, ContentType, EventStatus } from '@/types';
-import { RESOURCE_CATEGORIES } from '@/types';
+import { RESOURCE_CATEGORIES, ZONGTENG_SKILLS_CATEGORY } from '@/types';
 
 /**
  * 方案级评委别名表（跨语言 name 匹配）
@@ -22,6 +22,7 @@ export const HARDCODED_REVIEWER_PROPOSALS: Record<string, string[]> = {
 export const RESOURCE_CATEGORY_COLORS: Record<ResourceCategory, string> = {
   'AI Agent/大模型': 'blue',
   '好用 Skills': 'purple',
+  [ZONGTENG_SKILLS_CATEGORY]: 'gold',
 };
 
 /** 获取所有资源分类 */

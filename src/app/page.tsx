@@ -19,10 +19,12 @@ import {
   AppstoreOutlined,
   ApiOutlined,
   StarOutlined,
+  LinkOutlined,
 } from '@ant-design/icons';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
-import type { Event, Course } from '@/types';
+import type { Event, Course, Resource } from '@/types';
+import { ZONGTENG_SKILLS_CATEGORY } from '@/types';
 
 /* ─── Animated Counter ─── */
 function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: number }) {
@@ -84,6 +86,7 @@ export default function Home() {
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [zongtengSkills, setZongtengSkills] = useState<Resource[]>([]);
   const [stats, setStats] = useState({ users: 0, courses: 0, apps: 0 });
   const [dashboard, setDashboard] = useState({ totalMonthlySavedHours: 0, totalPeople: 0, landedCount: 0 });
   const [loading, setLoading] = useState(true);
@@ -93,9 +96,16 @@ export default function Home() {
     async function fetchData() {
       setLoading(true);
       try {
-        const [eventsRes, coursesRes, userCount, courseCount, appCount, dashboardRes] = await Promise.all([
+        const [eventsRes, coursesRes, skillsRes, userCount, courseCount, appCount, dashboardRes] = await Promise.all([
           getSupabase().from('events').select('*').in('status', ['ongoing', 'upcoming']).order('start_time', { ascending: false }),
           getSupabase().from('courses').select('*').order('created_at', { ascending: false }).limit(6),
+          getSupabase()
+            .from('apps')
+            .select('*, author:users!author_id(id, name, avatar)')
+            .eq('status', 'published')
+            .eq('category', ZONGTENG_SKILLS_CATEGORY)
+            .order('created_at', { ascending: false })
+            .limit(3),
           getSupabase().from('users').select('id', { count: 'exact', head: true }),
           getSupabase().from('courses').select('id', { count: 'exact', head: true }),
           getSupabase().from('apps').select('id', { count: 'exact', head: true }).eq('status', 'published'),
@@ -104,6 +114,7 @@ export default function Home() {
 
         setEvents((eventsRes.data ?? []) as Event[]);
         setCourses((coursesRes.data ?? []) as Course[]);
+        setZongtengSkills((skillsRes.data ?? []) as Resource[]);
 
         setStats({
           users: userCount.count || 0,
@@ -258,6 +269,68 @@ export default function Home() {
         </div>
       </section>
 
+
+      {/* Zongteng Skills */}
+      <section className="mb-10">
+        <SectionHeader icon={<ApiOutlined />} title="纵腾人专属 Skills" href="/resources?tab=apps" iconBg="rgba(242, 127, 34, 0.1)" iconColor="#F27F22" linkText="进入专区" />
+        <div
+          className="glass relative overflow-hidden rounded-[20px] p-5"
+          style={{
+            borderColor: 'rgba(242, 127, 34, 0.32)',
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.74), rgba(255,244,232,0.76))',
+          }}
+        >
+          <div className="absolute inset-x-0 top-0 h-1" style={{ background: 'linear-gradient(90deg, var(--primary), var(--accent))' }} />
+          {zongtengSkills.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {zongtengSkills.map((skill) => (
+                <div key={skill.id} className="rounded-2xl p-4 transition-all duration-300 hover:-translate-y-1"
+                  style={{ background: 'rgba(255,255,255,0.62)', border: '1px solid rgba(255,255,255,0.7)' }}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold overflow-hidden"
+                      style={{ background: 'rgba(242, 127, 34, 0.11)', color: 'var(--accent)' }}>
+                      {skill.logo ? (
+                        <img src={skill.logo} alt={skill.name} className="w-full h-full object-cover" />
+                      ) : (
+                        skill.name[0]
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold line-clamp-1">{skill.name}</h3>
+                      {skill.author?.name && (
+                        <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{skill.author.name}</p>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm line-clamp-2 mb-3" style={{ color: 'var(--text-secondary)' }}>{skill.description}</p>
+                  {skill.official_url && (
+                    <a href={skill.official_url} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                      style={{ color: 'var(--primary)' }}>
+                      打开指南 <LinkOutlined />
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-base font-semibold mb-1">第一批内部 Skills 正在收集中</h3>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  投稿审核通过后，这里会优先展示纵腾同学沉淀的专属业务 Skills。
+                </p>
+              </div>
+              <Link href="/resources/apps/create">
+                <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:-translate-y-0.5"
+                  style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', boxShadow: '0 4px 15px rgba(242,127,34,0.28)' }}>
+                  <ApiOutlined /> 投稿 Skills
+                </button>
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Ongoing Events */}
       {ongoingEvents.length > 0 && (

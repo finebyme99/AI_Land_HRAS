@@ -47,9 +47,11 @@ export interface User {
 // ============ 工具推荐 ============
 export type ContentStatus = 'draft' | 'pending' | 'published' | 'rejected';
 
-export type ResourceCategory = 'AI Agent/大模型' | '好用 Skills';
+export const ZONGTENG_SKILLS_CATEGORY = '纵腾人专属 Skills' as const;
 
-export const RESOURCE_CATEGORIES: ResourceCategory[] = ['AI Agent/大模型', '好用 Skills'];
+export type ResourceCategory = 'AI Agent/大模型' | '好用 Skills' | typeof ZONGTENG_SKILLS_CATEGORY;
+
+export const RESOURCE_CATEGORIES: ResourceCategory[] = ['AI Agent/大模型', '好用 Skills', ZONGTENG_SKILLS_CATEGORY];
 
 export interface Resource {
   id: string;
