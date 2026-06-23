@@ -4,6 +4,7 @@ import { test } from 'node:test';
 
 import {
   buildCompetitionSnapshotUpsertRow,
+  getCanonicalCompetitionSnapshotId,
   mapCompetitionSnapshotRowToWishItem,
 } from '../src/lib/competition-snapshot.ts';
 
@@ -123,4 +124,24 @@ test('builds Supabase snapshot upsert rows from mapped Feishu items', () => {
   assert.equal(row.total_monthly_saved_hours, 16);
   assert.equal(row.reuse_value_coefficient, 4);
   assert.equal(row.scene_region_coefficient_value, 1.5);
+});
+
+test('canonical snapshot id prefers linked legacy competition record ids', () => {
+  assert.equal(
+    getCanonicalCompetitionSnapshotId({
+      record_id: 'new-record-id',
+      fields: {
+        '关联参赛项目': [{ record_ids: ['legacy-record-id'] }],
+      },
+    }),
+    'legacy-record-id',
+  );
+
+  assert.equal(
+    getCanonicalCompetitionSnapshotId({
+      record_id: 'new-record-id',
+      fields: {},
+    }),
+    'new-record-id',
+  );
 });

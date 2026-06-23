@@ -4,7 +4,10 @@ import { collectFieldDescriptions } from './bitable/metrics';
 import { syncFieldMapFromFeishu } from './bitable/sync-field-map';
 import { getTenantAccessToken } from './feishu';
 import { getSupabaseAdmin } from './supabase-admin';
-import { buildCompetitionSnapshotUpsertRow } from './competition-snapshot';
+import {
+  buildCompetitionSnapshotUpsertRow,
+  getCanonicalCompetitionSnapshotId,
+} from './competition-snapshot';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
@@ -27,6 +30,7 @@ export interface SyncCompetitionSnapshotResult {
   fetched: number;
   upserted: number;
   skipped: number;
+  removedDuplicates: number;
   fieldDescriptions: Record<string, string>;
 }
 
@@ -93,13 +97,20 @@ export async function syncCompetitionSnapshot(options: SyncCompetitionSnapshotOp
   const records = await fetchFeishuRecords(token, reviewPeriodFieldName, options);
 
   let skipped = 0;
+  const canonicalIds = new Set<string>();
+  const shadowIds = new Set<string>();
   const rows = records
     .map((record) => {
+      const canonicalId = getCanonicalCompetitionSnapshotId(record);
+      canonicalIds.add(canonicalId);
+      if (canonicalId !== record.record_id) shadowIds.add(record.record_id);
+
       const item = mapFeishuRecord(
         record,
         (recordId) => `https://ztn.feishu.cn/wiki/${WIKI_TOKEN}?table=${TABLE_ID}&record=${recordId}`,
         fieldMap,
       ) as unknown as Parameters<typeof buildCompetitionSnapshotUpsertRow>[0];
+      item.id = canonicalId;
       if (!item.title) {
         skipped++;
         return null;
@@ -119,12 +130,24 @@ export async function syncCompetitionSnapshot(options: SyncCompetitionSnapshotOp
     if (error) throw new Error(`写入数据库失败: ${error.message}`);
   }
 
+  const duplicateShadowIds = [...shadowIds].filter((id) => !canonicalIds.has(id));
+  let removedDuplicates = 0;
+  if (duplicateShadowIds.length > 0) {
+    const { error, count } = await supabase
+      .from('competition_submissions')
+      .delete({ count: 'exact' })
+      .in('id', duplicateShadowIds);
+    if (error) throw new Error(`清理重复快照失败: ${error.message}`);
+    removedDuplicates = count ?? 0;
+  }
+
   return {
     scope: options.scope,
     period: options.period ?? null,
     fetched: records.length,
     upserted: rows.length,
     skipped,
+    removedDuplicates,
     fieldDescriptions,
   };
 }

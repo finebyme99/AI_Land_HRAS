@@ -113,6 +113,25 @@ export type CompetitionSnapshotUpsertRow = Record<string, unknown> & {
   period: string;
 };
 
+export interface FeishuSnapshotRecord {
+  record_id: string;
+  fields?: Record<string, unknown>;
+}
+
+export function getCanonicalCompetitionSnapshotId(record: FeishuSnapshotRecord): string {
+  const linkedLegacy = record.fields?.['关联参赛项目'];
+  if (Array.isArray(linkedLegacy) && linkedLegacy.length > 0) {
+    const first = linkedLegacy[0];
+    if (first && typeof first === 'object' && 'record_ids' in first) {
+      const recordIds = (first as { record_ids?: unknown }).record_ids;
+      if (Array.isArray(recordIds) && typeof recordIds[0] === 'string' && recordIds[0]) {
+        return recordIds[0];
+      }
+    }
+  }
+  return record.record_id;
+}
+
 function asArray(value: string[] | string | null | undefined): string[] | undefined {
   if (value == null) return undefined;
   if (Array.isArray(value)) return value.filter(Boolean);
