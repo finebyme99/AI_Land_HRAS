@@ -19,6 +19,10 @@
 - 权限控制机制
 - 数据库迁移流程
 - 部署配置
+
+## 数据库红线
+
+生产库只执行明确编号的增量迁移。禁止在生产 Supabase SQL Editor 执行 `supabase/migrations/full_migration.sql`，该文件会重建全库并删除业务表。执行任何 SQL 前先读 `docs/operator-runbook.md` 的数据库迁移红线。
 <!-- END:project-conventions -->
 
 <!-- BEGIN:nextjs-agent-rules -->

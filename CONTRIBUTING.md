@@ -172,6 +172,8 @@ src/
 - 命名规范：`001_xxx.sql`, `002_xxx.sql`, ...
 - 执行方式：在 Supabase Dashboard 的 SQL Editor 中运行
 - 重要：迁移前备份数据
+- **生产库禁止执行 `supabase/migrations/full_migration.sql`**：该文件用于空库重建，开头会 `DROP TABLE ... CASCADE` 删除 `users`、`courses`、`apps`、`cases` 等业务表。生产变更只执行具体编号的增量迁移。
+- 执行前先检查 SQL 中是否包含 `DROP TABLE`、`TRUNCATE`、无条件 `DELETE FROM`；恢复和 PITR 操作见 `docs/operator-runbook.md`。
 
 ## 环境变量
 

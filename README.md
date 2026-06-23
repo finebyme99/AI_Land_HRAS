@@ -67,7 +67,7 @@ src/
 
 ## Detailed Guidelines
 
-See `CONTRIBUTING.md` and `AGENTS.md`.
+See `CONTRIBUTING.md`, `AGENTS.md`, and `docs/operator-runbook.md`.
 
 ## 中文
 
@@ -132,4 +132,4 @@ src/
 
 ## 详细规范
 
-见 `CONTRIBUTING.md` 和 `AGENTS.md`。
+见 `CONTRIBUTING.md`、`AGENTS.md` 和 `docs/operator-runbook.md`。

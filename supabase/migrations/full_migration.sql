@@ -2,6 +2,10 @@
 -- HRAS AI岛 数据库 Schema（完整版）
 -- 基于 PRD v1.1
 -- ============================================
+-- WARNING: DO NOT RUN THIS FILE IN PRODUCTION.
+-- This file rebuilds the full schema and drops business tables such as users,
+-- courses, apps, and cases. Use only for empty database bootstrap or controlled
+-- rebuilds. Production changes must use numbered incremental migrations.
 
 -- 启用 UUID 扩展
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
