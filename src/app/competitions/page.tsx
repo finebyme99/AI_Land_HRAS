@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ChoDashboard from '@/components/ChoDashboard';
+import CompetitionPeriodTimeline from '@/components/CompetitionPeriodTimeline';
 import { Spin, App, Tabs, Tag, Tooltip } from 'antd';
 import {
   TrophyOutlined,
@@ -27,6 +28,11 @@ import {
 import type { FieldSelectOption } from '@/lib/bitable/field-map';
 import { FIELD_LABELS } from '@/lib/bitable/labels';
 import { summarizeValueMetrics } from '@/lib/bitable/metrics';
+import {
+  canSyncCompetitionPeriod,
+  filterByCompetitionPeriod,
+  isAllCompetitionPeriod,
+} from '@/lib/competition-periods';
 import {
   DetailListBlock,
   WishItem,
@@ -376,13 +382,17 @@ function CompetitionsPageInner() {
   }, [fetchProgress]);
 
   const currentItems = useMemo(
-    () => selectedPeriod ? allItems.filter((d) => d.reviewPeriod === selectedPeriod) : [],
+    () => selectedPeriod ? filterByCompetitionPeriod(allItems, selectedPeriod, (item) => item.reviewPeriod) : [],
     [allItems, selectedPeriod],
   );
 
   // ── 同步 ──
   const handleSync = async () => {
-    if (!selectedPeriod || syncing) return;
+    if (syncing) return;
+    if (!canSyncCompetitionPeriod(selectedPeriod)) {
+      message.info('请选择具体评审周期后再同步');
+      return;
+    }
     setSyncing(true);
     try {
       const res = await fetch(`/api/competitions/sync?period=${selectedPeriod}`, { method: 'POST' });
@@ -401,20 +411,6 @@ function CompetitionsPageInner() {
     if (currentItems.length === 0) return null;
     return summarizeValueMetrics(currentItems);
   }, [currentItems]);
-
-  // ── allTimelinePeriods：活跃 + 未来周期 ──
-  const allTimelinePeriods = useMemo(() => {
-    if (activePeriods.length === 0) return [];
-    // 从最后一个活跃周期的下一个月开始，到 YY12
-    const lastActive = activePeriods[activePeriods.length - 1];
-    const lastYY = parseInt(lastActive.slice(0, 2));
-    const lastMM = parseInt(lastActive.slice(2));
-    const future: string[] = [];
-    for (let mm = lastMM + 1; mm <= 12; mm++) {
-      future.push(`${lastYY}${String(mm).padStart(2, '0')}`);
-    }
-    return [...activePeriods, ...future];
-  }, [activePeriods]);
 
   // ── 排名排序 ──
   const rankedEntries = useMemo(() => {
@@ -455,7 +451,7 @@ function CompetitionsPageInner() {
                         <div className="flex items-center gap-2">
                           <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer"
                             className="px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all hover:opacity-90"
-                            style={{ background: '#1a3a8a' }}>
+                            style={{ background: '#1a3a8a', color: '#fff' }}>
                             <TrophyOutlined /> 立即提报
                           </a>
                           <a href="https://ztn.feishu.cn/share/base/form/shrcnPYqHe7ySrBxA9DbXijzhUb" target="_blank" rel="noopener noreferrer"
@@ -465,7 +461,7 @@ function CompetitionsPageInner() {
                           </a>
                           <button onClick={handleSync} disabled={syncing}
                             className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                            style={{ color: syncing ? 'var(--text-muted)' : '#F27F22', border: `1px solid ${syncing ? 'var(--text-muted)' : '#F27F22'}`, opacity: syncing ? 0.5 : 1 }}>
+                            style={{ color: syncing || isAllCompetitionPeriod(selectedPeriod) ? 'var(--text-muted)' : '#F27F22', border: `1px solid ${syncing || isAllCompetitionPeriod(selectedPeriod) ? 'var(--text-muted)' : '#F27F22'}`, opacity: syncing ? 0.5 : 1 }}>
                             <SyncOutlined spin={syncing} /> {syncing ? '同步中…' : '同步数据'}
                           </button>
                         </div>
@@ -497,91 +493,14 @@ function CompetitionsPageInner() {
                     <StatCard label={FIELD_LABELS.totalSavedHours} value={currentSummary?.totalMonthlySavedHoursSum ? `${fmt(currentSummary.totalMonthlySavedHoursSum)}h` : '—'} sub="提效+降本折算" color="#1a3a8a" icon={<ClockCircleOutlined />} />
                   </div>
 
-                  {/* ── 赛事时间线（极简横向企业发展史风格）── */}
-                  {allTimelinePeriods.length > 1 && (
-                    <div className="glass rounded-xl" style={{ borderColor: 'rgba(255,255,255,0.6)', padding: '16px 20px 20px' }}>
-                      {/* 标题行：赛事时间线 + hint胶囊 */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--foreground)' }}>赛事时间线</span>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: 'rgba(242,127,34,0.1)', color: '#F27F22', border: '1px solid rgba(242,127,34,0.2)' }}>
-                          点击节点查看该周期参赛方案 ↓
-                        </span>
-                      </div>
-
-                      {/* 时间线主体（flex row，节点竖排） */}
-                      <div className="flex" style={{ position: 'relative' }}>
-                        {/* 细横轴（穿过竖线刻度位置） */}
-                        <div style={{ position: 'absolute', left: 0, right: 0, top: 30, height: 1.5, background: 'linear-gradient(90deg, rgba(26,58,138,0.4) 0%, rgba(26,58,138,0.15) 50%, rgba(148,163,184,0.1) 100%)' }} />
-
-                        {allTimelinePeriods.map((p) => {
-                          const isActive = activePeriods.includes(p);
-                          const isFuture = !isActive;
-                          const isSelected = p === selectedPeriod;
-                          const info = periodMap[p];
-                          const done = info?.byStatus['终审通过'] || 0;
-                          const reviewing = info?.byStatus['评审中'] || 0;
-                          const statusLabel = done === (info?.total || 0) && info?.total > 0 ? '已结项' : reviewing > 0 ? '评审中' : '';
-                          const tickColor = isSelected ? '#F27F22' : isActive ? '#1a3a8a' : '#94a3b8';
-                          const tickWidth = isSelected ? 3 : isActive ? 2.5 : 1;
-                          const tickHeight = isActive ? 20 : 10;
-
-                          return (
-                            <div key={p}
-                              style={{
-                                flex: isActive ? 1.2 : 0.7,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                cursor: isActive ? 'pointer' : 'default',
-                              }}
-                              className="hover:-translate-y-0.5 transition-transform"
-                              onClick={() => {
-                                if (isFuture) {
-                                  message.info('该评审周期尚未开启');
-                                  return;
-                                }
-                                setSelectedPeriod(p);
-                              }}
-                            >
-                              {/* 评审周期大号文字（轴上方） */}
-                              <div style={{
-                                fontSize: isActive ? 16 : 12,
-                                fontWeight: isActive ? 800 : 400,
-                                fontFamily: 'SF Mono, Menlo, monospace',
-                                color: isSelected ? '#F27F22' : isActive ? '#1a3a8a' : '#94a3b8',
-                                letterSpacing: -0.5,
-                                marginBottom: 4,
-                                lineHeight: 1,
-                              }}>
-                                {p}
-                              </div>
-
-                              {/* 粗竖线刻度（穿出横轴） */}
-                              <div style={{
-                                width: tickWidth,
-                                height: tickHeight,
-                                background: tickColor,
-                                borderRadius: 1,
-                                transition: 'all 0.3s ease',
-                              }} />
-
-                              {/* 轴下方信息 */}
-                              <div style={{ marginTop: 6, textAlign: 'center' }}>
-                                {isFuture ? (
-                                  <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>待开启</span>
-                                ) : (
-                                  <>
-                                    {statusLabel && <div style={{ fontSize: 10, fontWeight: 600, color: statusLabel === '已结项' ? '#16a34a' : '#1a3a8a' }}>{statusLabel}</div>}
-                                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{info?.total || 0}个方案</div>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                  <CompetitionPeriodTimeline
+                    activePeriods={activePeriods}
+                    selectedPeriod={selectedPeriod}
+                    periodMap={periodMap}
+                    allCount={allItems.length}
+                    onSelect={setSelectedPeriod}
+                    onFutureClick={() => message.info('该评审周期尚未开启')}
+                  />
 
                   {/* ── 亮点项目 Top 3 ── */}
                   {spotlightEntries.length > 0 && (

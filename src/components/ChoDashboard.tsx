@@ -4,6 +4,7 @@ import { fieldOptionsToFilterItems, type FilterItem } from '@/lib/bitable/filter
 import { reuseLevelStyle } from '@/lib/bitable/enums';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Spin, App, Table, Modal, Tag, Tooltip, type TableColumnsType } from 'antd';
+import CompetitionPeriodTimeline, { type CompetitionPeriodStats } from '@/components/CompetitionPeriodTimeline';
 import {
   BarChartOutlined,
   TeamOutlined,
@@ -19,6 +20,7 @@ import { useAuth } from '@/lib/auth-context';
 import { FIELD_LABELS, VALUE_FORMULA_COPY } from '@/lib/bitable/labels';
 import { parseMetricNumber, summarizeValueMetrics } from '@/lib/bitable/metrics';
 import { applyExportImageCloneLayout, getExportImageCaptureWidth } from '@/lib/export-image-style';
+import { canSyncCompetitionPeriod, isAllCompetitionPeriod } from '@/lib/competition-periods';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -86,6 +88,18 @@ interface OverviewResponse {
   fieldOptions?: Record<string, { id: string; name: string }[]>;
 }
 
+interface ProgressTimelineResponse {
+  periods?: string[];
+  currentPeriod?: string;
+  allItems?: unknown[];
+  globalSummary?: {
+    count?: number;
+  };
+  stats?: {
+    periodMap?: Record<string, CompetitionPeriodStats>;
+  };
+}
+
 // ─── Constants ───────────────────────────────────────────────────
 
 const SORT_OPTIONS = [
@@ -98,13 +112,6 @@ const SORT_OPTIONS = [
   { value: 'monthlySavedCost', label: '月均降本费用' },
   { value: 'aiCost', label: '月均Token费用' },
   { value: 'reuseValueCoefficient', label: '复用价值系数' },
-];
-
-/** 评审周期选项（不是飞书枚举，是评审周期标识符，保持硬编码） */
-const PERIOD_OPTIONS = [
-  { value: '2605', label: '2605期' },
-  { value: '2604', label: '2604期' },
-  { value: '2603', label: '2603期' },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -200,6 +207,9 @@ export default function ChoDashboard() {
   const [period, setPeriod] = useState('2605');
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [fieldOptions, setFieldOptions] = useState<Record<string, { id: string; name: string }[]>>({});
+  const [activePeriods, setActivePeriods] = useState<string[]>([]);
+  const [periodMap, setPeriodMap] = useState<Record<string, CompetitionPeriodStats>>({});
+  const [timelineAllCount, setTimelineAllCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [sceneCategoryFilter, setSceneCategoryFilter] = useState<string>('all');
@@ -227,11 +237,30 @@ export default function ChoDashboard() {
     }
   }, [period, message]);
 
+  const fetchTimeline = useCallback(async () => {
+    try {
+      const res = await fetch('/api/competitions/progress');
+      if (!res.ok) throw new Error('获取周期失败');
+      const json = (await res.json()) as ProgressTimelineResponse;
+      setActivePeriods(json.periods ?? []);
+      setPeriodMap(json.stats?.periodMap ?? {});
+      setTimelineAllCount(json.globalSummary?.count ?? json.allItems?.length ?? 0);
+    } catch {
+      message.error('获取成效周期失败');
+    }
+  }, [message]);
+
   useEffect(() => {
     if (!canView) return undefined;
     const timer = window.setTimeout(() => { void fetchData(); }, 0);
     return () => window.clearTimeout(timer);
   }, [canView, fetchData]);
+
+  useEffect(() => {
+    if (!canView) return undefined;
+    const timer = window.setTimeout(() => { void fetchTimeline(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canView, fetchTimeline]);
 
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -299,7 +328,7 @@ export default function ChoDashboard() {
         },
       });
       const link = document.createElement('a');
-      link.download = `成效看板_${period}_${new Date().toISOString().slice(0, 10)}.png`;
+      link.download = `成效看板_${isAllCompetitionPeriod(period) ? '全部周期' : period}_${new Date().toISOString().slice(0, 10)}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (err) {
@@ -314,6 +343,10 @@ export default function ChoDashboard() {
       message.error('无同步权限');
       return;
     }
+    if (!canSyncCompetitionPeriod(period)) {
+      message.info('请选择具体评审周期后再同步');
+      return;
+    }
     setSyncing(true);
     message.loading({ content: '正在从飞书同步…', key: 'sync', duration: 0 });
     try {
@@ -324,7 +357,7 @@ export default function ChoDashboard() {
       const result = await res.json();
       if (result.error) throw new Error(result.error);
       message.success({ content: `已同步 ${result.synced} 条方案`, key: 'sync' });
-      await fetchData();
+      await Promise.all([fetchData(), fetchTimeline()]);
     } catch (err) {
       const msg = err instanceof DOMException && err.name === 'AbortError' ? '同步超时' : err instanceof Error ? err.message : '同步失败';
       message.error({ content: msg, key: 'sync' });
@@ -714,7 +747,10 @@ export default function ChoDashboard() {
               onClick={handleSync}
               disabled={syncing}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #d46b08, #f27f22)', boxShadow: '0 4px 15px rgba(242,127,34,0.3)' }}
+              style={{
+                background: isAllCompetitionPeriod(period) ? 'rgba(148,163,184,0.8)' : 'linear-gradient(135deg, #d46b08, #f27f22)',
+                boxShadow: isAllCompetitionPeriod(period) ? 'none' : '0 4px 15px rgba(242,127,34,0.3)',
+              }}
             >
               <SyncOutlined spin={syncing} /> 从飞书同步
             </button>
@@ -729,6 +765,19 @@ export default function ChoDashboard() {
               <DownloadOutlined spin={exporting} /> 导出图片
             </button>
           )}
+        </div>
+
+        <div className="mb-2">
+          <CompetitionPeriodTimeline
+            title="成效周期"
+            hint="点击节点筛选成效看板数据 ↓"
+            activePeriods={activePeriods}
+            selectedPeriod={period}
+            periodMap={periodMap}
+            allCount={timelineAllCount}
+            onSelect={setPeriod}
+            onFutureClick={() => message.info('该评审周期尚未开启')}
+          />
         </div>
 
         {/* 筛选 + 排序（不参与导出） */}
@@ -761,7 +810,6 @@ export default function ChoDashboard() {
           </div>
           {filterExpanded && (
             <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
-              <FilterRow label="评审周期" options={PERIOD_OPTIONS.map(p => ({ value: p.value, label: p.label, count: p.value === (data?.period ?? period) ? enriched.length : 0 }))} value={period} onChange={setPeriod} />
               <FilterRow label="部门" options={fieldOptionsToFilterItems('team', enriched, fieldOptions)} value={teamFilter} onChange={setTeamFilter} />
               <FilterRow label="场景分类" options={fieldOptionsToFilterItems('sceneCategory', enriched, fieldOptions)} value={sceneCategoryFilter} onChange={setSceneCategoryFilter} />
               <FilterRow label="核心价值" options={fieldOptionsToFilterItems('coreValue', enriched, fieldOptions)} value={coreValueFilter} onChange={setCoreValueFilter} />

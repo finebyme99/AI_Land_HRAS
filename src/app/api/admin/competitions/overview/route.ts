@@ -47,9 +47,9 @@ interface ReviewRow {
 type ReviewRowBase = Omit<ReviewRow, 'reviewer'>;
 
 /**
- * GET /api/admin/competitions/overview?period=2605
+ * GET /api/admin/competitions/overview?period=2605|all
  *
- * 成效看板：聚合本期 submissions + 所有 reviews，给 ChoDashboard 用。
+ * 成效看板：聚合指定周期或全部周期的 submissions + 所有 reviews，给 ChoDashboard 用。
  * 返回：{ period, summary, submissions[] }
  *   submissions[i].roleScores = { user, business, tech } — 该角色已评审人次的平均加权分
  *   submissions[i].totalScore  — 跨角色所有已评审人次的加权分平均
@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
   if (!admin) return NextResponse.json({ error: '仅管理员可访问' }, { status: 403 });
 
   const period = request.nextUrl.searchParams.get('period') ?? '2605';
+  const isAllPeriod = period === 'all';
   const supabase = getSupabaseAdmin();
 
   try {
@@ -68,13 +69,19 @@ export async function GET(request: NextRequest) {
     const fieldDescriptions = collectFieldDescriptions(fieldMap);
     const fieldOptions: Record<string, FieldSelectOption[]> = collectFieldOptions(fieldMap);
 
-    // 1. 拉本期 submissions（只看"评审中"）
-    const { data: subs, error: sErr } = await supabase
+    // 1. 拉指定周期或全部周期的 submissions（只看"评审中"）
+    let submissionsQuery = supabase
       .from('competition_submissions')
       .select('id, proposal_no, title, team, submitter, status, monthly_saved_hours, created_at, period, track, scene_category, ai_tools, efficiency_rate, before_process, pain_points, after_process, demo_link, record_url, ai_cost, extra_value, team_members, implementation, verifier, before_hours_per_person, before_people_count, after_hours_per_person, after_people_count, old_operation_count, new_operation_count, old_hours_per_task, new_duration, old_people_count, new_people_count, old_frequency, new_frequency, reuse_value, reuse_value_level, monthly_saved_cost, cost_reduction_note, implementation_link, final_value_score, brief_intro, before_freq, after_freq, before_monthly_hours, after_monthly_hours, scene_region_coefficient_value, monthly_cost_saving_hours, total_monthly_saved_hours, reuse_value_coefficient, region_coefficient, scene_source, landing_progress')
-      .eq('period', period)
       .eq('status', '评审中')
-      .neq('landing_progress', EXCLUDED_BITABLE_OPTION_NAME)
+      .neq('landing_progress', EXCLUDED_BITABLE_OPTION_NAME);
+
+    if (!isAllPeriod) {
+      submissionsQuery = submissionsQuery.eq('period', period);
+    }
+
+    const { data: subs, error: sErr } = await submissionsQuery
+      .order('period', { ascending: true })
       .order('proposal_no', { ascending: true });
     if (sErr) throw sErr;
     const submissions = subs ?? [];
