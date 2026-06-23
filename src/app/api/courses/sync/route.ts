@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTenantAccessToken } from '@/lib/feishu';
 import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-import { assertCourseWriteSucceeded } from '@/lib/course-sync';
+import { assertCourseWriteSucceeded, buildCourseSyncRow } from '@/lib/course-sync';
 
 const BASE_TOKEN = 'Wsj0bXtWcaxOtRsfXAYcvNXQnOa';
 const TABLE_ID = 'tbl8wQKUIqRZoCdn';
@@ -170,29 +170,25 @@ export async function POST(request: NextRequest) {
         cover_image_key = await uploadAttachmentToIM(token, r.poster_attachment.file_token);
       }
 
-      rows.push({
-        id: r.id,
+      rows.push(buildCourseSyncRow({
+        feishuRecordId: r.id,
         title: r.title,
-        description: '',
         instructor: r.instructor || '待定',
-        duration: '',
-        difficulty: '初阶',
-        created_at: r.created_at,
-        video_url: r.video_url,
-        courseware_url: r.courseware_url,
-        content_type: r.content_type.length > 0 ? r.content_type : ['doc'],
+        createdAt: r.created_at,
+        videoUrl: r.video_url,
+        coursewareUrl: r.courseware_url,
+        contentType: r.content_type,
         period: r.period,
         season: r.season,
-        cover_image_key,
-        synced_at: new Date().toISOString(),
-      });
+        coverImageKey: cover_image_key,
+      }));
     }
 
     // 分批幂等写入。不要先清空表，避免字段/约束错误导致生产数据被删后插不回。
     let synced = 0;
     for (let i = 0; i < rows.length; i += 200) {
       const batch = rows.slice(i, i + 200);
-      const { error } = await supabase.from('courses').upsert(batch, { onConflict: 'id' });
+      const { error } = await supabase.from('courses').upsert(batch, { onConflict: 'feishu_record_id' });
       assertCourseWriteSucceeded(error);
       synced += batch.length;
     }
