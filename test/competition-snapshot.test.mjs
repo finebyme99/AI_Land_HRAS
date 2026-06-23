@@ -226,3 +226,18 @@ test('competition page uses AntD 6 tooltip styles API', () => {
   assert.equal(source.includes('overlayStyle'), false);
   assert.equal(source.includes('styles={{ root:'), true);
 });
+
+test('foreground competition and wish-pool displays use reuseValue instead of reuseValueLevel', () => {
+  const displayFiles = [
+    'src/app/competitions/page.tsx',
+    'src/app/wish-pool/page.tsx',
+    'src/lib/entry-card-layout.ts',
+    'src/lib/bitable/page-usage.ts',
+  ];
+
+  for (const file of displayFiles) {
+    const source = readFileSync(file, 'utf8');
+    assert.equal(source.includes('reuseValueLevel'), false, `${file} should not display reuseValueLevel`);
+    assert.equal(source.includes('reuseValue'), true, `${file} should display reuseValue`);
+  }
+});

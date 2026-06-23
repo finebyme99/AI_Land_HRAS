@@ -253,7 +253,7 @@ function SceneHoverList({ items, progressColors }: { items: WishItem[]; progress
       <table style={{ fontSize: 11, borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
         <thead>
           <tr>
-            {['场景', FIELD_LABELS.team, FIELD_LABELS.landingProgress, FIELD_LABELS.totalSavedHours, '复用价值', '地区'].map((h) => (
+            {['场景', FIELD_LABELS.team, FIELD_LABELS.landingProgress, FIELD_LABELS.totalSavedHours, FIELD_LABELS.reuseValue, '地区'].map((h) => (
               <th key={h} style={{ padding: '4px 8px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.3)', textAlign: 'left' }}>{h}</th>
             ))}
           </tr>
@@ -267,7 +267,7 @@ function SceneHoverList({ items, progressColors }: { items: WishItem[]; progress
                 {item.landingProgress ? <Tag color={progressColors[item.landingProgress] || FALLBACK_COLOR} style={{ fontSize: 10, margin: 0, lineHeight: '16px' }}>{item.landingProgress}</Tag> : <span style={{ color: '#cbd5e1' }}>—</span>}
               </td>
               <td style={{ padding: '4px 8px', color: 'var(--text-secondary)', fontFamily: 'SF Mono, monospace' }}>{item.totalSavedHours || item.monthlySavedHours ? `${fmt(item.totalSavedHours || item.monthlySavedHours || 0)}h` : '—'}</td>
-              <td style={{ padding: '4px 8px', color: 'var(--text-secondary)' }}>{item.reuseValueLevel || '—'}</td>
+              <td style={{ padding: '4px 8px', color: 'var(--text-secondary)' }}>{item.reuseValue || '—'}</td>
               <td style={{ padding: '4px 8px', color: 'var(--text-secondary)' }}>{item.regionCoefficient || '—'}</td>
             </tr>
           ))}

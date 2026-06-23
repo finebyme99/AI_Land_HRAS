@@ -272,9 +272,9 @@ function SpotlightCard({ item, rank, categoryColors, onClick }: { item: WishItem
             <Tag key={t} style={{ fontSize: 10, margin: 0, background: 'rgba(26,58,138,0.06)', borderColor: 'rgba(26,58,138,0.12)', color: '#1a3a8a' }}>{t}</Tag>
           ))}
         </div>
-        {item.reuseValueLevel && (
+        {item.reuseValue && (
           <span style={{ fontSize: 11, fontWeight: 600, color: '#F27F22' }}>
-            {item.reuseValueLevel}
+            {item.reuseValue}
           </span>
         )}
       </div>

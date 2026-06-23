@@ -90,7 +90,7 @@ export const DEFAULT_ENTRY_CARD_LAYOUT: EntryCardLayout = {
         'monthlySavedCost',
         'totalSavedHours',
         'totalEfficiencyRate',
-        'reuseValueLevel',
+        'reuseValue',
         'regionCoefficient',
       ],
     },
@@ -135,7 +135,7 @@ export const ENTRY_CARD_FIELD_POOL: EntryCardFieldDef[] = [
   { key: 'monthlySavedCost', label: FIELD_LABELS.monthlySavedCost, group: '价值指标', headerStyle: 'tag' },
   { key: 'totalSavedHours', label: FIELD_LABELS.totalSavedHours, group: '价值指标', headerStyle: 'tag' },
   { key: 'totalEfficiencyRate', label: FIELD_LABELS.totalEfficiencyRate, group: '价值指标', headerStyle: 'tag' },
-  { key: 'reuseValueLevel', label: FIELD_LABELS.reuseValueLevel, group: '价值指标', headerStyle: 'tag' },
+  { key: 'reuseValue', label: FIELD_LABELS.reuseValue, group: '价值指标', headerStyle: 'tag' },
   { key: 'regionCoefficient', label: FIELD_LABELS.regionCoefficient, group: '价值指标', headerStyle: 'tag' },
 
   // ── 业务流程（paragraph 样式）──
