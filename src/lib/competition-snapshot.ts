@@ -132,6 +132,21 @@ export function getCanonicalCompetitionSnapshotId(record: FeishuSnapshotRecord):
   return record.record_id;
 }
 
+export function getCompetitionSnapshotDuplicateShadowIds(records: FeishuSnapshotRecord[]): string[] {
+  const canonicalIds = new Set<string>();
+  const shadowIds = new Set<string>();
+
+  for (const record of records) {
+    const canonicalId = getCanonicalCompetitionSnapshotId(record);
+    canonicalIds.add(canonicalId);
+    if (canonicalId !== record.record_id) {
+      shadowIds.add(record.record_id);
+    }
+  }
+
+  return [...shadowIds].filter((id) => !canonicalIds.has(id));
+}
+
 function asArray(value: string[] | string | null | undefined): string[] | undefined {
   if (value == null) return undefined;
   if (Array.isArray(value)) return value.filter(Boolean);

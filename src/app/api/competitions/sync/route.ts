@@ -6,12 +6,16 @@ import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
 import { FALLBACK_FIELD_MAP, type FieldMapEntry } from '@/lib/bitable/field-map';
 import { syncFieldMapFromFeishu } from '@/lib/bitable/sync-field-map';
 import { buildCompetitionPointEvents, getUserLevelByPoints } from '@/lib/user-growth';
+import {
+  getCanonicalCompetitionSnapshotId,
+  getCompetitionSnapshotDuplicateShadowIds,
+  type FeishuSnapshotRecord,
+} from '@/lib/competition-snapshot';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
 const WIKI_TOKEN = 'LRROwulJciI7JYkIT55cQtdpnze';
 const VIEW_ID = 'vewEjYjj9S';
-const LEGACY_TABLE_ID = 'tbl12tkH7lOR9rrq';  // 旧"方案提交"表 — 用于关联 id
 const FEISHU_API = 'https://open.feishu.cn/open-apis';
 const BUCKET = 'competition-attachments';
 
@@ -163,11 +167,9 @@ function toSyncKey(unifiedKey: string): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRecord(record: any, map: Record<string, FieldMapEntry>): Record<string, unknown> {
-  // 优先用"关联参赛项目"指向旧表 tbl12tkH7lOR9rrq 的 record_id 当主 id
-  // — 保证 13 条记录 upsert 到原来的 13 条上（不出现 13+13 双份）
-  const linkedLegacy = (record.fields?.['关联参赛项目'] as Array<{ record_ids?: string[] }> | undefined)?.[0]?.record_ids?.[0];
+  const canonicalId = getCanonicalCompetitionSnapshotId(record);
   const mapped: Record<string, unknown> = {
-    id: linkedLegacy || record.record_id,
+    id: canonicalId,
     recordUrl: `https://ztn.feishu.cn/wiki/${WIKI_TOKEN}?table=${TABLE_ID}&view=${VIEW_ID}&record=${record.record_id}`,
     legacy_submission_id: record.record_id,  // 保留新表 record_id 供 cross-ref
   };
@@ -440,7 +442,7 @@ export async function POST(request: NextRequest) {
         });
 
     // 预检：从 DB 读取已存在的附件元数据（包含 file_token 用于判断文件是否被替换）
-    const recordIds = periodRecords.map((r) => r.record_id);
+    const recordIds = periodRecords.map((r) => getCanonicalCompetitionSnapshotId(r));
     const existingAttachments = new Map<string, { name: string; file_token?: string; size?: number }>();
     const BATCH_SIZE = 50;
     for (let i = 0; i < recordIds.length; i += BATCH_SIZE) {
@@ -613,6 +615,17 @@ export async function POST(request: NextRequest) {
       if (error) throw new Error(`写入数据库失败: ${errMsg(error)}`);
     }
 
+    const duplicateShadowIds = getCompetitionSnapshotDuplicateShadowIds(periodRecords as FeishuSnapshotRecord[]);
+    let removedDuplicates = 0;
+    if (duplicateShadowIds.length > 0) {
+      const { error, count } = await supabase
+        .from('competition_submissions')
+        .delete({ count: 'exact' })
+        .in('id', duplicateShadowIds);
+      if (error) throw new Error(`清理重复快照失败: ${errMsg(error)}`);
+      removedDuplicates = count ?? 0;
+    }
+
     const participantPoints = await syncCompetitionPointEvents(supabase, rows);
 
     // 自动回填 reviewer 角色：扫本次同步的所有 submissions 的 reviewers + verifier 字段，
@@ -650,6 +663,7 @@ export async function POST(request: NextRequest) {
       synced: rows.length,
       period,
       attachments: { downloaded: downloadedAttachments, skipped: skippedAttachments, replaced: replacedAttachments },
+      removedDuplicates,
       reviewerAutoGranted,
       participantPoints,
       fieldDescriptions,

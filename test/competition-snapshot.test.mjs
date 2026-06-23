@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import {
   buildCompetitionSnapshotUpsertRow,
   getCanonicalCompetitionSnapshotId,
+  getCompetitionSnapshotDuplicateShadowIds,
   mapCompetitionSnapshotRowToWishItem,
 } from '../src/lib/competition-snapshot.ts';
 
@@ -144,4 +145,57 @@ test('canonical snapshot id prefers linked legacy competition record ids', () =>
     }),
     'new-record-id',
   );
+});
+
+
+test('detects duplicate shadow ids created by non-canonical sync routes', () => {
+  assert.deepEqual(
+    getCompetitionSnapshotDuplicateShadowIds([
+      {
+        record_id: 'new-record-id',
+        fields: { '关联参赛项目': [{ record_ids: ['legacy-record-id'] }] },
+      },
+      {
+        record_id: 'standalone-record-id',
+        fields: {},
+      },
+    ]),
+    ['new-record-id'],
+  );
+
+  assert.deepEqual(
+    getCompetitionSnapshotDuplicateShadowIds([
+      {
+        record_id: 'same-id',
+        fields: { '关联参赛项目': [{ record_ids: ['same-id'] }] },
+      },
+    ]),
+    [],
+  );
+});
+
+test('competition sync routes share duplicate cleanup helper', () => {
+  const routeFiles = [
+    'src/app/api/wish-pool/sync/route.ts',
+    'src/app/api/competitions/sync/route.ts',
+  ];
+
+  for (const file of routeFiles) {
+    const source = readFileSync(file, 'utf8');
+    if (file.endsWith('/wish-pool/sync/route.ts')) {
+      assert.equal(source.includes('syncCompetitionSnapshot'), true, `${file} should use shared snapshot sync`);
+    } else {
+      assert.equal(
+        source.includes('getCompetitionSnapshotDuplicateShadowIds'),
+        true,
+        `${file} should clean duplicate shadow ids`,
+      );
+    }
+  }
+});
+
+test('competition page uses AntD 6 tooltip styles API', () => {
+  const source = readFileSync('src/app/competitions/page.tsx', 'utf8');
+  assert.equal(source.includes('overlayStyle'), false);
+  assert.equal(source.includes('styles={{ root:'), true);
 });

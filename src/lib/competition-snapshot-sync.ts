@@ -7,6 +7,7 @@ import { getSupabaseAdmin } from './supabase-admin';
 import {
   buildCompetitionSnapshotUpsertRow,
   getCanonicalCompetitionSnapshotId,
+  getCompetitionSnapshotDuplicateShadowIds,
 } from './competition-snapshot';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
@@ -91,19 +92,15 @@ export async function syncCompetitionSnapshot(options: SyncCompetitionSnapshotOp
     console.warn('[competition-snapshot-sync] 字段映射同步失败:', fieldMapResult.error);
   }
 
-  const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'wish-pool');
+  const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'sync');
   const fieldDescriptions = collectFieldDescriptions(fieldMap);
   const reviewPeriodFieldName = Object.entries(fieldMap).find(([, entry]) => entry.key === 'reviewPeriod')?.[0] ?? '评审周期';
   const records = await fetchFeishuRecords(token, reviewPeriodFieldName, options);
 
   let skipped = 0;
-  const canonicalIds = new Set<string>();
-  const shadowIds = new Set<string>();
   const rows = records
     .map((record) => {
       const canonicalId = getCanonicalCompetitionSnapshotId(record);
-      canonicalIds.add(canonicalId);
-      if (canonicalId !== record.record_id) shadowIds.add(record.record_id);
 
       const item = mapFeishuRecord(
         record,
@@ -130,7 +127,7 @@ export async function syncCompetitionSnapshot(options: SyncCompetitionSnapshotOp
     if (error) throw new Error(`写入数据库失败: ${error.message}`);
   }
 
-  const duplicateShadowIds = [...shadowIds].filter((id) => !canonicalIds.has(id));
+  const duplicateShadowIds = getCompetitionSnapshotDuplicateShadowIds(records);
   let removedDuplicates = 0;
   if (duplicateShadowIds.length > 0) {
     const { error, count } = await supabase

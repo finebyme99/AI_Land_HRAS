@@ -49,7 +49,7 @@ function EntryDrillDownModal({ item, categoryColors, fieldDescriptions, onClose 
     <span className="inline-flex items-center gap-1" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
       {label}
       {fieldDescriptions[fieldKey] && (
-        <Tooltip title={fieldDescriptions[fieldKey]} placement="top" overlayStyle={{ zIndex: 99999 }}>
+        <Tooltip title={fieldDescriptions[fieldKey]} placement="top" styles={{ root: { zIndex: 99999 } }}>
           <QuestionCircleOutlined style={{ fontSize: 10, color: '#9ca3af', cursor: 'help' }} />
         </Tooltip>
       )}
@@ -176,7 +176,7 @@ function EntryDrillDownModal({ item, categoryColors, fieldDescriptions, onClose 
             {fieldRow(
               <span className="inline-flex items-center gap-1" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 价值星级
-                <Tooltip title={STAR_TOOLTIP} placement="top" overlayStyle={{ zIndex: 99999 }}>
+                <Tooltip title={STAR_TOOLTIP} placement="top" styles={{ root: { zIndex: 99999 } }}>
                   <QuestionCircleOutlined style={{ fontSize: 10, color: '#9ca3af', cursor: 'help' }} />
                 </Tooltip>
               </span>,
@@ -252,7 +252,7 @@ function SpotlightCard({ item, rank, categoryColors, onClick }: { item: WishItem
           const stars = item.valueStarLevel!;
           const starColor = stars >= 4 ? '#1a3a8a' : stars >= 3 ? '#2d5bc7' : '#94a3b8';
           return (
-            <Tooltip title={STAR_TOOLTIP} placement="top" overlayStyle={{ zIndex: 99999 }}>
+            <Tooltip title={STAR_TOOLTIP} placement="top" styles={{ root: { zIndex: 99999 } }}>
               <div style={{ flexShrink: 0, textAlign: 'center', cursor: 'help' }}>
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>价值星级</div>
                 <span className="inline-flex items-center gap-0.5">
