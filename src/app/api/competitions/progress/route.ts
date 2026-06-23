@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-import { getTenantAccessTokenFor } from '@/lib/feishu';
 import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
-import { mapFeishuRecord } from '@/lib/bitable/field-map';
-import { syncFieldMapFromFeishu } from '@/lib/bitable/sync-field-map';
+import {
+  COMPETITION_SNAPSHOT_SELECT,
+  mapCompetitionSnapshotRowToWishItem,
+  type CompetitionSnapshotRow,
+} from '@/lib/competition-snapshot';
 import {
   assignValueStarLevels,
   collectFieldDescriptions,
@@ -12,67 +14,27 @@ import {
   summarizeValueMetrics,
 } from '@/lib/bitable/metrics';
 
-// ── 飞书多维表格配置 ──
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
-const WIKI_TOKEN = 'LRROwulJciI7JYkIT55cQtdpnze';
-const ZT_APP_ID = 'cli_a84a9ed9597fd01c';
-const FEISHU_API = 'https://open.feishu.cn/open-apis';
 
-// GET: 从飞书实时读取大赛参赛数据（WishItem 格式，与 wish-pool API 对齐）
+// GET: 从 Supabase 快照读取大赛参赛数据（WishItem 格式，与 wish-pool API 对齐）
 export async function GET() {
   try {
-    const { data: app } = await getSupabaseAdmin()
-      .from('feishu_apps')
-      .select('app_id, app_secret')
-      .eq('app_id', ZT_APP_ID)
-      .single();
-
-    if (!app) {
-      return NextResponse.json({ error: '未找到 ZT 飞书应用' }, { status: 500 });
-    }
-
-    const token = await getTenantAccessTokenFor(app.app_id, app.app_secret);
-
-    // 分页拉取飞书记录
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allRecords: any[] = [];
-    let pageToken: string | undefined;
-
-    do {
-      const url = new URL(`${FEISHU_API}/bitable/v1/apps/${BASE_APP}/tables/${TABLE_ID}/records`);
-      url.searchParams.set('page_size', '100');
-      if (pageToken) url.searchParams.set('page_token', pageToken);
-
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const json = await res.json();
-
-      if (!res.ok || json.code !== 0) {
-        throw new Error(`飞书 API 错误: ${json.msg ?? res.status}`);
-      }
-
-      allRecords.push(...(json.data?.items ?? []));
-      pageToken = json.data?.has_more ? json.data.page_token : undefined;
-    } while (pageToken);
-
-    // 先同步字段 schema，再加载字段映射。字段改名时必须先用稳定 field_id 刷新 field_name。
-    const fieldMapSync = await syncFieldMapFromFeishu(BASE_APP, TABLE_ID);
-    if (!fieldMapSync.ok) console.warn('[competitions/progress] 字段映射同步失败:', fieldMapSync.error);
-
-    // 加载字段映射（DB 优先，fallback 硬编码）——用 wish-pool role 获取完整字段集
-    const fieldMap = await getActiveFieldMap(BASE_APP, TABLE_ID, 'wish-pool');
+    const supabase = getSupabaseAdmin();
+    const [{ data, error }, fieldMap] = await Promise.all([
+      supabase
+        .from('competition_submissions')
+        .select(COMPETITION_SNAPSHOT_SELECT)
+        .order('period', { ascending: true })
+        .order('final_value_score', { ascending: false, nullsFirst: false }),
+      getActiveFieldMap(BASE_APP, TABLE_ID, 'wish-pool'),
+    ]);
+    if (error) throw error;
 
     const fieldDescriptions = collectFieldDescriptions(fieldMap);
     const fieldOptions = collectFieldOptions(fieldMap);
 
-    // 映射字段 + 过滤脏数据（排除"数据补充中"）
-    const allMapped = allRecords.map((record) => mapFeishuRecord(
-      record,
-      (recordId) => `https://ztn.feishu.cn/wiki/${WIKI_TOKEN}?table=${TABLE_ID}&record=${recordId}`,
-      fieldMap,
-    ));
+    const allMapped = ((data ?? []) as unknown as CompetitionSnapshotRow[]).map(mapCompetitionSnapshotRowToWishItem);
     const cleanItems = filterExcludedBitableRecords(allMapped);
 
     // 过滤参赛方案（只上岛：评审中 + 终审通过 + 有评审周期）
@@ -83,7 +45,7 @@ export async function GET() {
     });
 
     // ── 价值星级计算（同 wish-pool API）──
-    assignValueStarLevels(items);
+    assignValueStarLevels(items as unknown as Record<string, unknown>[]);
 
     // ── 复用价值系数数值提取 ──
     items.forEach((d) => {
@@ -116,7 +78,7 @@ export async function GET() {
 
     // ── 5指标 summary（口径与 ChoDashboard 对齐）──
     // 注意：summary 基于 items（当前期数据），随前端 selectedPeriod 变化会重新计算
-    const computeSummary = (list: Record<string, unknown>[]) => {
+    const computeSummary = (list: object[]) => {
       return summarizeValueMetrics(list);
     };
 

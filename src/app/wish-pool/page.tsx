@@ -414,7 +414,7 @@ function FormulaSection() {
 // ── 主页面内容 ──
 function WishPoolContent() {
   const { hasPermission } = useAuth();
-  const canSyncFieldMap = hasPermission('fieldmap.sync');
+  const canSyncSnapshot = hasPermission('competition.sync');
   const canExportImage = hasPermission('wishpool.export-image');
   const { message } = App.useApp();
 
@@ -480,12 +480,13 @@ function WishPoolContent() {
     setSyncing(true);
     try {
       // 第一步：同步飞书字段映射（含 options 选项列表），确保筛选枚举是最新的
-      const syncRes = await fetch('/api/wish-pool/sync-field-map', { method: 'POST' });
-      if (!syncRes.ok) console.warn('字段映射同步失败，继续用现有数据');
+      const syncRes = await fetch('/api/wish-pool/sync', { method: 'POST' });
+      if (!syncRes.ok) throw new Error('快照同步失败');
       // 第二步：重新拉取数据 + 已更新的 fieldOptions
       await fetchData();
-      message.success('数据已刷新');
-    } finally { setSyncing(false); }
+      message.success('快照已刷新');
+    } catch { message.error('同步失败，请稍后重试'); }
+    finally { setSyncing(false); }
   };
 
   // ── 导出图片 ──
@@ -573,11 +574,11 @@ function WishPoolContent() {
           <div id="wish-pool-export">
             {/* 操作栏 */}
             <div className="flex items-center gap-2 mb-2" data-export-exclude>
-              {canSyncFieldMap && (
+              {canSyncSnapshot && (
                 <button onClick={handleRefresh} disabled={syncing}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, #1a3a8a, #2d5bc7)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                  <SyncOutlined spin={syncing} /> 刷新
+                  <SyncOutlined spin={syncing} /> 同步快照
                 </button>
               )}
               {canExportImage && (

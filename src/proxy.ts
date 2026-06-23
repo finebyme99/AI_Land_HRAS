@@ -15,6 +15,7 @@ const PUBLIC_PATHS = [
   '/api/feishu/card-callback',
   '/api/cron/weekly-course-card',
   '/api/cron/sync-courses',
+  '/api/cron/sync-competitions',
   '/api/cron/feishu-apps-health',
   '/hras-2026',
 ];

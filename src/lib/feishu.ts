@@ -7,6 +7,15 @@ function getEnv(name: string): string {
 }
 
 const FEISHU_API_BASE = 'https://open.feishu.cn/open-apis';
+const TENANT_TOKEN_EXPIRY_SKEW_MS = 5 * 60 * 1000;
+const FALLBACK_TENANT_TOKEN_TTL_MS = 55 * 60 * 1000;
+
+const tenantTokenCache = new Map<string, { token: string; expiresAt: number }>();
+const tenantTokenInflight = new Map<string, Promise<string>>();
+
+function tenantTokenCacheKey(appId: string, appSecret: string): string {
+  return `${appId}:${appSecret}`;
+}
 
 /** @deprecated Use getTenantAccessTokenFor(appId, appSecret) for multi-tenant. Kept for backward compat with 8 existing call sites. */
 export async function getTenantAccessToken(): Promise<string> {
@@ -18,14 +27,42 @@ export async function getTenantAccessToken(): Promise<string> {
 
 /** 多租户：用传入的 (appId, appSecret) 换 tenant_access_token */
 export async function getTenantAccessTokenFor(appId: string, appSecret: string): Promise<string> {
-  const res = await fetch(`${FEISHU_API_BASE}/auth/v3/tenant_access_token/internal`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ app_id: appId, app_secret: appSecret }),
-  });
-  const data = await res.json();
-  if (data.code !== 0) throw new Error(`获取 tenant_access_token 失败: ${data.msg}`);
-  return data.tenant_access_token;
+  const key = tenantTokenCacheKey(appId, appSecret);
+  const cached = tenantTokenCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.token;
+  }
+
+  const inflight = tenantTokenInflight.get(key);
+  if (inflight) return inflight;
+
+  const request = (async () => {
+    const res = await fetch(`${FEISHU_API_BASE}/auth/v3/tenant_access_token/internal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app_id: appId, app_secret: appSecret }),
+    });
+    const data = await res.json();
+    if (data.code !== 0) throw new Error(`获取 tenant_access_token 失败: ${data.msg}`);
+
+    const expireSeconds = Number(data.expire);
+    const ttlMs = Number.isFinite(expireSeconds) && expireSeconds > 0
+      ? Math.max(0, expireSeconds * 1000 - TENANT_TOKEN_EXPIRY_SKEW_MS)
+      : FALLBACK_TENANT_TOKEN_TTL_MS;
+    tenantTokenCache.set(key, {
+      token: data.tenant_access_token,
+      expiresAt: Date.now() + ttlMs,
+    });
+
+    return data.tenant_access_token;
+  })();
+
+  tenantTokenInflight.set(key, request);
+  try {
+    return await request;
+  } finally {
+    tenantTokenInflight.delete(key);
+  }
 }
 
 // 用 code 换取 user_access_token

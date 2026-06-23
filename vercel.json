@@ -13,6 +13,10 @@
       "schedule": "40 11 * * *"
     },
     {
+      "path": "/api/cron/sync-competitions",
+      "schedule": "45 11 * * *"
+    },
+    {
       "path": "/api/cron/feishu-apps-health",
       "schedule": "0 3 * * *"
     },
