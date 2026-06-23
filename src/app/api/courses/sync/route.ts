@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTenantAccessToken } from '@/lib/feishu';
 import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { assertCourseWriteSucceeded } from '@/lib/course-sync';
 
 const BASE_TOKEN = 'Wsj0bXtWcaxOtRsfXAYcvNXQnOa';
 const TABLE_ID = 'tbl8wQKUIqRZoCdn';
@@ -108,6 +109,7 @@ async function uploadAttachmentToIM(token: string, fileToken: string): Promise<s
 function mapRecord(record: any) {
   const f = record.fields ?? {};
   return {
+    id: record.record_id as string,
     title: extractText(f['主题']),
     instructor: extractUserName(f['主讲人']),
     created_at: extractDate(f['发布日期']),
@@ -153,13 +155,14 @@ export async function POST(request: NextRequest) {
       pageToken = json.data?.has_more ? json.data.page_token : undefined;
     } while (pageToken);
 
-    // 全量替换
-    await supabase.from('courses').delete().gte('created_at', '1970-01-01');
-
     // 处理海报图片 + 构建行数据
-    const rows = [];
+    const rows: Record<string, unknown>[] = [];
+    let skipped = 0;
     for (const r of allRecords) {
-      if (!r.title) continue;
+      if (!r.title) {
+        skipped++;
+        continue;
+      }
 
       // 上传海报到飞书IM获取image_key
       let cover_image_key: string | null = null;
@@ -168,6 +171,7 @@ export async function POST(request: NextRequest) {
       }
 
       rows.push({
+        id: r.id,
         title: r.title,
         description: '',
         instructor: r.instructor || '待定',
@@ -180,19 +184,20 @@ export async function POST(request: NextRequest) {
         period: r.period,
         season: r.season,
         cover_image_key,
+        synced_at: new Date().toISOString(),
       });
     }
 
-    // 分批插入
-    let inserted = 0;
+    // 分批幂等写入。不要先清空表，避免字段/约束错误导致生产数据被删后插不回。
+    let synced = 0;
     for (let i = 0; i < rows.length; i += 200) {
       const batch = rows.slice(i, i + 200);
-      const { error } = await supabase.from('courses').insert(batch);
-      if (error) console.error('批量插入失败:', error);
-      else inserted += batch.length;
+      const { error } = await supabase.from('courses').upsert(batch, { onConflict: 'id' });
+      assertCourseWriteSucceeded(error);
+      synced += batch.length;
     }
 
-    return NextResponse.json({ total: allRecords.length, inserted });
+    return NextResponse.json({ total: allRecords.length, synced, inserted: synced, skipped });
   } catch (err) {
     console.error('课程同步失败:', err);
     return NextResponse.json(

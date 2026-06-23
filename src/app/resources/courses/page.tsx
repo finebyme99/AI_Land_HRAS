@@ -336,8 +336,8 @@ export default function CoursesContent() {
                     const res = await fetch('/api/courses/sync', { method: 'POST' });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || '同步失败');
-                    message.success(`同步完成：新增 ${data.inserted} 条，更新 ${data.updated} 条`);
-                    fetchCourses();
+                    message.success(`同步完成：写入 ${data.synced ?? data.inserted ?? 0} 条，跳过 ${data.skipped ?? 0} 条`);
+                    void fetchCourses();
                   } catch (e) {
                     message.error(e instanceof Error ? e.message : '同步失败');
                   } finally {
