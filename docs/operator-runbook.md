@@ -32,4 +32,6 @@ SQL Editor 中已经执行完成的 DDL/DML 不能像文本编辑器一样撤销
 - 如果同步返回 `22P02 invalid input syntax for type uuid`，说明仍在把飞书 record id 写入 UUID 主键，检查部署是否包含 `src/lib/course-sync.ts` 和 `/api/courses/sync` 的 `feishu_record_id` upsert 改动。
 - 如果同步返回 `42P10 there is no unique or exclusion constraint matching the ON CONFLICT specification`，执行或检查 `070_courses_feishu_record_id_upsert_index.sql`，确保 `courses_feishu_record_id_key` 不是部分唯一索引。
 - 工具资源表：`apps`。用户投稿、审核状态、点赞收藏依赖数据库备份；没有备份时无法从代码自动恢复完整历史。
+- 如果资源投稿返回 `Could not find the '<column>' column of 'apps' in the schema cache`，优先检查生产库是否漏执行资源模块增量迁移。执行 `072_apps_resource_schema_prod_hotfix.sql` 可一次性补齐 `apps.content`、`apps.is_featured`、`apps.resource_type`、`apps.applicable_departments`，并刷新 PostgREST schema cache。
+- 资源 schema 热修复冒烟：用 service role 或 Supabase Table Editor 确认 `apps` 可读取 `content,is_featured,resource_type,applicable_departments`；随后在 `/resources/apps/create?category=%E7%BA%B5%E8%85%BE%E4%BA%BA%E4%B8%93%E5%B1%9E%20Skills` 提交一次测试资源，期望进入待审核或发布状态。
 - 个人中心积分事件表：`user_point_events`，由 `064_user_point_events.sql` 创建；历史案例和工具积分分别由 `065`、`066` 回填。
