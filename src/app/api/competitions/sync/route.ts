@@ -7,6 +7,7 @@ import { FALLBACK_FIELD_MAP, type FieldMapEntry } from '@/lib/bitable/field-map'
 import { syncFieldMapFromFeishu } from '@/lib/bitable/sync-field-map';
 import { buildCompetitionPointEvents, getUserLevelByPoints } from '@/lib/user-growth';
 import {
+  type CompetitionSnapshotIdentityRow,
   getCanonicalCompetitionSnapshotId,
   getCompetitionSnapshotDuplicateShadowIds,
   type FeishuSnapshotRecord,
@@ -166,8 +167,8 @@ function toSyncKey(unifiedKey: string): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapRecord(record: any, map: Record<string, FieldMapEntry>): Record<string, unknown> {
-  const canonicalId = getCanonicalCompetitionSnapshotId(record);
+function mapRecord(record: any, map: Record<string, FieldMapEntry>, existingRows: CompetitionSnapshotIdentityRow[] = []): Record<string, unknown> {
+  const canonicalId = getCanonicalCompetitionSnapshotId(record, existingRows);
   const mapped: Record<string, unknown> = {
     id: canonicalId,
     recordUrl: `https://ztn.feishu.cn/wiki/${WIKI_TOKEN}?table=${TABLE_ID}&view=${VIEW_ID}&record=${record.record_id}`,
@@ -442,7 +443,13 @@ export async function POST(request: NextRequest) {
         });
 
     // 预检：从 DB 读取已存在的附件元数据（包含 file_token 用于判断文件是否被替换）
-    const recordIds = periodRecords.map((r) => getCanonicalCompetitionSnapshotId(r));
+    const { data: existingRows, error: existingRowsError } = await supabase
+      .from('competition_submissions')
+      .select('id, record_url')
+      .not('record_url', 'is', null);
+    if (existingRowsError) throw new Error(`读取快照身份失败: ${errMsg(existingRowsError)}`);
+    const existingIdentities = (existingRows ?? []) as CompetitionSnapshotIdentityRow[];
+    const recordIds = periodRecords.map((r) => getCanonicalCompetitionSnapshotId(r, existingIdentities));
     const existingAttachments = new Map<string, { name: string; file_token?: string; size?: number }>();
     const BATCH_SIZE = 50;
     for (let i = 0; i < recordIds.length; i += BATCH_SIZE) {
@@ -467,7 +474,7 @@ export async function POST(request: NextRequest) {
     let replacedAttachments = 0;
 
     for (const record of periodRecords) {
-      const mapped = mapRecord(record, fieldMap);
+      const mapped = mapRecord(record, fieldMap, existingIdentities);
       const attachments = Array.isArray(mapped.attachments) ? mapped.attachments : [];
 
       // 筛选出需要下载的附件
@@ -615,7 +622,7 @@ export async function POST(request: NextRequest) {
       if (error) throw new Error(`写入数据库失败: ${errMsg(error)}`);
     }
 
-    const duplicateShadowIds = getCompetitionSnapshotDuplicateShadowIds(periodRecords as FeishuSnapshotRecord[]);
+    const duplicateShadowIds = getCompetitionSnapshotDuplicateShadowIds(periodRecords as FeishuSnapshotRecord[], existingIdentities);
     let removedDuplicates = 0;
     if (duplicateShadowIds.length > 0) {
       const { error, count } = await supabase

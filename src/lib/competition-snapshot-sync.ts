@@ -6,6 +6,7 @@ import { getTenantAccessToken } from './feishu';
 import { getSupabaseAdmin } from './supabase-admin';
 import {
   buildCompetitionSnapshotUpsertRow,
+  type CompetitionSnapshotIdentityRow,
   getCanonicalCompetitionSnapshotId,
   getCompetitionSnapshotDuplicateShadowIds,
 } from './competition-snapshot';
@@ -96,11 +97,17 @@ export async function syncCompetitionSnapshot(options: SyncCompetitionSnapshotOp
   const fieldDescriptions = collectFieldDescriptions(fieldMap);
   const reviewPeriodFieldName = Object.entries(fieldMap).find(([, entry]) => entry.key === 'reviewPeriod')?.[0] ?? '评审周期';
   const records = await fetchFeishuRecords(token, reviewPeriodFieldName, options);
+  const { data: existingRows, error: existingRowsError } = await supabase
+    .from('competition_submissions')
+    .select('id, record_url')
+    .not('record_url', 'is', null);
+  if (existingRowsError) throw new Error(`读取快照身份失败: ${existingRowsError.message}`);
+  const existingIdentities = (existingRows ?? []) as CompetitionSnapshotIdentityRow[];
 
   let skipped = 0;
   const rows = records
     .map((record) => {
-      const canonicalId = getCanonicalCompetitionSnapshotId(record);
+      const canonicalId = getCanonicalCompetitionSnapshotId(record, existingIdentities);
 
       const item = mapFeishuRecord(
         record,
@@ -127,7 +134,7 @@ export async function syncCompetitionSnapshot(options: SyncCompetitionSnapshotOp
     if (error) throw new Error(`写入数据库失败: ${error.message}`);
   }
 
-  const duplicateShadowIds = getCompetitionSnapshotDuplicateShadowIds(records);
+  const duplicateShadowIds = getCompetitionSnapshotDuplicateShadowIds(records, existingIdentities);
   let removedDuplicates = 0;
   if (duplicateShadowIds.length > 0) {
     const { error, count } = await supabase

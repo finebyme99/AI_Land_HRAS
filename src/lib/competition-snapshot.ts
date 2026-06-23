@@ -118,7 +118,26 @@ export interface FeishuSnapshotRecord {
   fields?: Record<string, unknown>;
 }
 
-export function getCanonicalCompetitionSnapshotId(record: FeishuSnapshotRecord): string {
+export interface CompetitionSnapshotIdentityRow {
+  id: string;
+  record_url?: string | null;
+}
+
+export function extractCompetitionRecordIdFromUrl(recordUrl: string | null | undefined): string | null {
+  if (!recordUrl) return null;
+  try {
+    const url = new URL(recordUrl);
+    return url.searchParams.get('record');
+  } catch {
+    const match = recordUrl.match(/[?&]record=([^&#]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+}
+
+export function getCanonicalCompetitionSnapshotId(
+  record: FeishuSnapshotRecord,
+  existingRows: CompetitionSnapshotIdentityRow[] = [],
+): string {
   const linkedLegacy = record.fields?.['关联参赛项目'];
   if (Array.isArray(linkedLegacy) && linkedLegacy.length > 0) {
     const first = linkedLegacy[0];
@@ -129,15 +148,20 @@ export function getCanonicalCompetitionSnapshotId(record: FeishuSnapshotRecord):
       }
     }
   }
+  const existingAlias = existingRows.find((row) => row.id !== record.record_id && extractCompetitionRecordIdFromUrl(row.record_url) === record.record_id);
+  if (existingAlias) return existingAlias.id;
   return record.record_id;
 }
 
-export function getCompetitionSnapshotDuplicateShadowIds(records: FeishuSnapshotRecord[]): string[] {
+export function getCompetitionSnapshotDuplicateShadowIds(
+  records: FeishuSnapshotRecord[],
+  existingRows: CompetitionSnapshotIdentityRow[] = [],
+): string[] {
   const canonicalIds = new Set<string>();
   const shadowIds = new Set<string>();
 
   for (const record of records) {
-    const canonicalId = getCanonicalCompetitionSnapshotId(record);
+    const canonicalId = getCanonicalCompetitionSnapshotId(record, existingRows);
     canonicalIds.add(canonicalId);
     if (canonicalId !== record.record_id) {
       shadowIds.add(record.record_id);

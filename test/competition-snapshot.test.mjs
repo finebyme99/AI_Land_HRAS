@@ -4,6 +4,7 @@ import { test } from 'node:test';
 
 import {
   buildCompetitionSnapshotUpsertRow,
+  extractCompetitionRecordIdFromUrl,
   getCanonicalCompetitionSnapshotId,
   getCompetitionSnapshotDuplicateShadowIds,
   mapCompetitionSnapshotRowToWishItem,
@@ -144,6 +145,32 @@ test('canonical snapshot id prefers linked legacy competition record ids', () =>
       fields: {},
     }),
     'new-record-id',
+  );
+});
+
+test('canonical snapshot id preserves existing reviewed rows by record_url alias', () => {
+  const existingRows = [
+    {
+      id: 'legacy-reviewed-id',
+      record_url: 'https://ztn.feishu.cn/wiki/base?table=tbl9WJyxl9bbtYjb&view=vewEjYjj9S&record=current-feishu-id',
+    },
+    {
+      id: 'current-feishu-id',
+      record_url: 'https://ztn.feishu.cn/wiki/base?table=tbl9WJyxl9bbtYjb&record=current-feishu-id',
+    },
+  ];
+
+  assert.equal(
+    extractCompetitionRecordIdFromUrl(existingRows[0].record_url),
+    'current-feishu-id',
+  );
+  assert.equal(
+    getCanonicalCompetitionSnapshotId({ record_id: 'current-feishu-id', fields: {} }, existingRows),
+    'legacy-reviewed-id',
+  );
+  assert.deepEqual(
+    getCompetitionSnapshotDuplicateShadowIds([{ record_id: 'current-feishu-id', fields: {} }], existingRows),
+    ['current-feishu-id'],
   );
 });
 
