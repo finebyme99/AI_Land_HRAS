@@ -1,6 +1,77 @@
 # AI Land (AILand)
 
-HR AI 社区平台，面向 HRAS 团队，集成案例库、课程、AI 大赛、应用推荐等模块。
+<p align="center">
+  <a href="#english">English</a> | <a href="#中文">中文</a>
+</p>
+
+## English
+
+AI Land is an HR AI community platform for the HRAS team. It brings together the scenario library, courses, AI competitions, and recommended AI applications in one place.
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **UI**: React 19 + Ant Design 6 + Tailwind CSS 4
+- **Backend**: Supabase (PostgreSQL + RLS)
+- **Authentication**: Feishu OAuth
+- **Deployment**: Vercel
+
+## Local Development
+
+```bash
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+## Environment Variables
+
+| Variable | Description |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key, used by API routes |
+
+Feishu app credentials are stored in the `feishu_apps` table and managed through the admin UI. They are not stored in environment variables. See `CONTRIBUTING.md` for details.
+
+## Project Structure
+
+```text
+src/
+├── app/              # Next.js App Router pages
+│   ├── api/          # API routes
+│   ├── admin/        # Admin console
+│   ├── wish-pool/    # Scenario library with three tab views
+│   ├── resources/    # Courses and resources, including courses and tools
+│   ├── competitions/ # AI competitions
+│   └── page.tsx      # Home page with centered hero and 5-item glass metrics strip
+├── components/       # Shared components: Navigation, ChoDashboard, resource cards, EntryCard, etc.
+└── lib/              # Utilities: Supabase, Feishu, auth, bitable mapping, resource normalization, export-image styles
+```
+
+## Permissions And Admin
+
+- The admin console uses lightweight RBAC through the `roles`, `role_permissions`, and `user_roles` tables. Permission points are declared in `src/lib/permissions/registry.ts`.
+- User permission management is available at `/admin/roles`, with `Role List`, `Permission Matrix`, and `User Assignment` views.
+- The legacy `/admin/users` route is kept for compatibility and redirects to `/admin/roles?tab=users`.
+- The `admin` role has all permissions by default. `reviewer_roles` remains a separate review-dimension authorization model and is not merged into RBAC.
+- The `user` role has basic frontend and submission capabilities by default. The tool self-send Feishu card capability is controlled by `resource.generate-feishu-card` and is granted to all regular users by default.
+
+## Resources And Feishu Cards
+
+- The tools page can generate a visual Feishu card for a single tool and send it to the currently logged-in user.
+- API: `POST /api/resources/card-to-me`, with body `{ "resourceId": "<apps.id>" }`.
+- The server reads the current user from the `feishu_user_id` cookie, looks up that user's `feishu_open_id`, and sends with `receive_id_type=open_id`. It does not broadcast to group chats.
+- The card template reuses `src/lib/feishu-cards.ts#buildResourceCard`. The tools entry point is `/resources?tab=apps`.
+
+## Detailed Guidelines
+
+See `CONTRIBUTING.md` and `AGENTS.md`.
+
+## 中文
+
+AI Land 是面向 HRAS 团队的 HR AI 社区平台，集成场景大全、课程、AI 大赛、应用推荐等模块。
 
 ## 技术栈
 
@@ -22,26 +93,26 @@ npm run dev
 ## 环境变量
 
 | 变量 | 说明 |
-|------|------|
+| --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目 URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (API 路由用) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key，供 API 路由使用 |
 
-飞书应用凭证存于 `feishu_apps` 表（admin UI），不在 env 中。详见 CONTRIBUTING.md。
+飞书应用凭证存于 `feishu_apps` 表，并通过 admin UI 管理，不放在环境变量中。详见 `CONTRIBUTING.md`。
 
 ## 项目结构
 
-```
+```text
 src/
 ├── app/              # Next.js App Router 页面
 │   ├── api/          # API 路由
 │   ├── admin/        # 管理后台
-│   ├── wish-pool/    # 场景大全（三Tab视图）
-│   ├── resources/    # 课程与资源（课程+工具）
+│   ├── wish-pool/    # 场景大全（三 Tab 视图）
+│   ├── resources/    # 课程与资源（课程 + 工具）
 │   ├── competitions/ # AI 大赛
-│   └── page.tsx      # 首页（居中Hero+5项glass指标带）
-├── components/       # 共享组件（Navigation/ChoDashboard/资源卡片/EntryCard 等）
-└── lib/              # 工具函数 (Supabase、飞书、认证、bitable映射、资源字段归一化、导出图片样式)
+│   └── page.tsx      # 首页（居中 Hero + 5 项 glass 指标带）
+├── components/       # 共享组件：Navigation、ChoDashboard、资源卡片、EntryCard 等
+└── lib/              # 工具函数：Supabase、飞书、认证、bitable 映射、资源字段归一化、导出图片样式
 ```
 
 ## 权限与管理后台

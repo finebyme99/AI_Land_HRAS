@@ -26,6 +26,8 @@ import ResourceCard from '@/components/resources/ResourceCard';
 import type { Event, Course, Resource } from '@/types';
 import { ZONGTENG_SKILLS_CATEGORY } from '@/types';
 
+const ZONGTENG_SKILLS_SUBMIT_HREF = `/resources/apps/create?category=${encodeURIComponent(ZONGTENG_SKILLS_CATEGORY)}`;
+
 /* ─── Animated Counter ─── */
 function AnimatedCounter({ target, duration = 2 }: { target: number; duration?: number }) {
   const [count, setCount] = useState(0);
@@ -237,7 +239,7 @@ export default function Home() {
               title="把你做过、验证过的纵腾业务 Skills 分享出来，让更多同事直接拿来用、拿来改。"
               placement="bottom"
             >
-              <Link href={`/resources/apps/create?category=${encodeURIComponent(ZONGTENG_SKILLS_CATEGORY)}`}>
+              <Link href={ZONGTENG_SKILLS_SUBMIT_HREF}>
                 <button
                   className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5"
                   style={{
@@ -245,7 +247,7 @@ export default function Home() {
                     boxShadow: '0 10px 24px rgba(242,127,34,0.28)',
                   }}
                 >
-                  <ApiOutlined /> 投稿专属 Skills
+                  <ApiOutlined /> 投稿纵腾专属Skills
                 </button>
               </Link>
             </Tooltip>
@@ -323,10 +325,10 @@ export default function Home() {
                   投稿审核通过后，这里会优先展示纵腾同学沉淀的专属业务 Skills。
                 </p>
               </div>
-              <Link href="/resources/apps/create">
+              <Link href={ZONGTENG_SKILLS_SUBMIT_HREF}>
                 <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:-translate-y-0.5"
                   style={{ background: 'linear-gradient(135deg, #F27F22, #e8650a)', boxShadow: '0 4px 15px rgba(242,127,34,0.28)' }}>
-                  <ApiOutlined /> 投稿 Skills
+                  <ApiOutlined /> 投稿纵腾专属Skills
                 </button>
               </Link>
             </div>

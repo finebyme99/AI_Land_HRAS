@@ -20,6 +20,7 @@ import type { Resource, ResourceCategory } from '@/types';
 import { RESOURCE_CATEGORIES, ZONGTENG_SKILLS_CATEGORY } from '@/types';
 
 const SCENARIO_OPTIONS = ['编程', '设计', '写作', '数据分析', '咨询搜集', '日常提效'];
+const ZONGTENG_SKILLS_SUBMIT_HREF = `/resources/apps/create?category=${encodeURIComponent(ZONGTENG_SKILLS_CATEGORY)}`;
 
 export default function AppsContent() {
   const { user, hasPermission } = useAuth();
@@ -319,7 +320,7 @@ export default function AppsContent() {
               查看全部 <ArrowRightOutlined style={{ fontSize: 11 }} />
             </button>
             {canSubmitResource && (
-              <Link href="/resources/apps/create">
+              <Link href={ZONGTENG_SKILLS_SUBMIT_HREF}>
                 <button
                   className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all hover:-translate-y-0.5"
                   style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 4px 12px rgba(242,127,34,0.18)' }}
@@ -509,14 +510,14 @@ export default function AppsContent() {
             </div>
           </Form.Item>
 
+          <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
+            <Select options={RESOURCE_CATEGORIES.map(c => ({ label: c, value: c }))} />
+          </Form.Item>
           <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入名称' }]}>
             <Input maxLength={80} showCount />
           </Form.Item>
           <Form.Item name="description" label="简介" rules={[{ required: true, message: '请输入简介' }]}>
             <Input placeholder="一句话介绍工具的核心亮点" maxLength={100} showCount />
-          </Form.Item>
-          <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
-            <Select options={RESOURCE_CATEGORIES.map(c => ({ label: c, value: c }))} />
           </Form.Item>
           <Form.Item name="scenarios" label="适用场景" rules={[{ required: true, message: '请选择适用场景' }]}>
             <Select mode="multiple" placeholder="选择适用场景（可多选）" options={[

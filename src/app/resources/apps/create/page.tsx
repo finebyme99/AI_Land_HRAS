@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { use, useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Form, Input, Select, App, Spin } from 'antd';
 import { ArrowLeftOutlined, PlusOutlined, AppstoreOutlined, CameraOutlined } from '@ant-design/icons';
@@ -8,19 +8,23 @@ import { useAuth } from '@/lib/auth-context';
 import DepartmentSelect from '@/components/resources/DepartmentSelect';
 import { RESOURCE_CATEGORIES, ZONGTENG_SKILLS_CATEGORY } from '@/types';
 
-export default function CreateResourcePage() {
+type CreateResourcePageProps = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default function CreateResourcePage({ searchParams }: CreateResourcePageProps) {
+  const resolvedSearchParams = use(searchParams);
+  const categoryParam = Array.isArray(resolvedSearchParams.category)
+    ? resolvedSearchParams.category[0]
+    : resolvedSearchParams.category;
+  const isZongtengSkill = categoryParam === ZONGTENG_SKILLS_CATEGORY;
   const { user, hasPermission } = useAuth();
   const canSubmitResource = hasPermission('resource.submit');
   const { message } = App.useApp();
-  const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
-  const [isZongtengSkill] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return new URLSearchParams(window.location.search).get('category') === ZONGTENG_SKILLS_CATEGORY;
-  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -44,11 +48,6 @@ export default function CreateResourcePage() {
       active = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (!isZongtengSkill) return;
-    form.setFieldValue('category', ZONGTENG_SKILLS_CATEGORY);
-  }, [form, isZongtengSkill]);
 
   const handleLogoClick = () => {
     fileInputRef.current?.click();
@@ -101,7 +100,7 @@ export default function CreateResourcePage() {
         body: JSON.stringify({
           name: values.name,
           description: values.description,
-          category: values.category,
+          category: isZongtengSkill ? ZONGTENG_SKILLS_CATEGORY : values.category,
           scenarios: values.scenarios || [],
           applicable_departments: values.applicable_departments || [],
           official_url: values.official_url || '',
@@ -180,7 +179,11 @@ export default function CreateResourcePage() {
       )}
 
       <div className="glass rounded-2xl p-6 sm:p-8" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+        <Form
+          layout="vertical"
+          initialValues={isZongtengSkill ? { category: ZONGTENG_SKILLS_CATEGORY } : undefined}
+          onFinish={handleSubmit}
+        >
           {/* 工具图片 */}
           <Form.Item label="工具图片">
             <div className="flex items-center gap-4">
@@ -212,16 +215,26 @@ export default function CreateResourcePage() {
             </div>
           </Form.Item>
 
+          <Form.Item
+            name="category"
+            label="分类"
+            rules={[{ required: true, message: '请选择分类' }]}
+            extra={isZongtengSkill ? '专属投稿入口已锁定分类，审核通过后会进入纵腾人专属 Skills 专区。' : undefined}
+          >
+            <Select
+              placeholder="选择分类"
+              disabled={isZongtengSkill}
+              aria-readonly={isZongtengSkill}
+              options={RESOURCE_CATEGORIES.map(c => ({ label: c, value: c }))}
+            />
+          </Form.Item>
+
           <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入名称' }]}>
-            <Input placeholder="如：ChatGPT、Claude、Dify" maxLength={80} showCount />
+            <Input placeholder={isZongtengSkill ? '如：纵腾业务复盘 Agent、招聘面试题生成 Skill' : '如：ChatGPT、Claude、Dify'} maxLength={80} showCount />
           </Form.Item>
 
           <Form.Item name="description" label="简介" rules={[{ required: true, message: '请输入简介' }]}>
             <Input placeholder="一句话介绍工具的核心亮点，为你的推荐打好广告" maxLength={100} showCount />
-          </Form.Item>
-
-          <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
-            <Select placeholder="选择分类" options={RESOURCE_CATEGORIES.map(c => ({ label: c, value: c }))} />
           </Form.Item>
 
           <Form.Item name="scenarios" label="适用场景" rules={[{ required: true, message: '请选择适用场景' }]}>
