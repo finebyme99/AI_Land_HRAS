@@ -3,6 +3,7 @@
 > 飞书新表：`tbl9WJyxl9bbtYjb`（wiki 节点 `LRROwulJciI7JYkIT55cQtdpnze`）
 > DB 表：`competition_submissions`
 > 关联 id：旧表 `tbl12tkH7lOR9rrq`（通过"关联参赛项目.record_ids[0]"）
+> 当前前台口径（2026-06-23）：AI 大赛、场景大全和字段管理页展示「推广复用价值系数」`reuseValue`；`reuseValueLevel` / `reuse_value_level` 仅作为历史快照兼容字段保留，不再作为前台展示字段。
 
 **使用方式**：在「新表字段名」列填飞书多维表格的实际字段名（**带原始空格/标点**），我据此改 `FIELD_NAME_MAP` + 前端消费。
 
@@ -22,8 +23,8 @@
 
 | 5 月字段（前端展示） | 新表字段名（待填） | DB 字段 | 备注 |
 |---|---|---|---|
-| 等级 tag（金/银/铜） | `推广复用价值等级` ✓ 已映射 | `reuse_value_level` | |
-| 完整描述 | `推广复用价值系数` ✓ 已映射 | `reuse_value` | |
+| 前台展示 | `推广复用价值系数` ✓ 已映射 | `reuse_value` | AI 大赛、场景大全、字段管理页展示此字段 |
+| 历史等级字段 | `推广复用价值等级` ✓ 已映射 | `reuse_value_level` | 保留入库兼容，不再作为前台展示字段 |
 | x 系数 | regex `/x(\d+)/` from `reuse_value` | 计算 | |
 | 预估月省工时 | `月均提效节省工时 × x` | 计算 | |
 | **最终价值计分**（新需求，放在 Hero 条下方） | **`最终价值计分`** ✓ 已识别 | 需新增 DB 列 `final_value_score` | **新表字段 = 飞书 "最终价值计分"** |
@@ -81,7 +82,7 @@
 | 小组成员 | `组队成员` ✓ 已映射 | `team_members` | |
 | 方案确认人 | `工时与降本真实性确认人` ✓ 已映射 | `verifier` | |
 | Token 费 | `月均Token费用` | `ai_cost` | |
-| 复用价值 | `推广复用价值等级` + `推广复用价值系数` | `reuse_value_level` + `reuse_value` | |
+| 复用价值 | `推广复用价值系数` | `reuse_value` | 前台详情展示系数字段；`reuse_value_level` 仅保留历史兼容 |
 | AI 工具 | `AI工具` ✓ 已映射 | `ai_tools` | |
 | 核心痛点 | `原核心痛点` ✓ 已映射 | `pain_points` | |
 | 原业务场景&流程 | `原业务场景及流程` ✓ 已映射 | `before_process` | |
@@ -96,4 +97,3 @@
 | 实现效果链接 | **`实现效果`** ✓ 已识别 | 需新增 DB 列 `implementation_link` 或复用 | **新表字段 = 飞书 "实现效果"** 没错，就按照这个来 |
 
 ---
-
