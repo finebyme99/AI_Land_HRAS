@@ -10,6 +10,7 @@ import {
   EXCLUDED_BITABLE_OPTION_NAME,
   summarizeValueMetrics,
 } from '@/lib/bitable/metrics';
+import { attachReviewersToReviews, type ReviewerProfile } from '@/lib/competition-reviewers';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
@@ -40,8 +41,10 @@ interface ReviewRow {
   decision: string | null;
   reason: string | null;
   scores: ReviewScores | null;
-  reviewer: { name?: string | null } | { name?: string | null }[] | null;
+  reviewer: ReviewerProfile | null;
 }
+
+type ReviewRowBase = Omit<ReviewRow, 'reviewer'>;
 
 /**
  * GET /api/admin/competitions/overview?period=2605
@@ -82,10 +85,23 @@ export async function GET(request: NextRequest) {
     if (subIds.length > 0) {
       const { data: r, error: rErr } = await supabase
         .from('competition_reviews')
-        .select('id, submission_id, reviewer_id, reviewer_role, decision, reason, scores, reviewer:reviewer_id(name)')
+        .select('id, submission_id, reviewer_id, reviewer_role, decision, reason, scores')
         .in('submission_id', subIds);
       if (rErr) throw rErr;
-      reviews = (r ?? []) as ReviewRow[];
+      const reviewRows = (r ?? []) as ReviewRowBase[];
+      const reviewerIds = [...new Set(reviewRows.map((review) => review.reviewer_id).filter(Boolean))];
+      let reviewerProfiles: ReviewerProfile[] = [];
+
+      if (reviewerIds.length > 0) {
+        const { data: users, error: usersErr } = await supabase
+          .from('users')
+          .select('id, name, avatar, department')
+          .in('id', reviewerIds);
+        if (usersErr) throw usersErr;
+        reviewerProfiles = (users ?? []) as ReviewerProfile[];
+      }
+
+      reviews = attachReviewersToReviews(reviewRows, reviewerProfiles);
     }
 
     // 3. 聚合：按 submission 分组
@@ -137,10 +153,9 @@ export async function GET(request: NextRequest) {
       const reviewsOut = subReviews
         .map((r) => {
           const role = r.reviewer_role;
-          const reviewer = Array.isArray(r.reviewer) ? r.reviewer[0] : r.reviewer;
           return {
             id: r.id,
-            reviewerName: reviewer?.name ?? '匿名',
+            reviewerName: r.reviewer?.name ?? '匿名',
             reviewerRole: role,
             decision: r.decision,
             scores: r.scores ?? {},
@@ -255,7 +270,7 @@ export async function GET(request: NextRequest) {
     for (const r of reviews) {
       if (r.decision !== 'reviewed' || !r.reviewer_role) continue;
       const role = r.reviewer_role as ReviewerRole;
-      const name = (Array.isArray(r.reviewer) ? r.reviewer[0]?.name : r.reviewer?.name)?.trim() || '匿名';
+      const name = r.reviewer?.name?.trim() || '匿名';
       if (seenByRole[role].has(name)) continue;
       seenByRole[role].add(name);
       panelByRole[role].push(name);
