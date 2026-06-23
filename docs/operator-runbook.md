@@ -35,3 +35,11 @@ SQL Editor 中已经执行完成的 DDL/DML 不能像文本编辑器一样撤销
 - 如果资源投稿返回 `Could not find the '<column>' column of 'apps' in the schema cache`，优先检查生产库是否漏执行资源模块增量迁移。执行 `072_apps_resource_schema_prod_hotfix.sql` 可一次性补齐 `apps.content`、`apps.is_featured`、`apps.resource_type`、`apps.applicable_departments`，并刷新 PostgREST schema cache。
 - 资源 schema 热修复冒烟：用 service role 或 Supabase Table Editor 确认 `apps` 可读取 `content,is_featured,resource_type,applicable_departments`；随后在 `/resources/apps/create?category=%E7%BA%B5%E8%85%BE%E4%BA%BA%E4%B8%93%E5%B1%9E%20Skills` 提交一次测试资源，期望进入待审核或发布状态。
 - 个人中心积分事件表：`user_point_events`，由 `064_user_point_events.sql` 创建；历史案例和工具积分分别由 `065`、`066` 回填。
+
+## AI 大赛与场景大全快照同步
+
+- 页面读取路径：`GET /api/wish-pool`、`GET /api/competitions/progress`、`GET /api/admin/competitions/overview` 默认从 Supabase `competition_submissions` 读取快照，不在页面打开时全量读飞书。
+- 刷新入口：场景大全按钮 `POST /api/wish-pool/sync`、AI 大赛/成效看板按钮 `POST /api/competitions/sync?period=<YYMM>`、定时任务 `GET /api/cron/sync-competitions`。
+- 同步逻辑入口：`src/lib/competition-snapshot-sync.ts` 和 `src/app/api/competitions/sync/route.ts` 都使用 `src/lib/competition-snapshot.ts` 的 canonical ID 规则。若旧 `competition_submissions.id` 已被 `competition_reviews.submission_id` 使用，且旧行 `record_url` 指向当前飞书记录，必须保留旧 ID，把最新字段写回旧 ID，再删除新 ID 影子行。
+- 重复排查：按 `period + record_url` 中的 `record` 参数分组检查 `competition_submissions`；若同一飞书记录出现两行，先确认 `competition_reviews` 是否挂在旧 ID 上，不要直接删除带评审记录的行。
+- 冒烟：同步后检查目标方案在 `/competitions`、`/wish-pool`、成效看板中只出现一条；SQL/脚本层确认 `competition_submissions` 按 `period + record_url.record` 分组没有重复。

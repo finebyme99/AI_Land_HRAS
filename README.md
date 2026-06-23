@@ -65,6 +65,12 @@ src/
 - The server reads the current user from the `feishu_user_id` cookie, looks up that user's `feishu_open_id`, and sends with `receive_id_type=open_id`. It does not broadcast to group chats.
 - The card template reuses `src/lib/feishu-cards.ts#buildResourceCard`. The tools entry point is `/resources?tab=apps`.
 
+## Competition Snapshot Sync
+
+- Scenario library and AI competition pages read `competition_submissions` snapshots from Supabase by default.
+- Feishu bitable data refreshes only through admin-triggered sync buttons or the Vercel cron route `GET /api/cron/sync-competitions`.
+- Sync code preserves historical submission IDs that already have review records, then writes the latest Feishu fields onto that ID and removes duplicate shadow rows.
+
 ## Detailed Guidelines
 
 See `CONTRIBUTING.md`, `AGENTS.md`, and `docs/operator-runbook.md`.
@@ -129,6 +135,12 @@ src/
 - API：`POST /api/resources/card-to-me`，body 为 `{ "resourceId": "<apps.id>" }`。
 - 服务端按 `feishu_user_id` cookie 查询当前用户的 `feishu_open_id`，使用 `receive_id_type=open_id` 发送，不会群发到群聊。
 - 卡片模板复用 `src/lib/feishu-cards.ts#buildResourceCard`，工具列表入口为 `/resources?tab=apps`。
+
+## 大赛快照同步
+
+- 场景大全和 AI 大赛页面默认读取 Supabase 的 `competition_submissions` 快照。
+- 飞书多维表数据只通过管理员同步按钮或 Vercel 定时任务 `GET /api/cron/sync-competitions` 刷新。
+- 同步逻辑会保留已有评审记录关联的历史方案 ID，把最新飞书字段写回该 ID，并清理重复影子行。
 
 ## 详细规范
 
