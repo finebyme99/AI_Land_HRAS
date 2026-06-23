@@ -68,17 +68,12 @@ src/
 │   │   ├── page.tsx       # 大赛首页
 │   │   └── [id]/          # 方案详情页
 │   ├── admin/             # 管理后台
-│   │   ├── review/        # 内容审核
-│   │   ├── roles/         # 用户权限（角色列表 / 权限矩阵 / 用户授权）
+│   │   ├── review/        # 内容审核（顶部「管理后台」菜单）
+│   │   ├── roles/         # 用户权限（角色列表 / 权限矩阵 / 用户授权，顶部「管理后台」菜单）
 │   │   ├── users/         # 兼容旧入口，重定向到 /admin/roles?tab=users
-│   │   ├── reviews/       # 评审管理
-│   │   ├── push/          # 飞书推送
-│   │   ├── reminders/     # 提醒管理
-│   │   ├── feishu-apps/   # 飞书多租户应用配置
-│   │   ├── bitable-field-map/  # 飞书多维表格字段映射管理
-│   │   ├── layouts/       # 页面布局配置
-│   │   └── settings/      # 平台设置
-│   ├── profile/           # 个人中心（书签/贡献/通知/设置子页）
+│   │   ├── feishu-apps/   # 飞书多租户应用配置（顶部「管理后台」菜单）
+│   │   └── bitable-field-map/  # 飞书多维表格字段映射管理（顶部「管理后台」菜单）
+│   ├── profile/           # 个人中心（主页 / 书签 / 贡献）
 │   ├── login/             # 登录（多企业飞书按钮）
 │   └── api/               # API 路由
 │       ├── dashboard-summary/  # 首页指标卡聚合
@@ -118,7 +113,7 @@ src/
 │       ├── user/ + users/list/ # 用户信息
 │       └── debug/             # 调试工具
 ├── components/            # 公共组件
-│   ├── Navigation.tsx     # 导航栏（4项：首页/场景大全/AI大赛/课程与资源）
+│   ├── Navigation.tsx     # 导航栏（首页/场景大全/AI大赛/课程与资源/个人中心；admin 用户额外显示管理后台胶囊）
 │   ├── ChoDashboard.tsx   # 成效看板（筛选+导出+指标卡+公式）
 │   ├── DetailListBlock.tsx # 共享明细列表（WishItem类型+fmt系列+FilterRow+表格），wish-pool/competitions共用
 │   ├── HighlightSweep.tsx # 标题 shimmer 动效
@@ -160,6 +155,7 @@ src/
 - `isAdmin` 只认 `user.roles.includes('admin')`，用于兼容旧语义；不要把自定义角色误判为 admin 身份
 - `isReviewer` = `isAdmin` ∪ `users.reviewer_roles` 非空；`reviewer_roles` 表示评审维度授权，独立于 RBAC
 - 系统内置角色只 seed `admin` 和 `user`；自定义角色在 `/admin/roles` 的「用户权限」模块维护
+- 顶部「管理后台」入口只对 `isAdmin` 用户显示，当前可见菜单为：内容审核、用户权限、字段映射配置、飞书应用配置
 - `/admin/roles` 包含三个视图：`角色列表`、`权限矩阵`、`用户授权`；旧 `/admin/users` 自动跳转到 `用户授权`
 - 权限矩阵按功能模块分组，模块行可批量勾选下级菜单页面和功能按钮；DB 仍只存具体权限点 key
 - 普通用户：提交案例（需审核）、提交工具（需审核）、点赞、收藏

@@ -53,6 +53,7 @@ src/
 ## Permissions And Admin
 
 - The admin console uses lightweight RBAC through the `roles`, `role_permissions`, and `user_roles` tables. Permission points are declared in `src/lib/permissions/registry.ts`.
+- The visible admin console entry is an admin-only top navigation module. Its menu currently contains Content Review, User Permissions, Bitable Field Mapping, and Feishu App Configuration.
 - User permission management is available at `/admin/roles`, with `Role List`, `Permission Matrix`, and `User Assignment` views.
 - The legacy `/admin/users` route is kept for compatibility and redirects to `/admin/roles?tab=users`.
 - The `admin` role has all permissions by default. `reviewer_roles` remains a separate review-dimension authorization model and is not merged into RBAC.
@@ -124,6 +125,7 @@ src/
 ## 权限与管理后台
 
 - 管理后台权限使用轻量 RBAC：`roles` / `role_permissions` / `user_roles` 三表，权限点在 `src/lib/permissions/registry.ts` 声明。
+- 管理后台入口是顶部导航里的管理员专属模块，当前菜单只包含：内容审核、用户权限、字段映射配置、飞书应用配置。
 - 用户权限入口为 `/admin/roles`，包含 `角色列表`、`权限矩阵`、`用户授权` 三个视图。
 - 旧 `/admin/users` 保留为兼容跳转，自动重定向到 `/admin/roles?tab=users`。
 - `admin` 角色默认拥有全部权限；`reviewer_roles` 仍是独立的评审维度授权，不并入 RBAC。

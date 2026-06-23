@@ -1,19 +1,19 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, Drawer, Avatar, Dropdown } from 'antd';
 import {
+  DownOutlined,
   HomeOutlined,
   TrophyOutlined,
   ReadOutlined,
   UserOutlined,
   MenuOutlined,
-  BellOutlined,
   LogoutOutlined,
-  TeamOutlined,
   StarOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 
@@ -25,60 +25,22 @@ const navItems = [
   { key: '/profile', label: '个人中心', icon: <UserOutlined /> },
 ];
 
-const userMenuItems = [
-  { key: '/profile/notifications', label: '消息通知' },
-  { key: '/profile/settings', label: '个人设置' },
+const adminMenuItems = [
+  { key: '/admin/review', label: '内容审核' },
+  { key: '/admin/roles', label: '用户权限' },
+  { key: '/admin/bitable-field-map', label: '字段映射配置' },
+  { key: '/admin/feishu-apps', label: '飞书应用配置' },
 ];
-
-function buildAdminMenu(hasPermission: (key: string) => boolean, onNavigate?: () => void) {
-  const link = (href: string, label: string) => (
-    <Link href={href} onClick={onNavigate}>{label}</Link>
-  );
-  const items: { key: string; label: ReactNode }[] = [];
-
-  if (hasPermission('admin.reviews')) {
-    items.push({ key: '/admin/reviews', label: link('/admin/reviews', '评审管理') });
-  }
-  if (hasPermission('admin.review')) {
-    items.push({ key: '/admin/review', label: link('/admin/review', '内容审核') });
-  }
-  if (hasPermission('admin.roles') || hasPermission('admin.users')) {
-    items.push({ key: '/admin/roles', label: link('/admin/roles', '用户权限') });
-  }
-  if (hasPermission('admin.bitable-field-map')) {
-    items.push({ key: '/admin/bitable-field-map', label: link('/admin/bitable-field-map', '字段映射配置') });
-  }
-  if (hasPermission('admin.layouts')) {
-    items.push({ key: '/admin/layouts/competitions-entry-card', label: link('/admin/layouts/competitions-entry-card', '方案卡片布局') });
-  }
-  if (hasPermission('admin.reminders')) {
-    items.push({ key: '/admin/reminders', label: link('/admin/reminders', '提醒管理') });
-  }
-  if (hasPermission('admin.push')) {
-    items.push({ key: '/admin/push', label: link('/admin/push', '飞书推送') });
-  }
-  if (hasPermission('admin.feishu-apps')) {
-    items.push({ key: '/admin/feishu-apps', label: link('/admin/feishu-apps', '飞书应用配置') });
-  }
-  if (hasPermission('admin.settings')) {
-    items.push({ key: '/admin/settings', label: link('/admin/settings', '平台设置') });
-  }
-
-  return items;
-}
 
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { user, loading, isAdmin, permissions, hasPermission, signOut } = useAuth();
-  const hasAdminPermissions = [...permissions].some((key) => key.startsWith('admin.'));
+  const { user, loading, isAdmin, signOut } = useAuth();
 
   // 根据权限过滤导航项
-  const filteredNavItems = navItems.filter((item) => {
-    if ('adminOnly' in item && item.adminOnly) return isAdmin;
-    return true;
-  });
+  const filteredNavItems = navItems;
+  const adminActive = pathname.startsWith('/admin');
 
   const handleLogout = async () => {
     await signOut();
@@ -139,30 +101,54 @@ export default function Navigation() {
                 </Link>
               );
             })}
+            {isAdmin && (
+              <Dropdown
+                menu={{
+                  items: adminMenuItems.map((item) => ({
+                    key: item.key,
+                    label: <Link href={item.key}>{item.label}</Link>,
+                  })),
+                }}
+                placement="bottomRight"
+              >
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-all duration-200 cursor-pointer"
+                  style={{
+                    borderRadius: 'var(--radius-pill)',
+                    color: adminActive ? 'var(--primary)' : 'var(--text-secondary)',
+                    background: adminActive ? 'rgba(26, 58, 138, 0.08)' : 'transparent',
+                    border: adminActive ? '1px solid rgba(26, 58, 138, 0.15)' : '1px solid transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!adminActive) {
+                      e.currentTarget.style.color = 'var(--primary)';
+                      e.currentTarget.style.background = 'rgba(26, 58, 138, 0.08)';
+                      e.currentTarget.style.borderColor = 'rgba(26, 58, 138, 0.15)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!adminActive) {
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.borderColor = 'transparent';
+                    }
+                  }}
+                >
+                  <TeamOutlined />
+                  管理后台
+                  <DownOutlined style={{ fontSize: 10 }} />
+                </button>
+              </Dropdown>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-3">
           {loading ? null : user ? (
             <>
-              <Link href="/profile/notifications" className="p-2 rounded-full hover:opacity-70 transition-opacity" style={{ color: 'var(--text-secondary)' }}>
-                <BellOutlined style={{ fontSize: 18 }} />
-              </Link>
               <Dropdown
                 menu={{
                   items: [
-                    ...userMenuItems.map((item) => ({
-                      key: item.key,
-                      label: <Link href={item.key}>{item.label}</Link>,
-                    })),
-                    ...(hasAdminPermissions ? [
-                      {
-                        key: 'admin',
-                        label: '管理后台',
-                        icon: <TeamOutlined />,
-                        children: buildAdminMenu(hasPermission),
-                      },
-                    ] : []),
-                    { type: 'divider' as const },
                     { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: handleLogout },
                   ],
                 }}
@@ -204,8 +190,8 @@ export default function Navigation() {
           </span>
         </Link>
         {user ? (
-          <Link href="/profile/notifications" style={{ color: 'var(--text-secondary)' }}>
-            <BellOutlined style={{ fontSize: 18 }} />
+          <Link href="/profile" style={{ color: 'var(--text-secondary)' }}>
+            <UserOutlined style={{ fontSize: 18 }} />
           </Link>
         ) : (
           <Link href="/login" className="text-xs font-medium px-3 py-1" style={{ color: '#fff', background: 'var(--gradient-primary)', borderRadius: 'var(--radius-pill)' }}>登录</Link>
@@ -246,22 +232,20 @@ export default function Navigation() {
               icon: item.icon,
               label: <Link href={item.key} onClick={() => setDrawerOpen(false)}>{item.label}</Link>,
             })),
-            { type: 'divider' as const },
-            ...(user
-              ? [
-                  ...userMenuItems.map((item) => ({
+            ...(isAdmin
+              ? [{
+                  key: 'admin',
+                  icon: <TeamOutlined />,
+                  label: '管理后台',
+                  children: adminMenuItems.map((item) => ({
                     key: item.key,
                     label: <Link href={item.key} onClick={() => setDrawerOpen(false)}>{item.label}</Link>,
                   })),
-                  ...(hasAdminPermissions ? [
-                    {
-                      key: 'admin',
-                      label: '管理后台',
-                      icon: <TeamOutlined />,
-                      children: buildAdminMenu(hasPermission, () => setDrawerOpen(false)),
-                    },
-                  ] : []),
-                  { type: 'divider' as const } as const,
+                }]
+              : []),
+            { type: 'divider' as const },
+            ...(user
+              ? [
                   { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: handleLogout },
                 ]
               : [{ key: 'login', label: <Link href="/login" onClick={() => setDrawerOpen(false)}>登录</Link> }]
