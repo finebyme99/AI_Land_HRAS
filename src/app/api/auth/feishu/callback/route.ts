@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { getFeishuAppByAppId, getAppSecret, logAuth } from '@/lib/feishu-app-store';
 import { syncUserRoleLinks, withDefaultUserRole } from '@/lib/permissions/default-role';
 import { getAuthSessionCookieOptions } from '@/lib/auth-session';
+import { formatErrorMessage } from '@/lib/format-error-message';
 import { cookies } from 'next/headers';
 
 // GET /api/auth/feishu/callback — 飞书 OAuth 回调（多租户）
@@ -36,6 +37,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login?error=unknown_app', request.url));
   }
 
+  const authFailureContext: { app_id: string; tenant_key?: string; open_id?: string } = { app_id: appId };
+
   try {
     // 4. 用该 app 的 secret 换 user_access_token
     const appSecret = await getAppSecret(app);
@@ -43,6 +46,8 @@ export async function GET(request: NextRequest) {
 
     // 5. 拿飞书用户信息（含 tenant_key）
     const feishuUser = await getFeishuUserInfo(tokenData.access_token);
+    authFailureContext.tenant_key = feishuUser.tenant_key;
+    authFailureContext.open_id = feishuUser.open_id;
 
     // 5b. 拿飞书用户 contact 信息（部门 + 工号）— 失败时静默返回空
     const contactInfo = await getFeishuUserContactInfo(tokenData.access_token, feishuUser.user_id);
@@ -132,9 +137,9 @@ export async function GET(request: NextRequest) {
     });
     return response;
   } catch (e: unknown) {
-    const errorMessage = e instanceof Error ? e.message : String(e);
-    console.error('飞书登录失败:', e);
-    await logAuth({ app_id: appId, error: errorMessage, success: false });
+    const errorMessage = formatErrorMessage(e);
+    console.error('飞书登录失败:', { ...authFailureContext, error: errorMessage, raw: e });
+    await logAuth({ ...authFailureContext, error: errorMessage, success: false });
     return NextResponse.redirect(new URL('/login?error=auth_failed', request.url));
   }
 }

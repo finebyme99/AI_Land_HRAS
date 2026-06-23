@@ -75,7 +75,7 @@ function FeishuEnterpriseButtons() {
 
   const go = (appId: string) => {
     setLoading(true);
-    window.location.href = `/api/auth/feishu?app_id=${encodeURIComponent(appId)}`;
+    window.location.assign(`/api/auth/feishu?app_id=${encodeURIComponent(appId)}`);
   };
 
   // 加载中：什么都不显示，避免闪"未配置"

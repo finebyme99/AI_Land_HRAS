@@ -3,12 +3,7 @@ import { hasPermission } from '@/lib/permissions';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { listFeishuApps, createFeishuApp, updateFeishuAppStatus, getAppSecret } from '@/lib/feishu-app-store';
 import { getTenantAccessTokenFor } from '@/lib/feishu';
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === 'object' && 'message' in error) return String(error.message);
-  return String(error);
-}
+import { formatErrorMessage } from '@/lib/format-error-message';
 
 async function requirePermission(req: NextRequest, key: string): Promise<string | null> {
   const userId = req.cookies.get('feishu_user_id')?.value;
@@ -80,6 +75,6 @@ export async function PUT(req: NextRequest) {
     await getTenantAccessTokenFor(app.app_id, secret);
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
-    return NextResponse.json({ ok: false, error: errorMessage(e) }, { status: 400 });
+    return NextResponse.json({ ok: false, error: formatErrorMessage(e) }, { status: 400 });
   }
 }
