@@ -16,6 +16,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: 'nav.wish-pool', label: '场景大全', group: '前台导航', kind: 'menu' },
   { key: 'nav.competitions', label: 'AI大赛', group: '前台导航', kind: 'menu' },
   { key: 'nav.resources', label: '课程与资源', group: '前台导航', kind: 'menu' },
+  { key: 'nav.profile', label: '个人中心', group: '前台导航', kind: 'menu' },
 
   // ===== 管理后台页面 =====
   { key: 'admin.reviews', label: '评审管理', group: '管理后台', kind: 'menu' },

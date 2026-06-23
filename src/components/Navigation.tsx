@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Menu, Drawer, Avatar, Dropdown } from 'antd';
 import {
   HomeOutlined,
@@ -22,12 +22,10 @@ const navItems = [
   { key: '/wish-pool', label: '场景大全', icon: <StarOutlined /> },
   { key: '/competitions', label: 'AI大赛', icon: <TrophyOutlined /> },
   { key: '/resources', label: '课程与资源', icon: <ReadOutlined /> },
+  { key: '/profile', label: '个人中心', icon: <UserOutlined /> },
 ];
 
 const userMenuItems = [
-  { key: '/profile', label: '个人中心' },
-  { key: '/profile/contributions', label: '我的贡献' },
-  { key: '/profile/bookmarks', label: '我的收藏' },
   { key: '/profile/notifications', label: '消息通知' },
   { key: '/profile/settings', label: '个人设置' },
 ];
@@ -71,6 +69,7 @@ function buildAdminMenu(hasPermission: (key: string) => boolean, onNavigate?: ()
 
 export default function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { user, loading, isAdmin, permissions, hasPermission, signOut } = useAuth();
   const hasAdminPermissions = [...permissions].some((key) => key.startsWith('admin.'));
@@ -83,7 +82,7 @@ export default function Navigation() {
 
   const handleLogout = async () => {
     await signOut();
-    window.location.href = '/login';
+    router.push('/login');
   };
 
   return (
@@ -242,7 +241,7 @@ export default function Navigation() {
           mode="inline"
           selectedKeys={[pathname]}
           items={[
-            ...navItems.map((item) => ({
+            ...filteredNavItems.map((item) => ({
               key: item.key,
               icon: item.icon,
               label: <Link href={item.key} onClick={() => setDrawerOpen(false)}>{item.label}</Link>,

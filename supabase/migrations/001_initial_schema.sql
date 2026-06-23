@@ -18,7 +18,7 @@ CREATE TABLE users (
   role TEXT DEFAULT 'user' CHECK (role IN ('user', 'contributor', 'moderator', 'admin')),
   bio TEXT DEFAULT '',
   points INTEGER DEFAULT 0,
-  level TEXT DEFAULT 'AI新手' CHECK (level IN ('AI新手', 'AI探索者', 'AI达人', 'AI专家')),
+  level TEXT DEFAULT '灵识初启' CHECK (level IN ('灵识初启', '问道学徒', '算法筑基', '智核结丹', '万象化神', '天机掌门')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

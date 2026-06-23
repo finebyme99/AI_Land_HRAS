@@ -4,11 +4,11 @@
 
 -- 用户
 INSERT INTO users (id, feishu_open_id, name, avatar, department, role, bio, points, level) VALUES
-('a0000000-0000-0000-0000-000000000001', 'ou_user001', '张三', '', 'HRBP', 'user', 'AI 爱好者', 120, 'AI探索者'),
-('a0000000-0000-0000-0000-000000000002', 'ou_user002', '李四', '', 'COE', 'contributor', 'Prompt 工程师', 200, 'AI达人'),
-('a0000000-0000-0000-0000-000000000003', 'ou_user003', '王五', '', 'HR', 'user', 'RAG 爱好者', 80, 'AI探索者'),
-('a0000000-0000-0000-0000-000000000004', 'ou_user004', '赵六', '', 'HRBP', 'user', '自动化达人', 150, 'AI探索者'),
-('a0000000-0000-0000-0000-000000000005', 'ou_user005', '钱七', '', 'COE', 'user', '数据分析师', 90, 'AI新手');
+('a0000000-0000-0000-0000-000000000001', 'ou_user001', '张三', '', 'HRBP', 'user', 'AI 爱好者', 120, '问道学徒'),
+('a0000000-0000-0000-0000-000000000002', 'ou_user002', '李四', '', 'COE', 'contributor', 'Prompt 工程师', 200, '算法筑基'),
+('a0000000-0000-0000-0000-000000000003', 'ou_user003', '王五', '', 'HR', 'user', 'RAG 爱好者', 80, '问道学徒'),
+('a0000000-0000-0000-0000-000000000004', 'ou_user004', '赵六', '', 'HRBP', 'user', '自动化达人', 150, '算法筑基'),
+('a0000000-0000-0000-0000-000000000005', 'ou_user005', '钱七', '', 'COE', 'user', '数据分析师', 90, '问道学徒');
 
 -- 活动（AI 大赛）
 INSERT INTO events (id, title, description, rules, prizes, start_time, end_time, registration_deadline, status, registration_count, max_participants) VALUES

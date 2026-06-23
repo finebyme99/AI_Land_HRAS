@@ -11,6 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 按依赖关系倒序删除
 -- ============================================
 DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS user_point_events CASCADE;
 DROP TABLE IF EXISTS bookmarks CASCADE;
 DROP TABLE IF EXISTS dislikes CASCADE;
 DROP TABLE IF EXISTS likes CASCADE;
@@ -42,7 +43,7 @@ CREATE TABLE users (
   role TEXT DEFAULT 'user' CHECK (role IN ('user', 'contributor', 'moderator', 'admin')),
   bio TEXT DEFAULT '',
   points INTEGER DEFAULT 0,
-  level TEXT DEFAULT 'AI新手' CHECK (level IN ('AI新手', 'AI探索者', 'AI达人', 'AI专家')),
+  level TEXT DEFAULT '灵识初启' CHECK (level IN ('灵识初启', '问道学徒', '算法筑基', '智核结丹', '万象化神', '天机掌门')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -328,6 +329,24 @@ CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX idx_notifications_is_read ON notifications(user_id, is_read);
 
 -- ============================================
+-- 17. 用户积分事件表
+-- ============================================
+CREATE TABLE user_point_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source_type TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  points INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, source_type, source_id, reason)
+);
+
+CREATE INDEX idx_user_point_events_user_id ON user_point_events(user_id);
+CREATE INDEX idx_user_point_events_source ON user_point_events(source_type, source_id);
+
+-- ============================================
 -- RLS 策略（Row Level Security）
 -- ============================================
 
@@ -342,6 +361,7 @@ ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dislikes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_point_events ENABLE ROW LEVEL SECURITY;
 
 -- 用户：所有人可读，本人可改
 CREATE POLICY "Users are viewable by everyone" ON users FOR SELECT USING (true);
@@ -390,6 +410,10 @@ CREATE POLICY "Users can manage own bookmarks" ON bookmarks FOR ALL USING (user_
 CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (user_id = auth.uid());
 
+-- 积分事件：本人可读，service role 写入
+CREATE POLICY "Users can read own point events" ON user_point_events FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "Service role can manage point events" ON user_point_events FOR ALL USING (auth.role() = 'service_role');
+
 -- ============================================
 -- 自动更新 updated_at 触发器
 -- ============================================
@@ -408,6 +432,7 @@ CREATE TRIGGER update_courses_updated_at BEFORE UPDATE ON courses FOR EACH ROW E
 CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON events FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_topics_updated_at BEFORE UPDATE ON topics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_answers_updated_at BEFORE UPDATE ON answers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_user_point_events_updated_at BEFORE UPDATE ON user_point_events FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 -- ============================================
 -- 数据库函数
 -- ============================================

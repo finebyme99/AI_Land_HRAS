@@ -25,6 +25,17 @@ export interface AuthLog {
 }
 
 // ============ 用户 ============
+export const USER_LEVELS = [
+  '灵识初启',
+  '问道学徒',
+  '算法筑基',
+  '智核结丹',
+  '万象化神',
+  '天机掌门',
+] as const;
+
+export type UserLevel = typeof USER_LEVELS[number];
+
 export interface User {
   id: string;
   feishu_open_id: string;
@@ -38,7 +49,7 @@ export interface User {
   reviewer_roles?: string[]; // 管理员分配的评委角色：user/business/tech
   bio: string;
   points: number;
-  level: 'AI新手' | 'AI探索者' | 'AI达人' | 'AI专家';
+  level: UserLevel;
   created_at: string;
   last_active_at?: string | null;
   permissions?: string[];

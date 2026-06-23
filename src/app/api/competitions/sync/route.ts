@@ -5,6 +5,7 @@ import { getSupabaseAdmin, ensureBucket, uploadToStorage } from '@/lib/supabase-
 import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
 import { FALLBACK_FIELD_MAP, type FieldMapEntry } from '@/lib/bitable/field-map';
 import { syncFieldMapFromFeishu } from '@/lib/bitable/sync-field-map';
+import { buildCompetitionPointEvents, getUserLevelByPoints } from '@/lib/user-growth';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
@@ -26,6 +27,102 @@ function errMsg(err: unknown): string {
   if (err && typeof err === 'object' && 'message' in err) return String(err.message);
   if (typeof err === 'string') return err;
   try { return JSON.stringify(err); } catch { return String(err); }
+}
+
+async function syncCompetitionPointEvents(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  rows: Record<string, unknown>[],
+) {
+  const events = buildCompetitionPointEvents(rows.map((row) => ({
+    id: row.id,
+    submitter: row.submitter,
+    team_members: row.team_members,
+  })));
+
+  const sourceIds = [...new Set(events.map((event) => event.sourceId))];
+  if (sourceIds.length === 0) {
+    return { pointEvents: 0, usersUpdated: 0, unmatchedNames: [] as string[] };
+  }
+
+  const { data: existingEvents, error: existingErr } = await supabase
+    .from('user_point_events')
+    .select('user_id')
+    .eq('source_type', 'competition_submission')
+    .in('source_id', sourceIds);
+  if (existingErr) throw existingErr;
+
+  const { error: deleteErr } = await supabase
+    .from('user_point_events')
+    .delete()
+    .eq('source_type', 'competition_submission')
+    .in('source_id', sourceIds);
+  if (deleteErr) throw deleteErr;
+
+  const participantNames = [...new Set(events.map((event) => event.participantName))];
+  const { data: users, error: usersErr } = await supabase
+    .from('users')
+    .select('id, name')
+    .in('name', participantNames);
+  if (usersErr) throw usersErr;
+
+  const userByName = new Map((users ?? []).map((user) => [String(user.name).trim(), String(user.id)]));
+  const unmatchedNames = participantNames.filter((name) => !userByName.has(name));
+  const pointRows = events
+    .map((event) => {
+      const userId = userByName.get(event.participantName);
+      if (!userId) return null;
+      return {
+        user_id: userId,
+        source_type: 'competition_submission',
+        source_id: event.sourceId,
+        reason: event.reason,
+        points: event.points,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null);
+
+  if (pointRows.length > 0) {
+    const { error: insertErr } = await supabase
+      .from('user_point_events')
+      .upsert(pointRows, { onConflict: 'user_id,source_type,source_id,reason' });
+    if (insertErr) throw insertErr;
+  }
+
+  const affectedUserIds = [
+    ...new Set([
+      ...(existingEvents ?? []).map((event) => String(event.user_id)),
+      ...pointRows.map((row) => row.user_id),
+    ]),
+  ].filter(Boolean);
+
+  if (affectedUserIds.length === 0) {
+    return { pointEvents: pointRows.length, usersUpdated: 0, unmatchedNames };
+  }
+
+  const { data: allPointRows, error: pointsErr } = await supabase
+    .from('user_point_events')
+    .select('user_id, points')
+    .in('user_id', affectedUserIds);
+  if (pointsErr) throw pointsErr;
+
+  const totals = new Map<string, number>();
+  for (const userId of affectedUserIds) totals.set(userId, 0);
+  for (const row of allPointRows ?? []) {
+    const userId = String(row.user_id);
+    totals.set(userId, (totals.get(userId) ?? 0) + Number(row.points ?? 0));
+  }
+
+  let usersUpdated = 0;
+  for (const [userId, points] of totals) {
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({ points, level: getUserLevelByPoints(points) })
+      .eq('id', userId);
+    if (updateErr) throw updateErr;
+    usersUpdated++;
+  }
+
+  return { pointEvents: pointRows.length, usersUpdated, unmatchedNames };
 }
 
 // 飞书选项 ID → 汉字 status（AI大赛状态 / 赛事状态 字段共用同一组 opt）
@@ -516,6 +613,8 @@ export async function POST(request: NextRequest) {
       if (error) throw new Error(`写入数据库失败: ${errMsg(error)}`);
     }
 
+    const participantPoints = await syncCompetitionPointEvents(supabase, rows);
+
     // 自动回填 reviewer 角色：扫本次同步的所有 submissions 的 reviewers + verifier 字段，
     // 给对应的 users 加上 'reviewer' 角色（仅在没加过时；管理员等已含其他角色的不动）
     let reviewerAutoGranted = 0;
@@ -552,6 +651,7 @@ export async function POST(request: NextRequest) {
       period,
       attachments: { downloaded: downloadedAttachments, skipped: skippedAttachments, replaced: replacedAttachments },
       reviewerAutoGranted,
+      participantPoints,
       fieldDescriptions,
     });
   } catch (err) {

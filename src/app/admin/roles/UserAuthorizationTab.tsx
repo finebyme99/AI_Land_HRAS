@@ -20,10 +20,12 @@ const reviewerRoleColors: Record<string, string> = {
 };
 
 const levelColors: Record<string, string> = {
-  'AI新手': 'default',
-  'AI探索者': 'blue',
-  'AI达人': 'purple',
-  'AI专家': 'gold',
+  '灵识初启': 'default',
+  '问道学徒': 'blue',
+  '算法筑基': 'cyan',
+  '智核结丹': 'purple',
+  '万象化神': 'magenta',
+  '天机掌门': 'gold',
 };
 
 export default function UserAuthorizationTab() {
