@@ -293,10 +293,9 @@ export function DetailListBlock({
       key: 'reuse-group', className: 'cho-group-reuse',
       children: [
         { title: <FmtHeader label="复用价值系数" tip="跨团队/BU 复用范围" />, dataIndex: 'reuseValue', key: 'rm', width: 110, align: 'center', className: 'cho-col-reuse',
-          render: (v: string | null, record) => {
+          render: (v: string | null) => {
             if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
-            const level = record.reuseValueLevel;
-            const ls = reuseLevelStyle(level);
+            const ls = reuseLevelStyle(v);
             return <span className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap" style={{ background: ls.bg, color: ls.fg, border: `1px solid ${ls.border}` }}>{v}</span>;
           },
         },

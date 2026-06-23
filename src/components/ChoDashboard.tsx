@@ -574,10 +574,9 @@ export default function ChoDashboard() {
         {
           title: <FmtHeader label="复用价值系数" tip="跨团队/BU 复用范围" />,
           dataIndex: 'reuseValue', key: 'rm', width: 200, align: 'center' as const, className: 'cho-col-reuse',
-          render: (v: string | null, record: DashboardRow) => {
+          render: (v: string | null) => {
             if (!v) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
-            const level = record.reuseValueLevel;
-            const ls = reuseLevelStyle(level);
+            const ls = reuseLevelStyle(v);
             return (
               <span className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap" style={{ background: ls.bg, color: ls.fg, border: `1px solid ${ls.border}` }}>
                 {v}
@@ -1051,11 +1050,6 @@ function SubmissionDetailModal({ record, onClose }: { record: any | null; onClos
           {r.reuseValue && (
             <Tag color="purple" style={{ margin: 0 }}>
               复用系数 {r.reuseMultiplier ? `×${r.reuseMultiplier}` : r.reuseValue}
-            </Tag>
-          )}
-          {r.reuseValueLevel && (
-            <Tag color={r.reuseValueLevel === '高价值' ? 'green' : r.reuseValueLevel === '中价值' ? 'orange' : 'default'} style={{ margin: 0 }}>
-              {r.reuseValueLevel}
             </Tag>
           )}
           {r.monthlySavedCost && <Tag color="green" style={{ margin: 0 }}>降本 {r.monthlySavedCost}</Tag>}

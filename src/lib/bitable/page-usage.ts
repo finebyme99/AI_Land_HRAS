@@ -43,7 +43,6 @@ const CHO_DASHBOARD_KEYS: ReadonlySet<string> = new Set([
   'costReductionNote',                                  // 降本费用说明
   // 复用价值
   'reuseValue',                                         // 推广复用价值系数
-  'reuseValueLevel',                                    // 推广复用价值等级
   'sceneRegionCoefficientValue',                        // 场景归属地区系数值
   // 最终价值计分
   'finalValueScore',
@@ -56,7 +55,7 @@ const CHO_DASHBOARD_KEYS: ReadonlySet<string> = new Set([
 /** 场景池（/wish-pool 页面主表格 + 详情弹窗 SceneDrillDownModal）用到的字段 key */
 const WISH_POOL_KEYS: ReadonlySet<string> = new Set([
   // 头部 Tag
-  'proposalNo', 'sceneCategory', 'landingProgress', 'reuseValueLevel',
+  'proposalNo', 'sceneCategory', 'landingProgress', 'reuseValue',
   // 标题 / 简介
   'title', 'briefIntro',
   // 场景信息
@@ -92,7 +91,7 @@ const WISH_POOL_CARD_KEYS: ReadonlySet<string> = new Set([
   'landingProgress',       // 落地进展
   'totalSavedHours',       // 月均节省总工时
   'monthlySavedHours',     // 月均节省总工时（fallback）
-  'reuseValueLevel',       // 复用价值
+  'reuseValue',            // 推广复用价值系数
   'regionCoefficient',     // 地区
 ]);
 

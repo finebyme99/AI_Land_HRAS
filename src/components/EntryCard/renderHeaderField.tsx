@@ -26,7 +26,7 @@ const TAG_COLORS: Record<string, { bg: string; fg: string }> = {
   sceneCategory: { bg: 'rgba(242,127,34,0.1)', fg: '#F27F22' },
   competitionProgress: { bg: 'rgba(0,0,0,0.06)', fg: 'var(--foreground)' },
   landingProgress: { bg: 'rgba(16,185,129,0.1)', fg: '#10b981' },
-  reuseValueLevel: { bg: 'rgba(168,85,247,0.1)', fg: '#a855f7' },
+  reuseValue: { bg: 'rgba(168,85,247,0.1)', fg: '#a855f7' },
   regionCoefficient: { bg: 'rgba(100,116,139,0.1)', fg: '#64748b' },
   monthlySavedHours: { bg: 'rgba(26,58,138,0.08)', fg: '#1a3a8a' },
   monthlySavedCost: { bg: 'rgba(242,127,34,0.08)', fg: '#F27F22' },

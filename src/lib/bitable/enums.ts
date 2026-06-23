@@ -147,7 +147,9 @@ const REUSE_LEVEL_FALLBACK = { bg: 'rgba(0,0,0,0.04)', fg: 'var(--text-secondary
  * @param level  价值等级名（低价值/中价值/高价值/极高价值）或 null
  */
 export function reuseLevelStyle(level: string | null | undefined): { bg: string; fg: string; border: string } {
-  return REUSE_LEVEL_STYLES[level ?? ''] ?? REUSE_LEVEL_FALLBACK;
+  const text = level ?? '';
+  const matchedLevel = Object.keys(REUSE_LEVEL_STYLES).find((name) => text.includes(name));
+  return REUSE_LEVEL_STYLES[matchedLevel ?? text] ?? REUSE_LEVEL_FALLBACK;
 }
 
 // ─── 色板常量导出（供需要直接使用色板的场景）──
