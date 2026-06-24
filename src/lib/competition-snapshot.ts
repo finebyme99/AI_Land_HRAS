@@ -50,6 +50,13 @@ export const COMPETITION_SNAPSHOT_SELECT = [
   'region_coefficient',
   'scene_source',
   'landing_progress',
+  'progress_record',
+  'planned_start_date',
+  'pilot_date',
+  'rollout_date',
+  'full_launch_date',
+  'biz_owner',
+  'ai_owner',
   'period',
   'synced_at',
 ].join(', ');
@@ -104,6 +111,13 @@ export interface CompetitionSnapshotRow {
   region_coefficient?: string | null;
   scene_source?: string | null;
   landing_progress?: string | null;
+  progress_record?: string | null;
+  planned_start_date?: string | null;
+  pilot_date?: string | null;
+  rollout_date?: string | null;
+  full_launch_date?: string | null;
+  biz_owner?: string[] | string | null;
+  ai_owner?: string[] | string | null;
   period?: string | null;
 }
 
@@ -215,6 +229,13 @@ export function mapCompetitionSnapshotRowToWishItem(row: CompetitionSnapshotRow)
     regionCoefficient: row.region_coefficient ?? undefined,
     regionCoefficientValue: asNumber(row.scene_region_coefficient_value),
     landingProgress: row.landing_progress ?? undefined,
+    progressRecord: row.progress_record ?? undefined,
+    plannedStartDate: row.planned_start_date ?? undefined,
+    pilotDate: row.pilot_date ?? undefined,
+    rolloutDate: row.rollout_date ?? undefined,
+    fullLaunchDate: row.full_launch_date ?? undefined,
+    bizOwner: asArray(row.biz_owner),
+    aiOwner: asArray(row.ai_owner),
     competitionProgress: row.status ?? undefined,
     reviewPeriod: row.period ?? undefined,
     submitter: asArray(row.submitter),
@@ -302,6 +323,13 @@ export function buildCompetitionSnapshotUpsertRow(item: WishItem): CompetitionSn
     region_coefficient: item.regionCoefficient ?? null,
     scene_source: item.sceneSource ?? null,
     landing_progress: item.landingProgress ?? null,
+    progress_record: item.progressRecord ?? null,
+    planned_start_date: item.plannedStartDate ?? null,
+    pilot_date: item.pilotDate ?? null,
+    rollout_date: item.rolloutDate ?? null,
+    full_launch_date: item.fullLaunchDate ?? null,
+    biz_owner: dbArray(item.bizOwner),
+    ai_owner: dbArray(item.aiOwner),
     period: item.reviewPeriod ?? '',
   };
 }

@@ -24,8 +24,9 @@ import {
 } from '@/lib/bitable/enums';
 import {
   DetailListBlock,
+  DetailSummaryHeadline,
   WishItem,
-  fmt, fmtF, fmtCost,
+  fmt, fmtF, fmtCost, fmtDate,
 } from '@/components/DetailListBlock';
 
 // ── WishItem 类型已从 DetailListBlock 共享组件 import ──
@@ -60,22 +61,45 @@ function HBar({ label, value, max, color }: { label: string; value: number; max:
 }
 
 // ── 统计卡片 ──
-function StatCard({ icon, label, value, sub, color, highlight }: {
-  icon: React.ReactNode; label: string; value: string; sub?: string; color: string; highlight?: boolean;
+function StatCard({ icon, label, value, sub, color, highlight, onClick, actionLabel }: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub?: string;
+  color: string;
+  highlight?: boolean;
+  onClick?: () => void;
+  actionLabel?: string;
 }) {
-  return (
-    <div
-      className="glass rounded-xl p-4 flex flex-col items-center text-center"
-      style={{
-        borderColor: highlight ? 'rgba(26,58,138,0.3)' : 'rgba(255, 255, 255, 0.6)',
-        background: highlight ? 'rgba(26,58,138,0.04)' : undefined,
-        animation: highlight ? 'breatheGlow 3s ease-in-out infinite' : 'none',
-      }}
-    >
+  const className = `glass rounded-xl p-4 flex flex-col items-center text-center ${
+    onClick ? 'w-full appearance-none transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1a3a8a]/25' : ''
+  }`;
+  const style = {
+    borderColor: highlight ? 'rgba(26,58,138,0.3)' : 'rgba(255, 255, 255, 0.6)',
+    background: highlight ? 'rgba(26,58,138,0.04)' : undefined,
+    animation: highlight ? 'breatheGlow 3s ease-in-out infinite' : 'none',
+    cursor: onClick ? 'pointer' : undefined,
+  };
+  const content = (
+    <>
       <span className="text-lg mb-1" style={{ color }}>{icon}</span>
       <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>{label}</span>
       <span className="text-xl font-bold font-mono mt-0.5" style={{ color }}>{value}</span>
       {sub && <span className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub}</span>}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-label={actionLabel || label} className={className} style={style}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={className} style={style}>
+      {content}
     </div>
   );
 }
@@ -199,7 +223,7 @@ function SceneDetailPopup({ item, categoryColors, progressColors }: { item: Wish
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
         {row('核心价值', item.coreValue)}{row('场景来源', item.sceneSource)}
         {row('业务负责人', arr(item.bizOwner))}{row('AI负责人', arr(item.aiOwner))}
-        {row('计划启动', item.plannedStartDate?.slice(0, 10))}
+        {row('计划启动', fmtDate(item.plannedStartDate))}
       </div>
 
       {sectionTitle('AI前指标', '#1a3a8a')}
@@ -317,7 +341,7 @@ function SceneDrillDownModal({ item, onClose }: { item: WishItem; onClose: () =>
             {row('核心价值', item.coreValue)}{row('场景来源', item.sceneSource)}
             {row('业务负责人', arr(item.bizOwner))}{row('AI负责人', arr(item.aiOwner))}
             {row('提报团队', item.team)}{row('AI工具', arr(item.aiTools))}
-            {row('计划启动', item.plannedStartDate?.slice(0, 10))}{row('试点上线', item.pilotDate?.slice(0, 10))}
+            {row('计划启动', fmtDate(item.plannedStartDate))}{row('试点上线', fmtDate(item.pilotDate))}
             {row('推广上线', item.rolloutDate?.slice(0, 10))}{row('全面上线', item.fullLaunchDate?.slice(0, 10))}
           </div>
 
@@ -437,9 +461,34 @@ function WishPoolContent() {
   const [hoveredRow, setHoveredRow] = useState<WishItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<WishItem | null>(null);
   const [listHover, setListHover] = useState<{ label: string; items: WishItem[]; x: number; y: number } | null>(null);
+  const [scrollTargetTab, setScrollTargetTab] = useState<string | null>(null);
 
   const detailTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const listTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const overviewListRef = useRef<HTMLDivElement>(null);
+  const landedViewRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBlock = useCallback((node: HTMLElement | null) => {
+    node?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const handleScrollToOverviewList = useCallback(() => {
+    scrollToBlock(overviewListRef.current);
+  }, [scrollToBlock]);
+
+  const handleGoToLandedView = useCallback(() => {
+    setScrollTargetTab('landed');
+    setActiveTab('landed');
+  }, []);
+
+  useEffect(() => {
+    if (!scrollTargetTab || activeTab !== scrollTargetTab) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (scrollTargetTab === 'landed') scrollToBlock(landedViewRef.current);
+      setScrollTargetTab(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTab, scrollTargetTab, scrollToBlock]);
 
   // 悬浮处理
   const handleRowEnter = (item: WishItem) => { clearTimeout(detailTimer.current); setHoveredRow(item); };
@@ -601,11 +650,34 @@ function WishPoolContent() {
                   label: <span className="flex items-center gap-1"><EyeOutlined /> 数据总览</span>,
                   children: (
                     <div className="space-y-4" data-export-stack>
+                      <DetailSummaryHeadline
+                        count={overviewSummary.total}
+                        label="场景"
+                        totalSavedEfficiency={overviewSummary.totalSavedEff}
+                        totalMonthlySavedCostDisplay={overviewSummary.totalSavedCostDisplay}
+                        summaryMode="overview"
+                      />
+
                       {/* 统计卡 */}
                       <div className="glass rounded-2xl p-5" style={{ borderColor: 'rgba(255,255,255,0.6)' }}>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          <StatCard icon={<BarChartOutlined />} label="场景总数" value={String(overviewSummary.total)} color="#1a3a8a" />
-                          <StatCard icon={<RocketOutlined />} label="已落地场景数" value={String(overviewSummary.landedCount)} sub="所有上线状态" color="#2d5bc7" />
+                          <StatCard
+                            icon={<BarChartOutlined />}
+                            label="场景总数"
+                            value={String(overviewSummary.total)}
+                            color="#1a3a8a"
+                            onClick={handleScrollToOverviewList}
+                            actionLabel="定位到场景总览列表"
+                          />
+                          <StatCard
+                            icon={<RocketOutlined />}
+                            label="已落地场景数"
+                            value={String(overviewSummary.landedCount)}
+                            sub="所有上线状态"
+                            color="#2d5bc7"
+                            onClick={handleGoToLandedView}
+                            actionLabel="定位到已落地场景视图"
+                          />
                           <StatCard icon={<RiseOutlined />} label={FIELD_LABELS.monthlySavedHours} value={overviewSummary.totalSavedEff > 0 ? `${overviewSummary.totalSavedEff}h` : '—'} sub="= 原月均 - 新月均" color="#1a3a8a" highlight />
                           <StatCard icon={<ThunderboltOutlined />} label={FIELD_LABELS.monthlySavedCost} value={overviewSummary.totalSavedCostDisplay} sub="不含人力成本" color="#4a7de0" />
                         </div>
@@ -653,18 +725,23 @@ function WishPoolContent() {
                       <FormulaSection />
 
                       {/* 数据总览明细列表 */}
-                      <DetailListBlock
-                        baseList={items}
-                        label="场景"
-                        emptyText="暂无场景数据"
-                        showMetrics
-                        fieldDescriptions={fieldDescriptions}
-                        fieldOptions={fieldOptions}
-                        progressColors={progressColors}
-                        onRowEnter={handleRowEnter}
-                        onRowLeave={handleRowLeave}
-                        onSelectItem={setSelectedItem}
-                      />
+                      <div ref={overviewListRef} style={{ scrollMarginTop: 96 }}>
+                        <DetailListBlock
+                          baseList={items}
+                          label="场景"
+                          emptyText="暂无场景数据"
+                          showMetrics
+                          showSummary={false}
+                          showLandingProgressFilter
+                          showLandingPlanColumns
+                          fieldDescriptions={fieldDescriptions}
+                          fieldOptions={fieldOptions}
+                          progressColors={progressColors}
+                          onRowEnter={handleRowEnter}
+                          onRowLeave={handleRowLeave}
+                          onSelectItem={setSelectedItem}
+                        />
+                      </div>
                     </div>
                   ),
                 },
@@ -672,12 +749,15 @@ function WishPoolContent() {
                   key: 'landed',
                   label: <span className="flex items-center gap-1"><RocketOutlined /> 已落地场景明细</span>,
                   children: (
-                    <div className="space-y-2" data-export-stack>
+                    <div ref={landedViewRef} className="space-y-2" data-export-stack style={{ scrollMarginTop: 96 }}>
                       <DetailListBlock
                         baseList={landedItems}
                         label="已落地场景"
                         emptyText="暂无已落地场景"
                         showMetrics
+                        emphasizeSummary
+                        showLandingProgressFilter
+                        showLandingPlanColumns
                         fieldDescriptions={fieldDescriptions}
                         fieldOptions={fieldOptions}
                         progressColors={progressColors}
@@ -699,8 +779,11 @@ function WishPoolContent() {
                         label="待实现场景"
                         emptyText="暂无待实现场景"
                         showMetrics={false}
+                        emphasizeSummary
                         labelColor="#94a3b8"
-                        showPendingDates
+                        showLandingProgressFilter
+                        showLandingPlanColumns
+                        defaultLandingProgressFilters={['待启动']}
                         fieldDescriptions={fieldDescriptions}
                         fieldOptions={fieldOptions}
                         progressColors={progressColors}

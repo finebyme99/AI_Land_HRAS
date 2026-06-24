@@ -49,7 +49,9 @@ export const FALLBACK_FIELD_MAP: Record<string, FieldMapEntry> = {
   '核心价值':                 { key: 'coreValue', type: 'select', group: '场景信息' },
   '场景来源':                 { key: 'sceneSource', type: 'select', group: '场景信息' },
   '业务负责人':               { key: 'bizOwner', type: 'person', group: '场景信息' },
+  '业务对接人':               { key: 'bizOwner', type: 'person', group: '场景信息' },
   'AI负责人':                { key: 'aiOwner', type: 'person', group: '场景信息' },
+  'AI对接人':                { key: 'aiOwner', type: 'person', group: '场景信息' },
 
   // ── 大赛相关 ──
   '大赛进展':                 { key: 'competitionProgress', type: 'select', group: '大赛相关' },
@@ -67,6 +69,7 @@ export const FALLBACK_FIELD_MAP: Record<string, FieldMapEntry> = {
   '试点上线日期':             { key: 'pilotDate', type: 'date', group: '落地进展' },
   '推广上线日期':             { key: 'rolloutDate', type: 'date', group: '落地进展' },
   '全面上线日期':             { key: 'fullLaunchDate', type: 'date', group: '落地进展' },
+  '进展备注':                 { key: 'progressRecord', type: 'text', group: '落地进展' },
   '进展记录&链接':            { key: 'progressRecord', type: 'text', group: '落地进展' },
 
   // ── AI 前指标 ──
@@ -132,6 +135,13 @@ export const SYNC_KEY_TO_DB: Record<string, string> = {
   reviewPeriod: 'period',             // 注意：DB 列名是 period
   competitionProgress: 'status',      // 注意：DB 列名是 status
   landingProgress: 'landing_progress',
+  plannedStartDate: 'planned_start_date',
+  pilotDate: 'pilot_date',
+  rolloutDate: 'rollout_date',
+  fullLaunchDate: 'full_launch_date',
+  progressRecord: 'progress_record',
+  bizOwner: 'biz_owner',
+  aiOwner: 'ai_owner',
   beforeProcess: 'before_process',
   painPoints: 'pain_points',
   beforeOperationCount: 'old_operation_count', // 注意：DB 列名是 old_operation_count

@@ -143,6 +143,7 @@ src/
 - 场景大全和 AI 大赛页面默认读取 Supabase 的 `competition_submissions` 快照。
 - 飞书多维表数据只通过管理员同步按钮或 Vercel 定时任务 `GET /api/cron/sync-competitions` 刷新。
 - 同步逻辑会保留已有评审记录关联的历史方案 ID，把最新飞书字段写回该 ID，并清理重复影子行。
+- 场景大全列表的落地计划字段依赖 `073_competition_landing_plan_fields.sql` 写入 `competition_submissions`：进展备注、计划启动日期、试点上线日期、推广上线日期、全面上线日期、业务对接人、AI 对接人。
 
 ## 详细规范
 

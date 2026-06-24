@@ -191,6 +191,9 @@ function mapRecord(record: any, map: Record<string, FieldMapEntry>, existingRows
       }
       continue;
     }
+    else if (entry.type === 'date') {
+      mapped[syncKey] = typeof value === 'number' ? new Date(value).toISOString() : value;
+    }
     // attachment field: [{file_token, name, type, url}] → 保留原对象
     else if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && ('file_token' in value[0] || ('url' in value[0] && 'type' in value[0]))) {
       mapped[syncKey] = value;
@@ -611,6 +614,13 @@ export async function POST(request: NextRequest) {
         region_coefficient: mapped.regionCoefficient ?? null,
         scene_source: mapped.sceneSource ?? null,
         landing_progress: mapped.landingProgress ?? null,
+        progress_record: mapped.progressRecord ?? null,
+        planned_start_date: mapped.plannedStartDate ?? null,
+        pilot_date: mapped.pilotDate ?? null,
+        rollout_date: mapped.rolloutDate ?? null,
+        full_launch_date: mapped.fullLaunchDate ?? null,
+        biz_owner: toArray(mapped.bizOwner),
+        ai_owner: toArray(mapped.aiOwner),
       });
     }
 

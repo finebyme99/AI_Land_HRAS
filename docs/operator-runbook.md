@@ -41,5 +41,6 @@ SQL Editor 中已经执行完成的 DDL/DML 不能像文本编辑器一样撤销
 - 页面读取路径：`GET /api/wish-pool`、`GET /api/competitions/progress`、`GET /api/admin/competitions/overview` 默认从 Supabase `competition_submissions` 读取快照，不在页面打开时全量读飞书。
 - 刷新入口：场景大全按钮 `POST /api/wish-pool/sync`、AI 大赛/成效看板按钮 `POST /api/competitions/sync?period=<YYMM>`、定时任务 `GET /api/cron/sync-competitions`。
 - 同步逻辑入口：`src/lib/competition-snapshot-sync.ts` 和 `src/app/api/competitions/sync/route.ts` 都使用 `src/lib/competition-snapshot.ts` 的 canonical ID 规则。若旧 `competition_submissions.id` 已被 `competition_reviews.submission_id` 使用，且旧行 `record_url` 指向当前飞书记录，必须保留旧 ID，把最新字段写回旧 ID，再删除新 ID 影子行。
+- 场景大全落地计划字段依赖生产库执行 `073_competition_landing_plan_fields.sql`，包括 `progress_record`、`planned_start_date`、`pilot_date`、`rollout_date`、`full_launch_date`、`biz_owner`、`ai_owner`。如果页面里进展备注、计划日期、业务/AI 对接人为空，或同步返回 schema cache 缺列，先确认该迁移已执行并刷新 PostgREST schema cache。
 - 重复排查：按 `period + record_url` 中的 `record` 参数分组检查 `competition_submissions`；若同一飞书记录出现两行，先确认 `competition_reviews` 是否挂在旧 ID 上，不要直接删除带评审记录的行。
 - 冒烟：同步后检查目标方案在 `/competitions`、`/wish-pool`、成效看板中只出现一条；SQL/脚本层确认 `competition_submissions` 按 `period + record_url.record` 分组没有重复。
