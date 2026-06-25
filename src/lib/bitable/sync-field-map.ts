@@ -3,7 +3,7 @@
  *
  * 被以下入口复用：
  *   - POST /api/admin/bitable-field-map/sync-from-feishu（管理后台手动）
- *   - POST /api/competitions/sync（成效看板"从飞书同步"按钮）
+ *   - POST /api/admin/competition-sync（全量场景数据同步前的字段 schema 联动）
  *
  * 核心流程：
  *   1. 从飞书 fields API 拉取最新字段定义（含 description）

@@ -66,10 +66,12 @@ src/
 - The server reads the current user from the `feishu_user_id` cookie, looks up that user's `feishu_open_id`, and sends with `receive_id_type=open_id`. It does not broadcast to group chats.
 - The card template reuses `src/lib/feishu-cards.ts#buildResourceCard`. The tools entry point is `/resources?tab=apps`.
 
-## Competition Snapshot Sync
+## Scenario Snapshot Sync
 
-- Scenario library and AI competition pages read `competition_submissions` snapshots from Supabase by default.
-- Feishu bitable data refreshes only through admin-triggered sync buttons or the Vercel cron route `GET /api/cron/sync-competitions`.
+- Scenario library, AI competition progress, and CHO dashboard pages read `competition_submissions` snapshots from Supabase by default. Foreground page refreshes do not pull Feishu directly.
+- Full Feishu bitable sync is centralized in the admin field-map page: `/admin/bitable-field-map` -> `全量同步飞书场景数据` -> `POST /api/admin/competition-sync`, guarded by the `competition.sync` permission.
+- The Vercel cron route `GET /api/cron/sync-competitions` uses the same sync service.
+- Sync status is stored in `platform_settings` through migration `074_competition_sync_status.sql`, including the latest attempt time, latest successful sync time, status, and result counts such as synced and changed rows.
 - Sync code preserves historical submission IDs that already have review records, then writes the latest Feishu fields onto that ID and removes duplicate shadow rows.
 
 ## Detailed Guidelines
@@ -138,10 +140,12 @@ src/
 - 服务端按 `feishu_user_id` cookie 查询当前用户的 `feishu_open_id`，使用 `receive_id_type=open_id` 发送，不会群发到群聊。
 - 卡片模板复用 `src/lib/feishu-cards.ts#buildResourceCard`，工具列表入口为 `/resources?tab=apps`。
 
-## 大赛快照同步
+## 场景快照同步
 
-- 场景大全和 AI 大赛页面默认读取 Supabase 的 `competition_submissions` 快照。
-- 飞书多维表数据只通过管理员同步按钮或 Vercel 定时任务 `GET /api/cron/sync-competitions` 刷新。
+- 场景大全、AI 大赛进展和成效看板页面默认读取 Supabase 的 `competition_submissions` 快照，前台页面刷新不直接拉取飞书。
+- 飞书多维表全量同步统一收口到管理后台字段映射页：`/admin/bitable-field-map` -> `全量同步飞书场景数据` -> `POST /api/admin/competition-sync`，由 `competition.sync` 权限控制。
+- Vercel 定时任务 `GET /api/cron/sync-competitions` 复用同一套同步服务。
+- 同步状态通过 `074_competition_sync_status.sql` 写入 `platform_settings`，记录最近尝试时间、最近成功同步时间、状态，以及成功/变化等结果数量；前台展示文案为「数据最近更新时间：...」。
 - 同步逻辑会保留已有评审记录关联的历史方案 ID，把最新飞书字段写回该 ID，并清理重复影子行。
 - 场景大全列表的落地计划字段依赖 `073_competition_landing_plan_fields.sql` 写入 `competition_submissions`：进展备注、计划启动日期、试点上线日期、推广上线日期、全面上线日期、业务对接人、AI 对接人。
 

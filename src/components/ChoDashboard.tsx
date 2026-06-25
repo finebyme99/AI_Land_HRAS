@@ -11,7 +11,6 @@ import {
   ClockCircleOutlined,
   RiseOutlined,
   ThunderboltOutlined,
-  SyncOutlined,
   SwapRightOutlined,
   QuestionCircleOutlined,
   DownloadOutlined,
@@ -20,7 +19,8 @@ import { useAuth } from '@/lib/auth-context';
 import { FIELD_LABELS, VALUE_FORMULA_COPY } from '@/lib/bitable/labels';
 import { parseMetricNumber, summarizeValueMetrics } from '@/lib/bitable/metrics';
 import { applyExportImageCloneLayout, getExportImageCaptureWidth } from '@/lib/export-image-style';
-import { canSyncCompetitionPeriod, isAllCompetitionPeriod } from '@/lib/competition-periods';
+import { isAllCompetitionPeriod } from '@/lib/competition-periods';
+import { formatSnapshotStatus } from '@/lib/sync-status';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -84,6 +84,7 @@ interface OverviewResponse {
   };
   submissions: ChoSubmission[];
   panel: Record<string, string[]>;
+  lastSyncedAt?: string | null;
   fieldDescriptions?: Record<string, string>;
   fieldOptions?: Record<string, { id: string; name: string }[]>;
 }
@@ -262,7 +263,6 @@ export default function ChoDashboard() {
     return () => window.clearTimeout(timer);
   }, [canView, fetchTimeline]);
 
-  const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const handleExportImage = async () => {
     if (!canExportImage) {
@@ -338,34 +338,6 @@ export default function ChoDashboard() {
       setExporting(false);
     }
   };
-  const handleSync = async () => {
-    if (!canSyncCompetition) {
-      message.error('无同步权限');
-      return;
-    }
-    if (!canSyncCompetitionPeriod(period)) {
-      message.info('请选择具体评审周期后再同步');
-      return;
-    }
-    setSyncing(true);
-    message.loading({ content: '正在从飞书同步…', key: 'sync', duration: 0 });
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5 * 60 * 1000);
-      const res = await fetch(`/api/competitions/sync?period=${period}`, { method: 'POST', signal: controller.signal });
-      clearTimeout(timer);
-      const result = await res.json();
-      if (result.error) throw new Error(result.error);
-      message.success({ content: `已同步 ${result.synced} 条方案`, key: 'sync' });
-      await Promise.all([fetchData(), fetchTimeline()]);
-    } catch (err) {
-      const msg = err instanceof DOMException && err.name === 'AbortError' ? '同步超时' : err instanceof Error ? err.message : '同步失败';
-      message.error({ content: msg, key: 'sync' });
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   // ── Enriched data: 尽量全用飞书公式字段 ──
   // 口径说明（2026-06 优化）：
   //   - beforeHours            ：飞书 beforeMonthlyHours（原月均耗时）优先
@@ -742,19 +714,9 @@ export default function ChoDashboard() {
       <div className="py-2 sm:py-3">
         {/* 操作栏（按钮放左侧，无标题） */}
         <div className="glass rounded-xl px-4 py-3 mb-2 flex items-center gap-2" style={{ borderColor: 'rgba(255, 255, 255, 0.6)' }}>
-          {canSyncCompetition && (
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-              style={{
-                background: isAllCompetitionPeriod(period) ? 'rgba(148,163,184,0.8)' : 'linear-gradient(135deg, #d46b08, #f27f22)',
-                boxShadow: isAllCompetitionPeriod(period) ? 'none' : '0 4px 15px rgba(242,127,34,0.3)',
-              }}
-            >
-              <SyncOutlined spin={syncing} /> 从飞书同步
-            </button>
-          )}
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            {formatSnapshotStatus(data?.lastSyncedAt)}
+          </span>
           {canExportImage && (
             <button
               onClick={handleExportImage}

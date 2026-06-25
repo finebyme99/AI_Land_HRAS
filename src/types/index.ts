@@ -111,6 +111,7 @@ export interface Course {
   period?: string | null;  // 期数
   season?: string | null;  // 季数
   cover_image_key?: string | null;
+  synced_at?: string | null;
   created_at: string;
 }
 

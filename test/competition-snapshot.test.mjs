@@ -4,6 +4,7 @@ import { test } from 'node:test';
 
 import {
   buildCompetitionSnapshotUpsertRow,
+  countChangedCompetitionSnapshotRows,
   extractCompetitionRecordIdFromUrl,
   getCanonicalCompetitionSnapshotId,
   getCompetitionSnapshotDuplicateShadowIds,
@@ -91,6 +92,35 @@ test('page data GET routes read Supabase snapshots instead of Feishu records', (
     assert.equal(source.includes('/bitable/v1/apps/'), false, `${file} should not call Feishu records`);
     assert.equal(source.includes("from('competition_submissions')"), true, `${file} should read the snapshot table`);
   }
+});
+
+test('counts changed snapshot rows while ignoring synced_at churn', () => {
+  const unchanged = {
+    id: 'rec-unchanged',
+    title: '未变化方案',
+    period: '2606',
+    status: '评审中',
+    synced_at: '2026-06-25T00:00:00.000Z',
+  };
+  const changed = {
+    id: 'rec-changed',
+    title: '变化方案',
+    period: '2606',
+    status: '评审中',
+    synced_at: '2026-06-25T00:00:00.000Z',
+  };
+
+  assert.equal(
+    countChangedCompetitionSnapshotRows(
+      [
+        { ...unchanged, synced_at: '2026-06-25T01:00:00.000Z' },
+        { ...changed, status: '终审通过', synced_at: '2026-06-25T01:00:00.000Z' },
+        { id: 'rec-new', title: '新增方案', period: '2606', status: '评审中', synced_at: '2026-06-25T01:00:00.000Z' },
+      ],
+      [unchanged, changed],
+    ),
+    2,
+  );
 });
 
 test('builds Supabase snapshot upsert rows from mapped Feishu items', () => {
@@ -201,24 +231,13 @@ test('detects duplicate shadow ids created by non-canonical sync routes', () => 
   );
 });
 
-test('competition sync routes share duplicate cleanup helper', () => {
-  const routeFiles = [
-    'src/app/api/wish-pool/sync/route.ts',
-    'src/app/api/competitions/sync/route.ts',
-  ];
+test('admin competition sync route owns snapshot writes while legacy sync route is read-only', () => {
+  const adminSource = readFileSync('src/app/api/admin/competition-sync/route.ts', 'utf8');
+  const legacySource = readFileSync('src/app/api/competitions/sync/route.ts', 'utf8');
 
-  for (const file of routeFiles) {
-    const source = readFileSync(file, 'utf8');
-    if (file.endsWith('/wish-pool/sync/route.ts')) {
-      assert.equal(source.includes('syncCompetitionSnapshot'), true, `${file} should use shared snapshot sync`);
-    } else {
-      assert.equal(
-        source.includes('getCompetitionSnapshotDuplicateShadowIds'),
-        true,
-        `${file} should clean duplicate shadow ids`,
-      );
-    }
-  }
+  assert.equal(adminSource.includes('runCompetitionSyncAndRecordStatus'), true);
+  assert.equal(legacySource.includes('export async function POST'), false);
+  assert.equal(legacySource.includes('getTenantAccessToken'), false);
 });
 
 test('competition page uses AntD 6 tooltip styles API', () => {

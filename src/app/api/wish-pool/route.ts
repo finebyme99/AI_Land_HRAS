@@ -14,6 +14,7 @@ import {
   filterExcludedBitableRecords,
   summarizeValueMetrics,
 } from '@/lib/bitable/metrics';
+import { getLatestSyncedAt } from '@/lib/sync-status';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
@@ -34,7 +35,9 @@ export async function GET() {
     const fieldDescriptions = collectFieldDescriptions(fieldMap);
     const fieldOptions = collectFieldOptions(fieldMap);
 
-    const rawItems = ((data ?? []) as unknown as CompetitionSnapshotRow[]).map(mapCompetitionSnapshotRowToWishItem);
+    const snapshotRows = (data ?? []) as unknown as CompetitionSnapshotRow[];
+    const lastSyncedAt = getLatestSyncedAt(snapshotRows);
+    const rawItems = snapshotRows.map(mapCompetitionSnapshotRowToWishItem);
     const items = filterExcludedBitableRecords(rawItems);
 
     // 价值星级计算（前端计算字段，不从飞书同步）
@@ -93,10 +96,12 @@ export async function GET() {
       items,
       ranked,
       total,
+      lastSyncedAt,
       fieldDescriptions,
       fieldOptions,
       stats: {
         total,
+        lastSyncedAt,
         avgScore,
         withScoreCount: withScore.length,
         progressMap,

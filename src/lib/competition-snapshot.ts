@@ -119,6 +119,7 @@ export interface CompetitionSnapshotRow {
   biz_owner?: string[] | string | null;
   ai_owner?: string[] | string | null;
   period?: string | null;
+  synced_at?: string | null;
 }
 
 export type CompetitionSnapshotUpsertRow = Record<string, unknown> & {
@@ -126,6 +127,31 @@ export type CompetitionSnapshotUpsertRow = Record<string, unknown> & {
   title: string;
   period: string;
 };
+
+function stableValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (!value || typeof value !== 'object') return value;
+
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+    if (key === 'synced_at') continue;
+    result[key] = stableValue((value as Record<string, unknown>)[key]);
+  }
+  return result;
+}
+
+export function countChangedCompetitionSnapshotRows(
+  nextRows: Array<Record<string, unknown> & { id: string }>,
+  existingRows: Array<Record<string, unknown> & { id: string }>,
+): number {
+  const existingById = new Map(existingRows.map((row) => [row.id, JSON.stringify(stableValue(row))]));
+
+  return nextRows.reduce((count, row) => {
+    const existing = existingById.get(row.id);
+    if (!existing) return count + 1;
+    return existing === JSON.stringify(stableValue(row)) ? count : count + 1;
+  }, 0);
+}
 
 export interface FeishuSnapshotRecord {
   record_id: string;

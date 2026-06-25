@@ -13,6 +13,7 @@ import {
   filterExcludedBitableRecords,
   summarizeValueMetrics,
 } from '@/lib/bitable/metrics';
+import { getLatestSyncedAt } from '@/lib/sync-status';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
@@ -34,7 +35,9 @@ export async function GET() {
     const fieldDescriptions = collectFieldDescriptions(fieldMap);
     const fieldOptions = collectFieldOptions(fieldMap);
 
-    const allMapped = ((data ?? []) as unknown as CompetitionSnapshotRow[]).map(mapCompetitionSnapshotRowToWishItem);
+    const snapshotRows = (data ?? []) as unknown as CompetitionSnapshotRow[];
+    const lastSyncedAt = getLatestSyncedAt(snapshotRows);
+    const allMapped = snapshotRows.map(mapCompetitionSnapshotRowToWishItem);
     const cleanItems = filterExcludedBitableRecords(allMapped);
 
     // 过滤参赛方案（只上岛：评审中 + 终审通过 + 有评审周期）
@@ -107,6 +110,7 @@ export async function GET() {
       allItems: items,
       periods,
       currentPeriod,
+      lastSyncedAt,
       fieldDescriptions,
       fieldOptions,
       summary,

@@ -6,6 +6,8 @@ import { getTenantAccessToken } from './feishu';
 import { getSupabaseAdmin } from './supabase-admin';
 import {
   buildCompetitionSnapshotUpsertRow,
+  COMPETITION_SNAPSHOT_SELECT,
+  countChangedCompetitionSnapshotRows,
   type CompetitionSnapshotIdentityRow,
   getCanonicalCompetitionSnapshotId,
   getCompetitionSnapshotDuplicateShadowIds,
@@ -31,6 +33,7 @@ export interface SyncCompetitionSnapshotResult {
   period: string | null;
   fetched: number;
   upserted: number;
+  changed: number;
   skipped: number;
   removedDuplicates: number;
   fieldDescriptions: Record<string, string>;
@@ -99,10 +102,11 @@ export async function syncCompetitionSnapshot(options: SyncCompetitionSnapshotOp
   const records = await fetchFeishuRecords(token, reviewPeriodFieldName, options);
   const { data: existingRows, error: existingRowsError } = await supabase
     .from('competition_submissions')
-    .select('id, record_url')
+    .select(COMPETITION_SNAPSHOT_SELECT)
     .not('record_url', 'is', null);
   if (existingRowsError) throw new Error(`读取快照身份失败: ${existingRowsError.message}`);
-  const existingIdentities = (existingRows ?? []) as CompetitionSnapshotIdentityRow[];
+  const existingSnapshotRows = (existingRows ?? []) as unknown as Array<Record<string, unknown> & { id: string }>;
+  const existingIdentities = existingSnapshotRows as CompetitionSnapshotIdentityRow[];
 
   let skipped = 0;
   const rows = records
@@ -125,6 +129,7 @@ export async function syncCompetitionSnapshot(options: SyncCompetitionSnapshotOp
       return buildCompetitionSnapshotUpsertRow(item);
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
+  const changed = countChangedCompetitionSnapshotRows(rows, existingSnapshotRows);
 
   for (let i = 0; i < rows.length; i += 500) {
     const batch = rows.slice(i, i + 500);
@@ -150,6 +155,7 @@ export async function syncCompetitionSnapshot(options: SyncCompetitionSnapshotOp
     period: options.period ?? null,
     fetched: records.length,
     upserted: rows.length,
+    changed,
     skipped,
     removedDuplicates,
     fieldDescriptions,

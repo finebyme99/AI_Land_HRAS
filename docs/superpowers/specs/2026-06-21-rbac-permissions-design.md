@@ -182,7 +182,7 @@ export function getPermissionsByGroup(): Record<string, PermissionDef[]> { /* ..
 | `review.export` | 评审记录导出 CSV | 大赛评审 |
 | `review.sync-feishu` | 评审进度同步飞书 | 大赛评审 |
 | `review.clear-reviewer` | 清空评委评分 | 大赛评审 |
-| `competition.sync` | 大赛数据同步飞书 | 大赛评审 |
+| `competition.sync` | 全量同步飞书场景数据 | 场景数据 |
 | `case.feature` | 标精选 | 场景池 |
 | `case.submit` | 提交案例 | 场景池 |
 | `resource.submit` | 提交工具 | 资源 |
@@ -320,15 +320,14 @@ interface AuthContextType {
 
 ## 安全修复（顺手补齐）
 
-盘点发现 3 个 API 缺少权限校验，本期一并补齐：
+盘点发现若干 API 缺少权限校验，本期一并补齐。2026-06-26 当前实现中，场景数据写入型同步已收口到 `POST /api/admin/competition-sync`，并由 `competition.sync` 控制；旧 `POST /api/wish-pool/sync-field-map` 已删除，`/api/competitions/sync` 仅保留 GET 只读兼容。
 
 | 路由 | 现状 | 修复 |
 |---|---|---|
-| `POST /api/competitions/sync` | 仅校验登录 | 加 `requireAdmin`（或基于 `competition.sync` 权限点） |
-| `POST /api/wish-pool/sync-field-map` | 完全无校验 | 加 `requireAdmin` |
+| `POST /api/admin/competition-sync` | 全量飞书场景数据同步 | `competition.sync` 权限点 |
 | `POST /api/admin/reviews/sync-progress` | 完全无校验 | 加 `requireAdmin` |
 
-这三处属于现有 bug，独立于 RBAC，但因为正好在权限相关代码路径上，一起补掉。
+这些属于现有 bug，独立于 RBAC，但因为正好在权限相关代码路径上，一起补掉。
 
 ## 实现顺序
 

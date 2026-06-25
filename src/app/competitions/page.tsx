@@ -16,7 +16,6 @@ import {
   RiseOutlined,
   BulbOutlined,
   DollarOutlined,
-  SyncOutlined,
   QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
@@ -29,10 +28,9 @@ import type { FieldSelectOption } from '@/lib/bitable/field-map';
 import { FIELD_LABELS } from '@/lib/bitable/labels';
 import { summarizeValueMetrics } from '@/lib/bitable/metrics';
 import {
-  canSyncCompetitionPeriod,
   filterByCompetitionPeriod,
-  isAllCompetitionPeriod,
 } from '@/lib/competition-periods';
+import { formatSnapshotStatus } from '@/lib/sync-status';
 import {
   DetailListBlock,
   WishItem,
@@ -340,7 +338,7 @@ function CompetitionsPageInner() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>('');
   const [progressLoading, setProgressLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<WishItem | null>(null);
-  const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const { message } = App.useApp();
 
   // ── fieldOptions + fieldDescriptions ──
@@ -367,6 +365,7 @@ function CompetitionsPageInner() {
       setSelectedPeriod(data.currentPeriod || '');
       setFieldOptions(data.fieldOptions || {});
       setFieldDescriptions(data.fieldDescriptions || {});
+      setLastSyncedAt(data.lastSyncedAt ?? null);
       setGlobalSummary(data.globalSummary);
       setPeriodMap(data.stats?.periodMap || {});
     } catch {
@@ -385,26 +384,6 @@ function CompetitionsPageInner() {
     () => selectedPeriod ? filterByCompetitionPeriod(allItems, selectedPeriod, (item) => item.reviewPeriod) : [],
     [allItems, selectedPeriod],
   );
-
-  // ── 同步 ──
-  const handleSync = async () => {
-    if (syncing) return;
-    if (!canSyncCompetitionPeriod(selectedPeriod)) {
-      message.info('请选择具体评审周期后再同步');
-      return;
-    }
-    setSyncing(true);
-    try {
-      const res = await fetch(`/api/competitions/sync?period=${selectedPeriod}`, { method: 'POST' });
-      if (!res.ok) throw new Error('同步失败');
-      message.success('同步完成，数据已刷新');
-      await fetchProgress();
-    } catch {
-      message.error('同步失败，请稍后重试');
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   // ── 当期 summary（随 selectedPeriod 变化重新计算）──
   const currentSummary = useMemo(() => {
@@ -447,6 +426,9 @@ function CompetitionsPageInner() {
                       <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                         欢迎每一位勇于拥抱变化、重塑流程、迎击时代浪潮的探索者
                       </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                        {formatSnapshotStatus(lastSyncedAt)}
+                      </div>
                       {canSyncCompetition && (
                         <div className="flex items-center gap-2">
                           <a href="https://ztn.feishu.cn/share/base/form/shrcnVgQV6C0ZAh3nZX6htenC5c" target="_blank" rel="noopener noreferrer"
@@ -459,11 +441,6 @@ function CompetitionsPageInner() {
                             style={{ color: '#1a3a8a', border: '1px solid #1a3a8a' }}>
                             <StarOutlined /> AI许愿
                           </a>
-                          <button onClick={handleSync} disabled={syncing}
-                            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                            style={{ color: syncing || isAllCompetitionPeriod(selectedPeriod) ? 'var(--text-muted)' : '#F27F22', border: `1px solid ${syncing || isAllCompetitionPeriod(selectedPeriod) ? 'var(--text-muted)' : '#F27F22'}`, opacity: syncing ? 0.5 : 1 }}>
-                            <SyncOutlined spin={syncing} /> {syncing ? '同步中…' : '同步数据'}
-                          </button>
                         </div>
                       )}
                     </div>

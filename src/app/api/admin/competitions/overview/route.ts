@@ -11,6 +11,7 @@ import {
   summarizeValueMetrics,
 } from '@/lib/bitable/metrics';
 import { attachReviewersToReviews, type ReviewerProfile } from '@/lib/competition-reviewers';
+import { getLatestSyncedAt } from '@/lib/sync-status';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
     // 1. 拉指定周期或全部周期的 submissions（只看"评审中"）
     let submissionsQuery = supabase
       .from('competition_submissions')
-      .select('id, proposal_no, title, team, submitter, status, monthly_saved_hours, created_at, period, track, scene_category, ai_tools, efficiency_rate, before_process, pain_points, after_process, demo_link, record_url, ai_cost, extra_value, team_members, implementation, verifier, before_hours_per_person, before_people_count, after_hours_per_person, after_people_count, old_operation_count, new_operation_count, old_hours_per_task, new_duration, old_people_count, new_people_count, old_frequency, new_frequency, reuse_value, reuse_value_level, monthly_saved_cost, cost_reduction_note, implementation_link, final_value_score, brief_intro, before_freq, after_freq, before_monthly_hours, after_monthly_hours, scene_region_coefficient_value, monthly_cost_saving_hours, total_monthly_saved_hours, reuse_value_coefficient, region_coefficient, scene_source, landing_progress')
+      .select('id, proposal_no, title, team, submitter, status, monthly_saved_hours, created_at, synced_at, period, track, scene_category, ai_tools, efficiency_rate, before_process, pain_points, after_process, demo_link, record_url, ai_cost, extra_value, team_members, implementation, verifier, before_hours_per_person, before_people_count, after_hours_per_person, after_people_count, old_operation_count, new_operation_count, old_hours_per_task, new_duration, old_people_count, new_people_count, old_frequency, new_frequency, reuse_value, reuse_value_level, monthly_saved_cost, cost_reduction_note, implementation_link, final_value_score, brief_intro, before_freq, after_freq, before_monthly_hours, after_monthly_hours, scene_region_coefficient_value, monthly_cost_saving_hours, total_monthly_saved_hours, reuse_value_coefficient, region_coefficient, scene_source, landing_progress')
       .eq('status', '评审中')
       .neq('landing_progress', EXCLUDED_BITABLE_OPTION_NAME);
 
@@ -85,6 +86,7 @@ export async function GET(request: NextRequest) {
       .order('proposal_no', { ascending: true });
     if (sErr) throw sErr;
     const submissions = subs ?? [];
+    const lastSyncedAt = getLatestSyncedAt(submissions);
     const subIds = submissions.map((s) => s.id);
 
     // 2. 拉这些 submissions 的所有 reviews（含 reviewer 名字）
@@ -325,6 +327,7 @@ export async function GET(request: NextRequest) {
         summary: { total, reviewed, pending, avgScore, totalSavedHours, avgEfficiencyRate, reuseValueCounts, reuseValueDistribution },
         submissions: enriched,
         panel: panelByRole,
+        lastSyncedAt,
         fieldDescriptions,
         fieldOptions,
       },

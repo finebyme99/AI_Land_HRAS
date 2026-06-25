@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { CONTENT_TYPE_OPTIONS } from '@/lib/constants';
 import SearchInput from '@/components/SearchInput';
 import type { Course, ContentType } from '@/types';
+import { formatSnapshotStatus, getLatestSyncedAt } from '@/lib/sync-status';
 import dayjs from 'dayjs';
 
 // 季数显示配置
@@ -231,6 +232,7 @@ export default function CoursesContent() {
     });
     return sorted;
   }, [displayCourses]);
+  const lastSyncedAt = useMemo(() => getLatestSyncedAt(courses), [courses]);
 
   return (
     <div className="mt-0">
@@ -326,6 +328,9 @@ export default function CoursesContent() {
             >{opt}</button>
           ))}
         </div>
+        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          {formatSnapshotStatus(lastSyncedAt)}
+        </div>
         {(canSyncCourses || canPublishCourses) && (
           <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}>
             {canSyncCourses && (
@@ -348,7 +353,7 @@ export default function CoursesContent() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105 disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #1a3a8a, #4a6fc7)', boxShadow: '0 4px 15px rgba(26,58,138,0.3)', color: '#fff' }}
               >
-                <SyncOutlined spin={syncing} /> {syncing ? '同步中...' : '同步课程'}
+                <SyncOutlined spin={syncing} /> {syncing ? '同步中...' : '从飞书同步课程'}
               </button>
             )}
             {canPublishCourses && (

@@ -31,7 +31,7 @@ export const PERMISSIONS: PermissionDef[] = [
 
   // ===== 大赛评审 =====
   { key: 'review.score', label: '评审打分', group: '大赛评审', kind: 'button' },
-  { key: 'competition.sync', label: '大赛数据同步飞书', group: '大赛评审', kind: 'button' },
+  { key: 'competition.sync', label: '全量同步飞书场景数据', group: '场景数据', kind: 'button' },
   { key: 'dashboard.export-image', label: '效果看板导出图片', group: '大赛评审', kind: 'button' },
 
   // ===== 场景池 =====

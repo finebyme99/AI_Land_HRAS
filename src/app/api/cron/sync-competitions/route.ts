@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { syncCompetitionSnapshot } from '@/lib/competition-snapshot-sync';
+import { recordCompetitionSyncFailure, runCompetitionSyncAndRecordStatus } from '@/lib/competition-sync-store';
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -8,10 +8,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await syncCompetitionSnapshot({ scope: 'all' });
+    const result = await runCompetitionSyncAndRecordStatus();
     return NextResponse.json({ source: 'cron-sync-competitions', ok: true, ...result });
   } catch (err) {
     console.error('[cron/sync-competitions] failed:', err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : '同步失败' }, { status: 500 });
+    const message = err instanceof Error ? err.message : '同步失败';
+    try {
+      await recordCompetitionSyncFailure(message);
+    } catch (statusErr) {
+      console.error('[cron/sync-competitions] failed to record failure:', statusErr);
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -6,6 +6,7 @@ import { App, Alert, Button, Empty, Space, Spin, Table, Tag, Tooltip, type Table
 import { LinkOutlined, ReloadOutlined, SyncOutlined } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth-context';
 import HighlightSweep from '@/components/HighlightSweep';
+import { formatSnapshotStatus } from '@/lib/sync-status';
 
 const BASE_APP = 'LRROwulJciI7JYkIT55cQtdpnze';
 const TABLE_ID = 'tbl9WJyxl9bbtYjb';
@@ -47,6 +48,20 @@ interface ApiResponse {
     orphan: number;
     inactive: number;
   };
+}
+
+interface CompetitionSyncStatusResponse {
+  status: 'never' | 'success' | 'failed';
+  lastSyncedAt: string | null;
+  lastAttemptedAt: string | null;
+  result: {
+    fetched: number;
+    succeeded: number;
+    changed: number;
+    skipped: number;
+    removedDuplicates: number;
+    error?: string;
+  } | null;
 }
 
 interface FieldAlias {
@@ -129,15 +144,24 @@ function shortId(value: string | null | undefined): string {
   return `${value.slice(0, 8)}...${value.slice(-4)}`;
 }
 
+function syncStatusTag(status: CompetitionSyncStatusResponse['status']): { color: string; label: string } {
+  if (status === 'success') return { color: 'green', label: '成功' };
+  if (status === 'failed') return { color: 'red', label: '失败' };
+  return { color: 'default', label: '未同步' };
+}
+
 export default function BitableFieldMapPage() {
   const router = useRouter();
   const { message } = App.useApp();
   const { hasPermission, loading: authLoading } = useAuth();
   const canView = hasPermission('admin.bitable-field-map');
   const canSync = hasPermission('fieldmap.sync');
+  const canSyncCompetition = hasPermission('competition.sync');
   const [data, setData] = useState<ApiResponse | null>(null);
+  const [competitionSync, setCompetitionSync] = useState<CompetitionSyncStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [competitionSyncing, setCompetitionSyncing] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !canView) router.replace('/');
@@ -157,11 +181,29 @@ export default function BitableFieldMapPage() {
     }
   }, [message]);
 
+  const fetchCompetitionSyncStatus = useCallback(async () => {
+    if (!canView) return;
+    try {
+      const res = await fetch('/api/admin/competition-sync');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || '加载失败');
+      setCompetitionSync(json);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '获取场景同步状态失败');
+    }
+  }, [canView, message]);
+
   useEffect(() => {
     if (!canView) return undefined;
     const timer = window.setTimeout(() => { void fetchData(); }, 0);
     return () => window.clearTimeout(timer);
   }, [canView, fetchData]);
+
+  useEffect(() => {
+    if (!canView) return undefined;
+    const timer = window.setTimeout(() => { void fetchCompetitionSyncStatus(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canView, fetchCompetitionSyncStatus]);
 
   const handleSyncFromFeishu = async () => {
     setSyncing(true);
@@ -183,6 +225,27 @@ export default function BitableFieldMapPage() {
     }
   };
 
+  const handleSyncCompetitionData = async () => {
+    setCompetitionSyncing(true);
+    message.loading({ content: '正在全量同步飞书场景数据...', key: 'sync-competition-data', duration: 0 });
+    try {
+      const res = await fetch('/api/admin/competition-sync', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || '同步失败');
+      setCompetitionSync(json.status);
+      const result = json.status?.result;
+      message.success({
+        content: `同步完成：成功 ${result?.succeeded ?? 0} 条，变化 ${result?.changed ?? 0} 条`,
+        key: 'sync-competition-data',
+      });
+    } catch (e) {
+      message.error({ content: e instanceof Error ? e.message : '同步失败', key: 'sync-competition-data' });
+      await fetchCompetitionSyncStatus();
+    } finally {
+      setCompetitionSyncing(false);
+    }
+  };
+
   if (authLoading || loading) {
     return <div className="flex min-h-[60vh] items-center justify-center"><Spin size="large" /></div>;
   }
@@ -190,6 +253,8 @@ export default function BitableFieldMapPage() {
 
   const assets = data?.assets ?? [];
   const unusedFeishuFields = data?.unusedFeishuFields ?? [];
+  const competitionSyncTag = syncStatusTag(competitionSync?.status ?? 'never');
+  const competitionSyncResult = competitionSync?.result;
 
   return (
     <main className="mx-auto max-w-[1280px] px-4 py-4 sm:px-6 sm:py-6">
@@ -245,6 +310,44 @@ export default function BitableFieldMapPage() {
           )}
         </Space>
       </div>
+
+      <section className="glass mb-4 rounded-xl border border-white/60 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <h2 className="m-0 text-base font-semibold">场景数据同步</h2>
+            <div className="mt-1 text-xs field-map-note">
+              全量同步飞书多维表格里的场景数据到 Supabase，包含许愿场景、大赛场景；前台场景大全、赛事进展、成效看板都读取同步后的 AI Land 快照。
+            </div>
+          </div>
+          {canSyncCompetition && (
+            <Button
+              type="primary"
+              icon={<SyncOutlined spin={competitionSyncing} />}
+              loading={competitionSyncing}
+              onClick={handleSyncCompetitionData}
+            >
+              全量同步飞书场景数据
+            </Button>
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Tag>{formatSnapshotStatus(competitionSync?.lastSyncedAt)}</Tag>
+          <Tag color={competitionSyncTag.color}>状态：{competitionSyncTag.label}</Tag>
+          <Tag color="blue">成功 {competitionSyncResult?.succeeded ?? 0}</Tag>
+          <Tag color="orange">变化 {competitionSyncResult?.changed ?? 0}</Tag>
+          <Tag>拉取 {competitionSyncResult?.fetched ?? 0}</Tag>
+          <Tag>跳过 {competitionSyncResult?.skipped ?? 0}</Tag>
+          <Tag>清重 {competitionSyncResult?.removedDuplicates ?? 0}</Tag>
+          {competitionSync?.lastAttemptedAt && competitionSync.status === 'failed' && (
+            <Tag color="red">最近尝试：{new Date(competitionSync.lastAttemptedAt).toLocaleString('zh-CN')}</Tag>
+          )}
+        </div>
+        {competitionSyncResult?.error && (
+          <div className="mt-2 text-xs" style={{ color: '#b91c1c' }}>
+            最近错误：{competitionSyncResult.error}
+          </div>
+        )}
+      </section>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Tag color="green">已使用 {data?.assetStats.used ?? 0}</Tag>

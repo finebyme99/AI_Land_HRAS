@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState, useMemo, useRef, useCallback } from 'rea
 import { useSearchParams } from 'next/navigation';
 import { Spin, Tag, App, Tabs } from 'antd';
 import {
-  SyncOutlined,
   RocketOutlined,
   BarChartOutlined,
   RiseOutlined,
@@ -18,6 +17,7 @@ import type { FieldSelectOption } from '@/lib/bitable/field-map';
 import { FIELD_LABELS } from '@/lib/bitable/labels';
 import { summarizeValueMetrics } from '@/lib/bitable/metrics';
 import { applyExportImageCloneLayout, getExportImageCaptureWidth } from '@/lib/export-image-style';
+import { formatSnapshotStatus } from '@/lib/sync-status';
 import {
   partitionProgressStates, buildProgressColorMap,
   buildCategoryColorMap, FALLBACK_COLOR,
@@ -33,6 +33,7 @@ import {
 
 interface Stats {
   total: number;
+  lastSyncedAt?: string | null;
   avgScore: number;
   withScoreCount: number;
   progressMap: Record<string, number>;
@@ -438,7 +439,6 @@ function FormulaSection() {
 // ── 主页面内容 ──
 function WishPoolContent() {
   const { hasPermission } = useAuth();
-  const canSyncSnapshot = hasPermission('competition.sync');
   const canExportImage = hasPermission('wishpool.export-image');
   const { message } = App.useApp();
 
@@ -446,6 +446,7 @@ function WishPoolContent() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [fieldDescriptions, setFieldDescriptions] = useState<Record<string, string>>({});
   const [fieldOptions, setFieldOptions] = useState<Record<string, FieldSelectOption[]>>({});
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
 
   // ── 动态枚举（从飞书 fieldOptions 构建，不硬编码）──
   const landedStates = useMemo(() => partitionProgressStates(fieldOptions.landingProgress).landed, [fieldOptions]);
@@ -454,7 +455,6 @@ function WishPoolContent() {
   const progressColors = useMemo(() => buildProgressColorMap(fieldOptions.landingProgress), [fieldOptions]);
 
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
@@ -516,6 +516,7 @@ function WishPoolContent() {
       setStats(data.stats);
       setFieldDescriptions(data.fieldDescriptions || {});
       setFieldOptions(data.fieldOptions || {});
+      setLastSyncedAt(data.lastSyncedAt ?? data.stats?.lastSyncedAt ?? null);
     } catch { message.error('获取场景池数据失败'); }
     finally { setLoading(false); }
   }, [message]);
@@ -524,19 +525,6 @@ function WishPoolContent() {
     const timer = window.setTimeout(() => { void fetchData(); }, 0);
     return () => window.clearTimeout(timer);
   }, [fetchData]);
-
-  const handleRefresh = async () => {
-    setSyncing(true);
-    try {
-      // 第一步：同步飞书字段映射（含 options 选项列表），确保筛选枚举是最新的
-      const syncRes = await fetch('/api/wish-pool/sync', { method: 'POST' });
-      if (!syncRes.ok) throw new Error('快照同步失败');
-      // 第二步：重新拉取数据 + 已更新的 fieldOptions
-      await fetchData();
-      message.success('快照已刷新');
-    } catch { message.error('同步失败，请稍后重试'); }
-    finally { setSyncing(false); }
-  };
 
   // ── 导出图片 ──
   const handleExportImage = async () => {
@@ -623,13 +611,9 @@ function WishPoolContent() {
           <div id="wish-pool-export">
             {/* 操作栏 */}
             <div className="flex items-center gap-2 mb-2" data-export-exclude>
-              {canSyncSnapshot && (
-                <button onClick={handleRefresh} disabled={syncing}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg, #1a3a8a, #2d5bc7)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                  <SyncOutlined spin={syncing} /> 同步快照
-                </button>
-              )}
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {formatSnapshotStatus(lastSyncedAt)}
+              </span>
               {canExportImage && (
                 <button onClick={handleExportImage} disabled={exporting}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
