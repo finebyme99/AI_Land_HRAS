@@ -269,6 +269,7 @@ export function DetailSummaryHeadline({
   totalSavedEfficiency,
   totalMonthlySavedCostDisplay,
   showMetrics = true,
+  showEstimatedValueLabel = false,
   labelColor = '#1a3a8a',
   summaryMode = 'default',
 }: {
@@ -277,6 +278,7 @@ export function DetailSummaryHeadline({
   totalSavedEfficiency: number;
   totalMonthlySavedCostDisplay: string;
   showMetrics?: boolean;
+  showEstimatedValueLabel?: boolean;
   labelColor?: string;
   summaryMode?: DetailSummaryMode;
 }) {
@@ -292,7 +294,7 @@ export function DetailSummaryHeadline({
       </span>
       {showMetrics && (
         <>
-          {summaryMode === 'overview' && (
+          {(summaryMode === 'overview' || showEstimatedValueLabel) && (
             <span className="cho-summary-headline-meta">预估价值：</span>
           )}
           <span className="cho-summary-headline-meta">
@@ -379,6 +381,7 @@ export function DetailListBlock({
   showMetrics = true,
   showSummary = true,
   emphasizeSummary = false,
+  showEstimatedValueLabel = false,
   summaryMode = 'default',
   labelColor = '#1a3a8a',
   showLandingProgressFilter = false,
@@ -400,6 +403,7 @@ export function DetailListBlock({
   showMetrics?: boolean;
   showSummary?: boolean;
   emphasizeSummary?: boolean;
+  showEstimatedValueLabel?: boolean;
   summaryMode?: DetailSummaryMode;
   labelColor?: string;
   showLandingProgressFilter?: boolean;
@@ -844,6 +848,7 @@ export function DetailListBlock({
           totalSavedEfficiency={summary.totalSavedEfficiency}
           totalMonthlySavedCostDisplay={summary.totalMonthlySavedCostDisplay}
           showMetrics={showMetrics}
+          showEstimatedValueLabel={showEstimatedValueLabel}
           labelColor={labelColor}
           summaryMode={summaryMode}
         />

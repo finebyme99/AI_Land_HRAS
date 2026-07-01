@@ -30,6 +30,7 @@ const adminMenuItems = [
   { key: '/admin/roles', label: '用户权限' },
   { key: '/admin/bitable-field-map', label: '字段映射配置' },
   { key: '/admin/feishu-apps', label: '飞书应用配置' },
+  { key: '/admin/operation-logs', label: '操作日志' },
 ];
 
 export default function Navigation() {

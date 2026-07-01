@@ -72,7 +72,8 @@ src/
 │   │   ├── roles/         # 用户权限（角色列表 / 权限矩阵 / 用户授权，顶部「管理后台」菜单）
 │   │   ├── users/         # 兼容旧入口，重定向到 /admin/roles?tab=users
 │   │   ├── feishu-apps/   # 飞书多租户应用配置（顶部「管理后台」菜单）
-│   │   └── bitable-field-map/  # 飞书多维表格字段映射管理（顶部「管理后台」菜单）
+│   │   ├── bitable-field-map/  # 飞书多维表格字段映射管理（顶部「管理后台」菜单）
+│   │   └── operation-logs/     # 操作日志（顶部「管理后台」菜单最后一项）
 │   ├── profile/           # 个人中心（主页 / 书签 / 贡献）
 │   ├── login/             # 登录（多企业飞书按钮）
 │   └── api/               # API 路由
@@ -96,6 +97,7 @@ src/
 │       ├── feishu/            # 飞书通用（card-callback）
 │       ├── admin/
 │       │   ├── competition-sync/       # 全量飞书场景数据同步 + 最近同步状态记录
+│       │   ├── operation-logs/         # 操作日志查询（场景同步审计）
 │       │   ├── competitions/overview/  # 成效看板聚合（含 fieldDescriptions+fieldOptions）
 │       │   ├── bitable-field-map/      # 字段映射 CRUD + sync-from-feishu
 │       │   ├── reviews/               # 评审清理/同步
@@ -157,11 +159,12 @@ src/
 - `isAdmin` 只认 `user.roles.includes('admin')`，用于兼容旧语义；不要把自定义角色误判为 admin 身份
 - `isReviewer` = `isAdmin` ∪ `users.reviewer_roles` 非空；`reviewer_roles` 表示评审维度授权，独立于 RBAC
 - 系统内置角色只 seed `admin` 和 `user`；自定义角色在 `/admin/roles` 的「用户权限」模块维护
-- 顶部「管理后台」入口只对 `isAdmin` 用户显示，当前可见菜单为：内容审核、用户权限、字段映射配置、飞书应用配置
+- 顶部「管理后台」入口只对 `isAdmin` 用户显示，当前可见菜单为：内容审核、用户权限、字段映射配置、飞书应用配置、操作日志
 - `/admin/roles` 包含三个视图：`角色列表`、`权限矩阵`、`用户授权`；旧 `/admin/users` 自动跳转到 `用户授权`
 - 权限矩阵按功能模块分组，模块行可批量勾选下级菜单页面和功能按钮；DB 仍只存具体权限点 key
 - 普通用户：提交案例（需审核）、提交工具（需审核）、点赞、收藏
 - `competition.sync` 控制 `/admin/bitable-field-map` 的「全量同步飞书场景数据」按钮和 `POST /api/admin/competition-sync`；场景大全、AI 大赛进展、成效看板前台不再放同步按钮
+- `admin.operation-logs` 控制 `/admin/operation-logs` 和 `GET /api/admin/operation-logs`；场景同步的后台手动触发和 Vercel cron 触发必须写入 `operation_logs`
 - `resource.generate-feishu-card` 控制工具页「生成飞书卡片」按钮和 `/api/resources/card-to-me`，默认授予 `user` 角色；该 API 只发送给当前登录人的 `feishu_open_id`，不得改成群发或遍历用户
 - 案例/工具的作者可编辑自己的内容
 

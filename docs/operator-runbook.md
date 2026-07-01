@@ -43,6 +43,7 @@ SQL Editor 中已经执行完成的 DDL/DML 不能像文本编辑器一样撤销
 - 前台页面不再提供场景数据同步按钮。`/api/wish-pool/sync`、`/api/wish-pool/sync-field-map` 已删除；`/api/competitions/sync` 仅保留 GET 只读兼容，不负责飞书写入型同步。
 - 同步逻辑入口：`src/lib/competition-snapshot-sync.ts` 使用 `src/lib/competition-snapshot.ts` 的 canonical ID 规则。若旧 `competition_submissions.id` 已被 `competition_reviews.submission_id` 使用，且旧行 `record_url` 指向当前飞书记录，必须保留旧 ID，把最新字段写回旧 ID，再删除新 ID 影子行。
 - 同步状态入口：`src/lib/competition-sync-store.ts` 通过 `074_competition_sync_status.sql` 的 `platform_settings` 字段记录最近尝试时间、最近成功同步时间、状态、成功/变化/跳过/清重等结果。前台最近更新时间文案为「数据最近更新时间：...」。
+- 同步审计入口：`075_operation_logs.sql` 创建 `operation_logs`。`POST /api/admin/competition-sync` 记录 `source=admin`、操作者和结果；`GET /api/cron/sync-competitions` 记录 `source=cron`、`operator_name=Vercel Cron` 和结果。后台 `/admin/operation-logs` 是查看入口。
 - 场景大全落地计划字段依赖生产库执行 `073_competition_landing_plan_fields.sql`，包括 `progress_record`、`planned_start_date`、`pilot_date`、`rollout_date`、`full_launch_date`、`biz_owner`、`ai_owner`。如果页面里进展备注、计划日期、业务/AI 对接人为空，或同步返回 schema cache 缺列，先确认该迁移已执行并刷新 PostgREST schema cache。
 - 重复排查：按 `period + record_url` 中的 `record` 参数分组检查 `competition_submissions`；若同一飞书记录出现两行，先确认 `competition_reviews` 是否挂在旧 ID 上，不要直接删除带评审记录的行。
 - 冒烟：后台同步后确认页面同步状态显示成功及变化数量；检查目标方案在 `/competitions`、`/wish-pool`、成效看板中只出现一条；SQL/脚本层确认 `competition_submissions` 按 `period + record_url.record` 分组没有重复。

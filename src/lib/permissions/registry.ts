@@ -24,6 +24,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: 'admin.bitable-field-map', label: '字段映射配置', group: '管理后台', kind: 'menu' },
   { key: 'admin.feishu-apps', label: '飞书应用配置', group: '管理后台', kind: 'menu' },
   { key: 'admin.roles', label: '用户权限', group: '管理后台', kind: 'menu' },
+  { key: 'admin.operation-logs', label: '操作日志', group: '管理后台', kind: 'menu' },
 
   // ===== 课程模块 =====
   { key: 'course.sync', label: '课程同步飞书', group: '课程模块', kind: 'button' },

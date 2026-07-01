@@ -21,6 +21,9 @@ const LANDED_PALETTE = ['#1a3a8a', '#2d5bc7', '#4a7de0', '#6366f1'];
 /** 待实现色板（暖灰系） */
 const PENDING_PALETTE = ['#94a3b8', '#64748b', '#e2e8f0', '#cbd5e1'];
 
+/** 归并/不纳入待实现统计的状态色板 */
+const OTHER_PROGRESS_PALETTE = ['#cbd5e1', '#9ca3af'];
+
 /** 大赛进展色板（蓝+绿） */
 const STATUS_PALETTE = ['#1a3a8a', '#16a34a', '#6366f1', '#94a3b8'];
 
@@ -60,8 +63,7 @@ export function buildColorMap(
 /**
  * 判断落地进展选项是否属于"已落地"组
  *
- * 规则：选项名包含"上线"关键词 → 已落地；其余 → 待实现。
- * 未来飞书新增选项（如"部分回退"）自动归入"待实现"组。
+ * 规则：选项名包含"上线"关键词 → 已落地。
  *
  * @param name  飞书落地进展选项名（如"试点上线"、"待启动"）
  */
@@ -70,25 +72,45 @@ export function isLandedState(name: string): boolean {
 }
 
 /**
+ * 判断落地进展选项是否属于归并状态。
+ *
+ * "并入同类项目"表示需求已归并，不应继续计入待实现场景。
+ */
+export function isMergedSameProjectState(name: string): boolean {
+  return name.includes('并入同类');
+}
+
+/**
+ * 判断落地进展选项是否属于"待实现"组。
+ *
+ * 规则：非上线、非归并状态 → 待实现。未来飞书新增选项默认归入待实现。
+ */
+export function isPendingImplementationState(name: string): boolean {
+  return !isLandedState(name) && !isMergedSameProjectState(name);
+}
+
+/**
  * 从 fieldOptions['landingProgress'] 动态划分已落地/待实现列表
  *
  * @param landingOpts  fieldOptions['landingProgress'] 或 undefined
- * @returns            { landed: string[], pending: string[] }
+ * @returns            { landed: string[], pending: string[], other: string[] }
  */
 export function partitionProgressStates(
   landingOpts: FieldSelectOption[] | undefined,
-): { landed: string[]; pending: string[] } {
+): { landed: string[]; pending: string[]; other: string[] } {
   if (!landingOpts) {
     // fallback：DB 还没同步时用空数组（前端不会有匹配数据）
-    return { landed: [], pending: [] };
+    return { landed: [], pending: [], other: [] };
   }
   const landed: string[] = [];
   const pending: string[] = [];
+  const other: string[] = [];
   landingOpts.forEach((o) => {
     if (isLandedState(o.name)) landed.push(o.name);
-    else pending.push(o.name);
+    else if (isPendingImplementationState(o.name)) pending.push(o.name);
+    else other.push(o.name);
   });
-  return { landed, pending };
+  return { landed, pending, other };
 }
 
 /**
@@ -104,11 +126,14 @@ export function buildProgressColorMap(
   const map: Record<string, string> = {};
   let landedIdx = 0;
   let pendingIdx = 0;
+  let otherIdx = 0;
   landingOpts.forEach((o) => {
     if (isLandedState(o.name)) {
       map[o.name] = paletteColor(landedIdx++, LANDED_PALETTE);
-    } else {
+    } else if (isPendingImplementationState(o.name)) {
       map[o.name] = paletteColor(pendingIdx++, PENDING_PALETTE);
+    } else {
+      map[o.name] = paletteColor(otherIdx++, OTHER_PROGRESS_PALETTE);
     }
   });
   return map;

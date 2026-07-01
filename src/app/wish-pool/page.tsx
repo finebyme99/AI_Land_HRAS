@@ -106,18 +106,19 @@ function StatCard({ icon, label, value, sub, color, highlight, onClick, actionLa
 }
 
 // ── 饼图（SVG donut）──
-function ProgressDonut({ progressMap, total, landedStates, pendingStates, progressColors }: {
+function ProgressDonut({ progressMap, total, landedStates, pendingStates, otherStates = [], progressColors }: {
   progressMap: Record<string, number>; total: number;
-  landedStates: string[]; pendingStates: string[]; progressColors: Record<string, string>;
+  landedStates: string[]; pendingStates: string[]; otherStates?: string[]; progressColors: Record<string, string>;
 }) {
   const landedTotal = landedStates.reduce((s, k) => s + (progressMap[k] || 0), 0);
   const pendingTotal = pendingStates.reduce((s, k) => s + (progressMap[k] || 0), 0);
-  const allStates = [...landedStates, ...pendingStates];
+  const otherTotal = otherStates.reduce((s, k) => s + (progressMap[k] || 0), 0);
+  const allStates = [...landedStates, ...pendingStates, ...otherStates];
   const segments = allStates.map((state) => ({
     state,
     count: progressMap[state] || 0,
     color: progressColors[state] || '#cbd5e1',
-    group: landedStates.includes(state) ? '已落地' : '待实现',
+    group: landedStates.includes(state) ? '已落地' : pendingStates.includes(state) ? '待实现' : '其他',
   }));
 
   // SVG arc calculation
@@ -185,6 +186,20 @@ function ProgressDonut({ progressMap, total, landedStates, pendingStates, progre
             <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{s} {progressMap[s] || 0}</span>
           </div>
         ))}
+        {otherStates.length > 0 && (
+          <>
+            <div className="flex items-center gap-2 mb-2 mt-2">
+              <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#cbd5e1' }} />
+              <span className="text-xs font-semibold" style={{ color: '#64748b' }}>其他 {otherTotal}</span>
+            </div>
+            {otherStates.map((s) => (
+              <div key={s} className="flex items-center gap-2 ml-2">
+                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: progressColors[s] }} />
+                <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{s} {progressMap[s] || 0}</span>
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
@@ -449,8 +464,10 @@ function WishPoolContent() {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
 
   // ── 动态枚举（从飞书 fieldOptions 构建，不硬编码）──
-  const landedStates = useMemo(() => partitionProgressStates(fieldOptions.landingProgress).landed, [fieldOptions]);
-  const pendingStates = useMemo(() => partitionProgressStates(fieldOptions.landingProgress).pending, [fieldOptions]);
+  const progressStateGroups = useMemo(() => partitionProgressStates(fieldOptions.landingProgress), [fieldOptions]);
+  const landedStates = progressStateGroups.landed;
+  const pendingStates = progressStateGroups.pending;
+  const otherProgressStates = progressStateGroups.other;
   const categoryColors = useMemo(() => buildCategoryColorMap(fieldOptions.sceneCategory), [fieldOptions]);
   const progressColors = useMemo(() => buildProgressColorMap(fieldOptions.landingProgress), [fieldOptions]);
 
@@ -611,9 +628,6 @@ function WishPoolContent() {
           <div id="wish-pool-export">
             {/* 操作栏 */}
             <div className="flex items-center gap-2 mb-2" data-export-exclude>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {formatSnapshotStatus(lastSyncedAt)}
-              </span>
               {canExportImage && (
                 <button onClick={handleExportImage} disabled={exporting}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
@@ -621,6 +635,9 @@ function WishPoolContent() {
                   <DownloadOutlined spin={exporting} /> 导出图片
                 </button>
               )}
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {formatSnapshotStatus(lastSyncedAt)}
+              </span>
             </div>
 
             {/* 三视图 Tabs */}
@@ -701,7 +718,14 @@ function WishPoolContent() {
                             <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>落地进展分布</h3>
                           </div>
                           <div className="p-4 flex justify-center">
-                            <ProgressDonut progressMap={stats.progressMap} total={stats.total} landedStates={landedStates} pendingStates={pendingStates} progressColors={progressColors} />
+                            <ProgressDonut
+                              progressMap={stats.progressMap}
+                              total={stats.total}
+                              landedStates={landedStates}
+                              pendingStates={pendingStates}
+                              otherStates={otherProgressStates}
+                              progressColors={progressColors}
+                            />
                           </div>
                         </div>
                       </div>
@@ -762,12 +786,11 @@ function WishPoolContent() {
                         baseList={pendingItems}
                         label="待实现场景"
                         emptyText="暂无待实现场景"
-                        showMetrics={false}
                         emphasizeSummary
+                        showEstimatedValueLabel
                         labelColor="#94a3b8"
                         showLandingProgressFilter
                         showLandingPlanColumns
-                        defaultLandingProgressFilters={['待启动']}
                         fieldDescriptions={fieldDescriptions}
                         fieldOptions={fieldOptions}
                         progressColors={progressColors}
