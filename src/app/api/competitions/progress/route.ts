@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { getActiveFieldMap } from '@/lib/bitable/field-map-reader';
 import {
   COMPETITION_SNAPSHOT_SELECT,
+  COMPETITION_SNAPSHOT_SELECT_WITHOUT_OWNER_PROFILES,
+  isMissingCompetitionOwnerProfileColumnsError,
   mapCompetitionSnapshotRowToWishItem,
   type CompetitionSnapshotRow,
 } from '@/lib/competition-snapshot';
@@ -22,14 +24,22 @@ const TABLE_ID = 'tbl9WJyxl9bbtYjb';
 export async function GET() {
   try {
     const supabase = getSupabaseAdmin();
-    const [{ data, error }, fieldMap] = await Promise.all([
-      supabase
-        .from('competition_submissions')
-        .select(COMPETITION_SNAPSHOT_SELECT)
-        .order('period', { ascending: true })
-        .order('final_value_score', { ascending: false, nullsFirst: false }),
+    const fetchSnapshotRows = (selectColumns: string) => supabase
+      .from('competition_submissions')
+      .select(selectColumns)
+      .order('period', { ascending: true })
+      .order('final_value_score', { ascending: false, nullsFirst: false });
+
+    const [initialRowsResult, fieldMap] = await Promise.all([
+      fetchSnapshotRows(COMPETITION_SNAPSHOT_SELECT),
       getActiveFieldMap(BASE_APP, TABLE_ID, 'wish-pool'),
     ]);
+    let rowsResult = initialRowsResult;
+    if (isMissingCompetitionOwnerProfileColumnsError(initialRowsResult.error)) {
+      console.warn('[competitions/progress] competition_submissions owner profile columns missing; falling back to legacy snapshot columns.');
+      rowsResult = await fetchSnapshotRows(COMPETITION_SNAPSHOT_SELECT_WITHOUT_OWNER_PROFILES);
+    }
+    const { data, error } = rowsResult;
     if (error) throw error;
 
     const fieldDescriptions = collectFieldDescriptions(fieldMap);

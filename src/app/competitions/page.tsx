@@ -36,17 +36,61 @@ import {
   WishItem,
   fmt, fmtF, fmtCost,
 } from '@/components/DetailListBlock';
+import { getDisplayProfiles, PersonContactNames } from '@/components/PersonContactDisplay';
 
 // ── 大赛进展标签文本映射（仅特殊文本替换）──
 const STATUS_TEXT: Record<string, string> = { '终审通过': '已结项' };
 // ── 价值星级 tooltip（AI岛计算逻辑）──
 const STAR_TOOLTIP = '按最终价值计分排名百分位：前20%=5★，前40%=4★，前60%=3★，前80%=2★，后20%=1★';
 
+function formatMonthlyFrequencyValue(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) return '—';
+  if (normalized.includes('次') || normalized.includes('/')) return normalized;
+  const numericValue = Number(normalized);
+  if (Number.isFinite(numericValue)) return `${fmtF(Math.round(numericValue * 10) / 10)}次/月`;
+  return `${normalized}次/月`;
+}
+
+function formatOperationFrequency(
+  monthlyFrequency: string | undefined,
+  frequency: string | undefined,
+  operationCount: number | undefined,
+): string {
+  if (monthlyFrequency != null && String(monthlyFrequency).trim()) {
+    return formatMonthlyFrequencyValue(String(monthlyFrequency));
+  }
+
+  if (operationCount == null) return '—';
+
+  const normalizedFrequency = frequency?.trim().toLowerCase() ?? '';
+  let monthlyCount: number | null = null;
+
+  if (!normalizedFrequency || normalizedFrequency.includes('每月') || normalizedFrequency.includes('monthly')) {
+    monthlyCount = operationCount;
+  } else if (normalizedFrequency.includes('每日') || normalizedFrequency.includes('每天') || normalizedFrequency.includes('daily')) {
+    monthlyCount = operationCount * 22;
+  } else if (normalizedFrequency.includes('每周') || normalizedFrequency.includes('weekly')) {
+    monthlyCount = operationCount * 4;
+  } else if (normalizedFrequency.includes('每季') || normalizedFrequency.includes('quarterly')) {
+    monthlyCount = operationCount / 3;
+  } else if (normalizedFrequency.includes('每年') || normalizedFrequency.includes('yearly')) {
+    monthlyCount = operationCount / 12;
+  }
+
+  if (monthlyCount == null) {
+    return `${fmtF(operationCount)}次/${frequency}`;
+  }
+
+  return `${fmtF(Math.round(monthlyCount * 10) / 10)}次/月`;
+}
+
 // ── 方案详情弹窗（4分组布局） ──
 function EntryDrillDownModal({ item, categoryColors, fieldDescriptions, onClose }: { item: WishItem; categoryColors: Record<string, string>; fieldDescriptions: Record<string, string>; onClose: () => void }) {
   const catColor = categoryColors[item.sceneCategory || ''] || FALLBACK_COLOR;
   const arr = (v: string[] | undefined) => v?.length ? v.join('、') : null;
-  const members = [...new Set([...(item.submitter || []), ...(item.teamMembers || [])])];
+  const bizOwnerDisplayProfiles = getDisplayProfiles(item.bizOwnerProfiles, item.bizOwner);
+  const aiOwnerDisplayProfiles = getDisplayProfiles(item.aiOwnerProfiles, item.aiOwner);
 
   // 带问号tooltip的字段标签（zIndex高于弹窗，防止被遮挡）
   const labelWithTip = (label: string, fieldKey: string) => (
@@ -120,8 +164,8 @@ function EntryDrillDownModal({ item, categoryColors, fieldDescriptions, onClose 
           {groupHeader('参赛信息', '#1a3a8a')}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
             {fieldRow('提报团队', item.team)}
-            {fieldRow('提报人', arr(item.submitter))}
-            {wideRow('团队成员', members.length > 0 ? (members.length > 6 ? `${members.slice(0, 6).join('、')}等${members.length}人` : members.join('、')) : null)}
+            {fieldRow(labelWithTip(FIELD_LABELS.bizOwner, 'bizOwner'), bizOwnerDisplayProfiles.length > 0 ? <PersonContactNames profiles={bizOwnerDisplayProfiles} /> : null)}
+            {fieldRow(labelWithTip(FIELD_LABELS.aiOwner, 'aiOwner'), aiOwnerDisplayProfiles.length > 0 ? <PersonContactNames profiles={aiOwnerDisplayProfiles} /> : null)}
           </div>
 
           {/* ── 分组二：场景信息 ── */}
@@ -129,7 +173,6 @@ function EntryDrillDownModal({ item, categoryColors, fieldDescriptions, onClose 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
             {fieldRow(labelWithTip('场景分类', 'sceneCategory'), item.sceneCategory)}
             {fieldRow(labelWithTip('核心价值', 'coreValue'), item.coreValue)}
-            {wideRow(labelWithTip('一句话简介', 'briefIntro'), item.briefIntro)}
             {wideRow(labelWithTip('核心痛点', 'painPoints'), arr(item.painPoints))}
             {fieldRow(labelWithTip('AI工具', 'aiTools'), arr(item.aiTools))}
             {wideRow(labelWithTip('AI实现效果', 'implementationLink'), item.implementationLink ? <a href={item.implementationLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#1a3a8a', textDecoration: 'underline' }}>查看实现效果 →</a> : null)}
@@ -145,7 +188,11 @@ function EntryDrillDownModal({ item, categoryColors, fieldDescriptions, onClose 
               <span style={{ fontSize: 11, width: 20, textAlign: 'center', flexShrink: 0 }} />
               <span style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', width: 100 }}>改造后</span>
             </div>
-            {beforeAfterRow('操作频次', item.beforeFreq || '—', item.afterFreq || '—')}
+            {beforeAfterRow(
+              '操作频次',
+              formatOperationFrequency(item.beforeFreq, item.beforeFrequency, item.beforeOperationCount),
+              formatOperationFrequency(item.afterFreq, item.afterFrequency, item.afterOperationCount),
+            )}
             {beforeAfterRow('单次操作耗时', item.beforeHoursPerTask ? `${item.beforeHoursPerTask}h` : '—', item.afterHoursPerTask ? `${item.afterHoursPerTask}h` : '—')}
             {beforeAfterRow('操作人数', item.beforePeopleCount ? `${item.beforePeopleCount}人` : '—', item.afterPeopleCount ? `${item.afterPeopleCount}人` : '—')}
             {beforeAfterRow('月均耗时', item.beforeMonthlyHours ? `${fmtF(Math.round(item.beforeMonthlyHours))}h` : '—', item.afterMonthlyHours ? `${fmtF(Math.round(item.afterMonthlyHours))}h` : '—')}
@@ -203,6 +250,10 @@ function EntryDrillDownModal({ item, categoryColors, fieldDescriptions, onClose 
 function SpotlightCard({ item, rank, categoryColors, onClick }: { item: WishItem; rank: number; categoryColors: Record<string, string>; onClick: () => void }) {
   const [hovered, setHovered] = useState(false);
   const catColor = categoryColors[item.sceneCategory || ''] || FALLBACK_COLOR;
+  const contactItems = [
+    { label: '业务', profiles: getDisplayProfiles(item.bizOwnerProfiles, item.bizOwner), accent: '#F27F22' },
+    { label: 'AI', profiles: getDisplayProfiles(item.aiOwnerProfiles, item.aiOwner), accent: '#1a3a8a' },
+  ].filter((contact) => contact.profiles.length > 0);
 
   const rankBg = rank === 1 ? 'linear-gradient(135deg, #F27F22, #d46b08)' : rank === 2 ? 'linear-gradient(135deg, #1a3a8a, #2d5bc7)' : 'linear-gradient(135deg, #2d5bc7, #4a7de0)';
   const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
@@ -283,16 +334,21 @@ function SpotlightCard({ item, rank, categoryColors, onClick }: { item: WishItem
         )}
       </div>
 
-      {/* 团队 + 项目成员 */}
-      <div className="flex items-center gap-2 px-5 pb-4">
-        {item.team && <Tag style={{ fontSize: 10, margin: 0, background: 'rgba(242,127,34,0.08)', borderColor: 'rgba(242,127,34,0.2)', color: '#F27F22', fontWeight: 600 }}>{item.team}</Tag>}
-        {(() => {
-          const members = [...new Set([...(item.submitter || []), ...(item.teamMembers || [])])];
-          if (members.length === 0) return null;
-          const display = members.length > 4 ? `${members.slice(0, 4).join('、')}等${members.length}人` : members.join('、');
-          return <span style={{ fontSize: 10, color: 'var(--foreground)', fontWeight: 500 }}>{display}</span>;
-        })()}
-      </div>
+      {(item.team || contactItems.length > 0) && (
+        <div className="flex flex-wrap items-center gap-2 px-5 pb-4">
+          {item.team && <Tag style={{ fontSize: 10, margin: 0, background: 'rgba(242,127,34,0.08)', borderColor: 'rgba(242,127,34,0.2)', color: '#F27F22', fontWeight: 600 }}>{item.team}</Tag>}
+          {contactItems.map((contact) => (
+            <span
+              key={contact.label}
+              className="inline-flex items-center gap-1 min-w-0 rounded-full px-2 py-1"
+              style={{ background: `${contact.accent}0f`, border: `1px solid ${contact.accent}1f`, maxWidth: 220 }}
+            >
+              <span style={{ fontSize: 10, color: contact.accent, fontWeight: 700, flexShrink: 0 }}>{contact.label}</span>
+              <PersonContactNames profiles={contact.profiles} compact limit={2} showAvatar />
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -28,6 +28,7 @@ import {
   WishItem,
   fmt, fmtF, fmtCost, fmtDate,
 } from '@/components/DetailListBlock';
+import { getDisplayProfiles, PersonContactNames } from '@/components/PersonContactDisplay';
 
 // ── WishItem 类型已从 DetailListBlock 共享组件 import ──
 
@@ -221,7 +222,8 @@ function SceneDetailPopup({ item, categoryColors, progressColors }: { item: Wish
       <span style={{ ...valStyle, maxWidth: full ? 260 : 120, wordBreak: 'break-word' }}>{value || '—'}</span>
     </div>
   );
-  const arr = (v: string[] | undefined) => v?.length ? v.join('、') : null;
+  const bizOwnerDisplayProfiles = getDisplayProfiles(item.bizOwnerProfiles, item.bizOwner);
+  const aiOwnerDisplayProfiles = getDisplayProfiles(item.aiOwnerProfiles, item.aiOwner);
 
   return (
     <div style={{ width: 400, maxHeight: 480, overflowY: 'auto', padding: '2px 0' }}>
@@ -238,7 +240,8 @@ function SceneDetailPopup({ item, categoryColors, progressColors }: { item: Wish
       {sectionTitle('场景信息', '#1a3a8a')}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
         {row('核心价值', item.coreValue)}{row('场景来源', item.sceneSource)}
-        {row('业务负责人', arr(item.bizOwner))}{row('AI负责人', arr(item.aiOwner))}
+        {row(FIELD_LABELS.bizOwner, bizOwnerDisplayProfiles.length > 0 ? <PersonContactNames profiles={bizOwnerDisplayProfiles} compact showAvatar /> : null)}
+        {row(FIELD_LABELS.aiOwner, aiOwnerDisplayProfiles.length > 0 ? <PersonContactNames profiles={aiOwnerDisplayProfiles} compact showAvatar /> : null)}
         {row('计划启动', fmtDate(item.plannedStartDate))}
       </div>
 
@@ -331,6 +334,8 @@ function SceneDrillDownModal({ item, onClose }: { item: WishItem; onClose: () =>
     </div>
   );
   const arr = (v: string[] | undefined) => v?.length ? v.join('、') : null;
+  const bizOwnerDisplayProfiles = getDisplayProfiles(item.bizOwnerProfiles, item.bizOwner);
+  const aiOwnerDisplayProfiles = getDisplayProfiles(item.aiOwnerProfiles, item.aiOwner);
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
@@ -355,7 +360,8 @@ function SceneDrillDownModal({ item, onClose }: { item: WishItem; onClose: () =>
           {sectionTitle('场景信息', '#1a3a8a')}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 16px' }}>
             {row('核心价值', item.coreValue)}{row('场景来源', item.sceneSource)}
-            {row('业务负责人', arr(item.bizOwner))}{row('AI负责人', arr(item.aiOwner))}
+            {row(FIELD_LABELS.bizOwner, bizOwnerDisplayProfiles.length > 0 ? <PersonContactNames profiles={bizOwnerDisplayProfiles} compact showAvatar /> : null)}
+            {row(FIELD_LABELS.aiOwner, aiOwnerDisplayProfiles.length > 0 ? <PersonContactNames profiles={aiOwnerDisplayProfiles} compact showAvatar /> : null)}
             {row('提报团队', item.team)}{row('AI工具', arr(item.aiTools))}
             {row('计划启动', fmtDate(item.plannedStartDate))}{row('试点上线', fmtDate(item.pilotDate))}
             {row('推广上线', item.rolloutDate?.slice(0, 10))}{row('全面上线', item.fullLaunchDate?.slice(0, 10))}

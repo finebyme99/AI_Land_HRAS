@@ -12,6 +12,8 @@ import { reuseLevelStyle, FALLBACK_COLOR } from '@/lib/bitable/enums';
 import type { FieldSelectOption } from '@/lib/bitable/field-map';
 import { FIELD_LABELS, VALUE_FORMULA_COPY } from '@/lib/bitable/labels';
 import { formatCurrency, parseMetricNumber, summarizeValueMetrics } from '@/lib/bitable/metrics';
+import type { PersonProfile } from '@/lib/person-profile';
+import { getDisplayProfiles, PersonContactNames, personContactPlainText } from '@/components/PersonContactDisplay';
 
 // ── WishItem 类型定义（与 wish-pool/competitions 共用）──
 export interface WishItem {
@@ -35,6 +37,8 @@ export interface WishItem {
   progressRecord?: string;
   bizOwner?: string[];
   aiOwner?: string[];
+  bizOwnerProfiles?: PersonProfile[];
+  aiOwnerProfiles?: PersonProfile[];
   submitter?: string[];
   teamMembers?: string[];
   creator?: string[];
@@ -466,7 +470,6 @@ export function DetailListBlock({
     return summarizeValueMetrics(filteredData);
   }, [filteredData]);
 
-  const arrText = (v: string[] | undefined) => v?.length ? v.join('、') : null;
   const autoColumnWidths = useMemo<Record<ColumnWidthKey, number>>(() => {
     const values = (key: ColumnWidthKey) => filteredData.map((row) => {
       switch (key) {
@@ -478,8 +481,8 @@ export function DetailListBlock({
         case 'progressRecord': return row.progressRecord;
         case 'plannedStartDate': return fmtDate(row.plannedStartDate);
         case 'team': return row.team;
-        case 'bizOwner': return arrText(row.bizOwner);
-        case 'aiOwner': return arrText(row.aiOwner);
+        case 'bizOwner': return personContactPlainText(row.bizOwnerProfiles, row.bizOwner);
+        case 'aiOwner': return personContactPlainText(row.aiOwnerProfiles, row.aiOwner);
         case 'monthlySavedHours': return row.monthlySavedHours == null ? '' : numOrDash(row.monthlySavedHours, 'h');
         case 'monthlySavedCost': return fmtCost(row.monthlySavedCost);
         case 'totalSavedHours': return row.totalSavedHours == null ? '' : numOrDash(row.totalSavedHours, 'h');
@@ -590,6 +593,11 @@ export function DetailListBlock({
   const dateCell = (v: string | null | undefined) => (
     <span className="text-xs" style={{ color: v ? 'var(--foreground)' : 'var(--text-muted)' }}>{fmtDate(v) || '—'}</span>
   );
+  const ownerCell = (profiles: PersonProfile[] | undefined, names: string[] | undefined) => {
+    const displayProfiles = getDisplayProfiles(profiles, names);
+    if (displayProfiles.length === 0) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
+    return <PersonContactNames profiles={displayProfiles} compact showAvatar limit={3} />;
+  };
 
   const landingPlanColumns: TableColumnsType<typeof filteredData[number]> = showLandingPlanColumns ? [
     {
@@ -622,7 +630,7 @@ export function DetailListBlock({
       key: 'bizOwner',
       width: columnWidth('bizOwner'),
       align: 'center' as const,
-      render: (v: string[] | undefined, record) => expandableTextCell(record, 'bizOwner', arrText(v), 'center'),
+      render: (v: string[] | undefined, record) => ownerCell(record.bizOwnerProfiles, v),
     },
     {
       title: headerTitle('aiOwner', FIELD_LABELS.aiOwner),
@@ -630,7 +638,7 @@ export function DetailListBlock({
       key: 'aiOwner',
       width: columnWidth('aiOwner'),
       align: 'center' as const,
-      render: (v: string[] | undefined, record) => expandableTextCell(record, 'aiOwner', arrText(v), 'center'),
+      render: (v: string[] | undefined, record) => ownerCell(record.aiOwnerProfiles, v),
     },
   ] : [];
 

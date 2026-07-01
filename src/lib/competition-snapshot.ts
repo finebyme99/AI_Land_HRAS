@@ -1,6 +1,7 @@
 import type { WishItem } from '../components/DetailListBlock';
+import type { PersonProfile } from './person-profile';
 
-export const COMPETITION_SNAPSHOT_SELECT = [
+const COMPETITION_SNAPSHOT_BASE_COLUMNS = [
   'id',
   'record_url',
   'title',
@@ -59,7 +60,20 @@ export const COMPETITION_SNAPSHOT_SELECT = [
   'ai_owner',
   'period',
   'synced_at',
+];
+
+export const COMPETITION_SNAPSHOT_OWNER_PROFILE_COLUMNS = [
+  'biz_owner_profiles',
+  'ai_owner_profiles',
+] as const;
+
+export const COMPETITION_SNAPSHOT_SELECT = [
+  ...COMPETITION_SNAPSHOT_BASE_COLUMNS.slice(0, -2),
+  ...COMPETITION_SNAPSHOT_OWNER_PROFILE_COLUMNS,
+  ...COMPETITION_SNAPSHOT_BASE_COLUMNS.slice(-2),
 ].join(', ');
+
+export const COMPETITION_SNAPSHOT_SELECT_WITHOUT_OWNER_PROFILES = COMPETITION_SNAPSHOT_BASE_COLUMNS.join(', ');
 
 export interface CompetitionSnapshotRow {
   id: string;
@@ -118,6 +132,8 @@ export interface CompetitionSnapshotRow {
   full_launch_date?: string | null;
   biz_owner?: string[] | string | null;
   ai_owner?: string[] | string | null;
+  biz_owner_profiles?: unknown;
+  ai_owner_profiles?: unknown;
   period?: string | null;
   synced_at?: string | null;
 }
@@ -127,6 +143,26 @@ export type CompetitionSnapshotUpsertRow = Record<string, unknown> & {
   title: string;
   period: string;
 };
+
+export function isMissingCompetitionOwnerProfileColumnsError(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  const message = error.message ?? '';
+  const mentionsProfileColumn = COMPETITION_SNAPSHOT_OWNER_PROFILE_COLUMNS.some((column) => message.includes(column));
+  return mentionsProfileColumn && (
+    error.code === '42703'
+    || error.code === 'PGRST204'
+    || message.includes('does not exist')
+    || message.includes('Could not find')
+  );
+}
+
+export function omitCompetitionOwnerProfileColumns<T extends Record<string, unknown>>(row: T): T {
+  const next = { ...row };
+  for (const column of COMPETITION_SNAPSHOT_OWNER_PROFILE_COLUMNS) {
+    delete next[column];
+  }
+  return next;
+}
 
 function stableValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stableValue);
@@ -242,7 +278,56 @@ function dbNumber(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function personProfilesFromNames(values: string[] | string | null | undefined): PersonProfile[] {
+  const names = Array.isArray(values) ? values : values ? [values] : [];
+  return names
+    .map((name) => String(name).trim())
+    .filter(Boolean)
+    .map((name) => ({ name }));
+}
+
+function cleanPersonProfile(profile: PersonProfile): PersonProfile {
+  return Object.fromEntries(
+    Object.entries(profile).filter(([, value]) => value !== undefined && value !== ''),
+  ) as PersonProfile;
+}
+
+function asPersonProfiles(value: unknown, fallbackNames: string[] | undefined): PersonProfile[] | undefined {
+  if (Array.isArray(value)) {
+    const profiles = value
+      .map<PersonProfile | null>((item) => {
+        if (!item || typeof item !== 'object') return null;
+        const record = item as Partial<PersonProfile>;
+        if (!record.name || typeof record.name !== 'string') return null;
+        return cleanPersonProfile({
+          name: record.name,
+          enName: record.enName,
+          openId: record.openId,
+          userId: record.userId,
+          unionId: record.unionId,
+          email: record.email,
+          avatarUrl: record.avatarUrl,
+          employeeId: record.employeeId,
+          department: record.department,
+          jobTitle: record.jobTitle,
+        });
+      })
+      .filter((profile): profile is PersonProfile => profile !== null);
+    if (profiles.length > 0) return profiles;
+  }
+  const fallback = personProfilesFromNames(fallbackNames);
+  return fallback.length > 0 ? fallback : undefined;
+}
+
+function dbPersonProfiles(profiles: PersonProfile[] | undefined, fallbackNames: string[] | string | null | undefined): PersonProfile[] {
+  if (profiles && profiles.length > 0) return profiles;
+  return personProfilesFromNames(fallbackNames);
+}
+
 export function mapCompetitionSnapshotRowToWishItem(row: CompetitionSnapshotRow): WishItem {
+  const bizOwner = asArray(row.biz_owner);
+  const aiOwner = asArray(row.ai_owner);
+
   return {
     id: row.id,
     recordUrl: row.record_url ?? undefined,
@@ -260,8 +345,10 @@ export function mapCompetitionSnapshotRowToWishItem(row: CompetitionSnapshotRow)
     pilotDate: row.pilot_date ?? undefined,
     rolloutDate: row.rollout_date ?? undefined,
     fullLaunchDate: row.full_launch_date ?? undefined,
-    bizOwner: asArray(row.biz_owner),
-    aiOwner: asArray(row.ai_owner),
+    bizOwner,
+    aiOwner,
+    bizOwnerProfiles: asPersonProfiles(row.biz_owner_profiles, bizOwner),
+    aiOwnerProfiles: asPersonProfiles(row.ai_owner_profiles, aiOwner),
     competitionProgress: row.status ?? undefined,
     reviewPeriod: row.period ?? undefined,
     submitter: asArray(row.submitter),
@@ -356,6 +443,8 @@ export function buildCompetitionSnapshotUpsertRow(item: WishItem): CompetitionSn
     full_launch_date: item.fullLaunchDate ?? null,
     biz_owner: dbArray(item.bizOwner),
     ai_owner: dbArray(item.aiOwner),
+    biz_owner_profiles: dbPersonProfiles(item.bizOwnerProfiles, item.bizOwner),
+    ai_owner_profiles: dbPersonProfiles(item.aiOwnerProfiles, item.aiOwner),
     period: item.reviewPeriod ?? '',
   };
 }

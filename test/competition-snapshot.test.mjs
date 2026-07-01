@@ -8,7 +8,9 @@ import {
   extractCompetitionRecordIdFromUrl,
   getCanonicalCompetitionSnapshotId,
   getCompetitionSnapshotDuplicateShadowIds,
+  isMissingCompetitionOwnerProfileColumnsError,
   mapCompetitionSnapshotRowToWishItem,
+  omitCompetitionOwnerProfileColumns,
 } from '../src/lib/competition-snapshot.ts';
 
 test('maps Supabase competition_submissions rows to shared WishItem shape', () => {
@@ -57,6 +59,10 @@ test('maps Supabase competition_submissions rows to shared WishItem shape', () =
     cost_reduction_note: '减少外包',
     implementation: '流程编排',
     implementation_link: 'https://example.test/demo',
+    biz_owner: ['张三'],
+    ai_owner: ['李四'],
+    biz_owner_profiles: [{ name: '张三', openId: 'ou_biz', employeeId: 'zt10001', department: 'HRSSC' }],
+    ai_owner_profiles: [{ name: '李四', openId: 'ou_ai', employeeId: 'zt10002', department: 'AI应用组' }],
   });
 
   assert.equal(item.id, 'rec-1');
@@ -77,6 +83,8 @@ test('maps Supabase competition_submissions rows to shared WishItem shape', () =
   assert.equal(item.afterHoursPerTask, 0.5);
   assert.equal(item.reuseValueNumber, 3);
   assert.equal(item.regionCoefficientValue, 1);
+  assert.deepEqual(item.bizOwnerProfiles, [{ name: '张三', openId: 'ou_biz', employeeId: 'zt10001', department: 'HRSSC' }]);
+  assert.deepEqual(item.aiOwnerProfiles, [{ name: '李四', openId: 'ou_ai', employeeId: 'zt10002', department: 'AI应用组' }]);
 });
 
 test('page data GET routes read Supabase snapshots instead of Feishu records', () => {
@@ -123,6 +131,38 @@ test('counts changed snapshot rows while ignoring synced_at churn', () => {
   );
 });
 
+test('detects missing owner profile columns and can omit them for legacy schemas', () => {
+  assert.equal(
+    isMissingCompetitionOwnerProfileColumnsError({
+      code: '42703',
+      message: 'column competition_submissions.biz_owner_profiles does not exist',
+    }),
+    true,
+  );
+  assert.equal(
+    isMissingCompetitionOwnerProfileColumnsError({
+      code: 'PGRST204',
+      message: "Could not find the 'ai_owner_profiles' column of 'competition_submissions' in the schema cache",
+    }),
+    true,
+  );
+  assert.equal(
+    isMissingCompetitionOwnerProfileColumnsError({ code: '42703', message: 'column competition_submissions.title does not exist' }),
+    false,
+  );
+
+  assert.deepEqual(
+    omitCompetitionOwnerProfileColumns({
+      id: 'rec-1',
+      title: '方案',
+      period: '2606',
+      biz_owner_profiles: [{ name: '业务负责人' }],
+      ai_owner_profiles: [{ name: 'AI负责人' }],
+    }),
+    { id: 'rec-1', title: '方案', period: '2606' },
+  );
+});
+
 test('builds Supabase snapshot upsert rows from mapped Feishu items', () => {
   const row = buildCompetitionSnapshotUpsertRow({
     id: 'rec-2',
@@ -145,6 +185,10 @@ test('builds Supabase snapshot upsert rows from mapped Feishu items', () => {
     finalValueScore: 64,
     reuseValueNumber: 4,
     regionCoefficientValue: 1.5,
+    bizOwner: ['业务负责人'],
+    aiOwner: ['AI负责人'],
+    bizOwnerProfiles: [{ name: '业务负责人', openId: 'ou_biz', employeeId: 'zt10001' }],
+    aiOwnerProfiles: [{ name: 'AI负责人', openId: 'ou_ai', department: 'AI应用组' }],
   });
 
   assert.equal(row.id, 'rec-2');
@@ -156,6 +200,8 @@ test('builds Supabase snapshot upsert rows from mapped Feishu items', () => {
   assert.equal(row.total_monthly_saved_hours, 16);
   assert.equal(row.reuse_value_coefficient, 4);
   assert.equal(row.scene_region_coefficient_value, 1.5);
+  assert.deepEqual(row.biz_owner_profiles, [{ name: '业务负责人', openId: 'ou_biz', employeeId: 'zt10001' }]);
+  assert.deepEqual(row.ai_owner_profiles, [{ name: 'AI负责人', openId: 'ou_ai', department: 'AI应用组' }]);
 });
 
 test('canonical snapshot id prefers linked legacy competition record ids', () => {
